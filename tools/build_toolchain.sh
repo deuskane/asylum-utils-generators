@@ -15,6 +15,8 @@
 # Date        Version  Author   Description
 # 2021-10-26  1.0      mrosiere Created
 # 2021-11-03  1.1      mrosiere Use generator
+# 2021-11-19  1.2      mrosiere Add options
+#-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
@@ -86,26 +88,50 @@ function build_toolchain_picoasm()
 }
 
 #-----------------------------------------------------------------------------
-# build_toolchain_main
+# build_toolchain_usage
 #-----------------------------------------------------------------------------
-# Argument 1 : ROM file (VHDL file)
-# Argument 2 : test name
-# Argument 3 : Target name
+# Display usage message
+#-----------------------------------------------------------------------------
+function build_toolchain_usage()
+{
+    echo "$0 usage:"
+    grep " .)\ ##" $0
+}
+ 
+#-----------------------------------------------------------------------------
+# build_toolchain_main
 #-----------------------------------------------------------------------------
 # Generate all tools and ROM
 #-----------------------------------------------------------------------------
 function build_toolchain_main()
 {
-    BUILD_TOOLCHAIN_SDCC=false
-    BUILD_TOOLCHAIN_PICOASM=false
-
     # Directory
     dir_tools=`/bin/pwd`
-    dir_ip=${dir_tools}/..
     dir_picoasm=${dir_tools}/picoasm
     dir_sdcc=${dir_tools}/pbccv2-src-20110901/sdcc3
     dir_install=${dir_tools}/install
     
+    BUILD_TOOLCHAIN_SDCC=false
+    BUILD_TOOLCHAIN_PICOASM=false
+
+    while getopts ":hspi:" arg; do
+	case $arg in
+	    s) ## Build SDCC
+		BUILD_TOOLCHAIN_SDCC=true
+		;;
+	    p) ## Build PicoASM
+		BUILD_TOOLCHAIN_PICOASM=true
+		;;
+	    i) ## Install directory
+		dir_install=${OPTARG}
+		;;
+	    h | *) ## Display help
+		build_toolchain_usage
+		exit 0
+		;;
+	esac
+    done
+
     # SDCC Compilation
     if ${BUILD_TOOLCHAIN_SDCC};
     then
