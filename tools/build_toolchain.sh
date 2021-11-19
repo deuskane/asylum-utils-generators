@@ -96,6 +96,13 @@ function build_toolchain_usage()
 {
     echo "$0 usage:"
     grep " .)\ ##" $0
+
+    echo ""
+    echo "Build toolchain for picoblaze"
+    echo " * C compiler based on SDCC 3.0.1"
+    echo " * ROM Generator based on picoasm" 
+    echo ""
+    echo "Original project : https://www.fit.vutbr.cz/~meduna/work/doku.php?id=projects:vlam:pbcc:pbcc"
 }
  
 #-----------------------------------------------------------------------------
