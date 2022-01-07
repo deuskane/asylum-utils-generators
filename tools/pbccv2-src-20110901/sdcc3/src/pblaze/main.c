@@ -198,7 +198,7 @@ static int _pblaze_genIVT(struct dbuf_s *oBuf, symbol ** interrupts, int maxInte
 	} else {
 	    dbuf_printf(oBuf, "\tORG\t$3ff\n");
 	}
-	dbuf_printf(oBuf, "\tJUMP\t%s\n", pblaze_interrupt->name);
+	dbuf_printf(oBuf, "\tJUMP\t_%s\n", pblaze_interrupt->name);
     }
 
     return TRUE;
