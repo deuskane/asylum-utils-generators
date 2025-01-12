@@ -16,6 +16,7 @@
 # 2021-10-26  1.0      mrosiere Created
 # 2021-11-03  1.1      mrosiere Use generator
 # 2021-11-19  1.2      mrosiere Add options
+# 2025-01-10  1.3      mrosiere Change Makefile
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
@@ -53,10 +54,6 @@ EOT
       - pbcc_dep
     generate : [gen_${target_name}]
 
-EOT
-
-	cat <<EOT >> /tmp/test_make.txt
-TARGETS += sim_${target_name}
 EOT
 }
 
@@ -150,19 +147,14 @@ function gen_target_main()
     # Directory
     dir_ip=`dirname ${file_core}`
 
-    # File
-    file_make=${dir_ip}/mk/targets.mk
-
     # Create tmp file
     rm -f /tmp/test_core_filesets.txt
     rm -f /tmp/test_core_generate.txt
     rm -f /tmp/test_core_targets.txt
-    rm -f /tmp/test_make.txt
 
     touch /tmp/test_core_filesets.txt
     touch /tmp/test_core_generate.txt
     touch /tmp/test_core_targets.txt
-    touch /tmp/test_make.txt
 
     # Scan source file
     dir_ip=${dir_ip}/
@@ -226,9 +218,6 @@ function gen_target_main()
 
     # Generate Makefile
     echo "Generate Makefile"
-    mkdir -p ${dir_ip}/mk
-    	
-    cp /tmp/test_make.txt ${file_make}
 
     rm -f Makefile
     cat <<EOT >> ${dir_ip}/Makefile
@@ -239,45 +228,102 @@ function gen_target_main()
 #=============================================================================
 # Variables
 #=============================================================================
-SHELL      = /bin/bash
-FILE_CORE  = ${file_core}
-CORE      ?= \$(shell grep name \$(FILE_CORE) | head -n1| cut -d' ' -f3)
-include mk/targets.mk
+SHELL    	 = /bin/bash
+
+FILE_CORE	?= ${file_core}
+TARGET          ?= emu_ng_medium_c_identity
+TOOL		?= nxmap
+
+CORE_NAME       := \$(shell grep name \$(FILE_CORE) | head -n1 | tr -d ' ')
+
+VENDOR		 = \$(shell echo \$(CORE_NAME) | cut -d':' -f2)
+LIBRARY 	 = \$(shell echo \$(CORE_NAME) | cut -d':' -f3)
+NAME		 = \$(shell echo \$(CORE_NAME) | cut -d':' -f4)
+VERSION		 = \$(shell echo \$(CORE_NAME) | cut -d':' -f5)
+VLNV		 = \$(VENDOR):\$(LIBRARY):\$(NAME):\$(VERSION)
+
+TARGETS_SIM	:= \$(shell fusesoc core-info \$(VLNV) | grep sim_ | cut -d ':' -f1 | tr -d ' ')
+TARGETS_EMU	:= \$(shell fusesoc core-info \$(VLNV) | grep emu_ | cut -d ':' -f1 | tr -d ' ')
+
+PATH_BUILD	?= \$(CURDIR)/build
 
 #=============================================================================
 # Rules
 #=============================================================================
 
-help    :
-	@echo "=========| Variables"
-	@echo "CORE     : \$(CORE)"
+#--------------------------------------------------------
+# Display list of target
+help :
+#--------------------------------------------------------
 	@echo ""
-	@echo "=========| Rules"
-	@echo "help     : Print this message"
-	@echo "run      : run all targets"
-	@echo "run_%    : run one target"
-	@echo "clean    : delete build directory"
+	@echo ">>>>>>>  Makefile Help"
 	@echo ""
-	@echo "=========| Targets"
-	@for target in \$(TARGETS); do echo \$\${target}; done
+	@echo "===========| Variables"
+	@echo "VLNV       : Vendor/Library/Name/Version"
+	@echo "             \$(VLNV)"
+	@echo "TARGET     : Specific Target for Fusesoc"
+	@echo "             \$(TARGET)"
+	@echo "TOOL       : Specific Tool for Fusesoc"
+	@echo "             \$(TOOL)"
+	@echo "TARGET_SIM : All simulation targets"
+	@echo "             \$(TARGETS_SIM)"
+	@echo "TARGET_EMU : All emulation targets"
+	@echo "             \$(TARGETS_EMU)"
+	@echo "PATH_BUILD : Path to build directory"
+	@echo "             \$(PATH_BUILD)"
+	@echo ""
+	@echo "===========| Rules"
+	@echo "help       : Print this message"
+	@echo "info       : Display library list and cores list"
+	@echo "nonreg     : Run all simulation targets"
+	@echo "setup      : Execute Setup stage of fusesoc flow for specific target and tool"
+	@echo "build      : Execute Build stage of fusesoc flow for specific target and tool"
+	@echo "run        : Execute Run   stage of fusesoc flow for specific target and tool"
+	@echo "impulse    : Execute the specific target in gui, Warning, the target must be previously build"
+	@echo "*          : Run target with default tool"
+	@echo "clean      : delete build directory"
+	@echo ""
+	@echo ">>>>>>>  Core Information"
+	@echo ""
+	@fusesoc core-info \$(VLNV)
 
-.PHONY  : list
+.PHONY  : help
 
-run	: \$(addprefix run_,\$(TARGETS))
+#--------------------------------------------------------
+# Display library list and cores list
+info :
+#--------------------------------------------------------
+	@fusesoc library list
+	@fusesoc list-cores
 
-.PHONY	: run
+.PHONY : info
 
-run_%	:
-	@echo "[\$*]"
-	fusesoc run --build-root build-\$* --run --target \$* \$(CORE)
+#--------------------------------------------------------
+setup build run :
+#--------------------------------------------------------
+	fusesoc run --build-root \$(PATH_BUILD) --\$@ --target \$(TARGET) --tool \$(TOOL) \$(VLNV)
 
-.PHONY	: run_%
+.PHONY : setup build run
 
+#--------------------------------------------------------
+% :
+#--------------------------------------------------------
+	@fusesoc run --build-root \$(PATH_BUILD) --target \$* \$(VLNV)
 
-clean	:
-	rm -fr build build-*
+#--------------------------------------------------------
+nonreg : \
+	\$(TARGETS_SIM)
+#--------------------------------------------------------
+# nothing
 
-.PHONY	: clean
+.PHONY : nonreg
+
+#--------------------------------------------------------
+clean :
+#--------------------------------------------------------
+	rm -fr \$(PATH_BUILD)
+
+.PHONY : clean
 EOT
 
     echo "Done"
