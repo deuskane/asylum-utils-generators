@@ -13,10 +13,11 @@ CAPI=2:
 #-----------------------------------------------------------------------------
 # Revisions  :
 # Date        Version  Author   Description
-# 2021-11-03  1.0      mrosiere Created
+# 2021-11-03  1.0.0    mrosiere Created
+# 2025-01-12  1.1.0    mrosiere Add cflags arguments
 #-----------------------------------------------------------------------------
 
-name: asylum:utils:generators:1.0.0
+name: asylum:utils:generators:1.1.0
 description: A collection of useful generators
 
 generators:
@@ -47,3 +48,6 @@ generators:
                  "generic"   : Generic implementation
                  "xilinx"    : Xilinx  implementation
                  Default : "generic"
+
+        cflags : (Optional)
+                 Compilation options for C file

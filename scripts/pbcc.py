@@ -34,7 +34,11 @@ class pbcc(Generator):
         file_in     = os.path.join(self.files_root,self.config.get("file"))
         file_vhd    = Path(file_in).stem + ".vhd"
         file_type   = self.config.get("type")
+        cflags      = self.config.get("cflags")
 
+        if cflags is None:
+            cflags = ""
+        
         if (not file_type in ["c","kcpsm3","pblazeide"]):
             raise RuntimeError("[ERROR  ] Unknown file type: {0}. Possible options are \"c\", \"kcpsm3\" or \"pblazeide\"".format(file_type))
 
@@ -62,7 +66,7 @@ class pbcc(Generator):
         print("[DEBUG  ] File Type  : {0}".format(file_type ))
         print("[DEBUG  ] ROM entity : {0}".format(rom_entity))
         print("[DEBUG  ] ROM model  : {0}".format(rom_model ))
-
+        print("[DEBUG  ] CFLAGS     : {0}".format(cflags    ))
         
         #-------------------------------------------------
         # Convert C to PSM (in kcpsm3 dialect)
@@ -73,8 +77,12 @@ class pbcc(Generator):
             else:
                 raise RuntimeError("[ERROR  ] PBCC_HOME environment variable is undefined")
 
+            include_path = os.path.join(pbcc_home, "share", "sdcc", "include")
+            
             print("[INFO   ] Translate C to PSM");
-            args = ["-I " + pbcc_home + "/share/sdcc/include", "-V", "-S", "--dialect=kcpsm3", file_c]
+            args = ["-I" + include_path, cflags, "-V", "-S", "--dialect=kcpsm3", file_c]
+
+            print(f"{args}")
             try:
                 Launcher(pbcc_home + "/bin/sdcc", args).run()
             except subprocess.CalledProcessError as e:
