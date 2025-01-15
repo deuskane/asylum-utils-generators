@@ -777,6 +777,14 @@ bool CAssembler::exportVHDL( string templateFile, string outputDir, string fileN
 			    }
 			  }
 			  
+			} else if ( strncmp( "INITX_", varname, 6 ) == 0 ) {
+			  uint32_t instr_hexcode = 0;
+			  sscanf( varname, "INITX_%03X", &line ) ;
+			  instr = m_code->getInstruction( line ) ;
+			  if ( instr != NULL ) {
+			    instr_hexcode = instr->getHexCode();
+			  }
+			  fprintf( outfile,"%s",std::bitset<18>(instr_hexcode).to_string().c_str()) ;
 			}
 		}
 	}

@@ -81,9 +81,9 @@ function build_toolchain_picoasm()
 
     cp ${dir_src}/picoasm ${dir_install}/bin
 
-    cp ${dir_src}/ROM_form.v      ${dir_install}/share/picoasm/xilinx
-    cp ${dir_src}/ROM_form.vhd    ${dir_install}/share/picoasm/xilinx
-    cp ${dir_src}/../ROM_form.vhd ${dir_install}/share/picoasm/generic
+    cp ${dir_src}/ROM/xilinx/ROM_form.v      ${dir_install}/share/picoasm/xilinx
+    cp ${dir_src}/ROM/xilinx/ROM_form.vhd    ${dir_install}/share/picoasm/xilinx
+    cp ${dir_src}/ROM/generic/ROM_form.vhd   ${dir_install}/share/picoasm/generic
 
 }
 
