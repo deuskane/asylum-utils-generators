@@ -15,9 +15,10 @@ CAPI=2:
 # Date        Version  Author   Description
 # 2021-11-03  1.0.0    mrosiere Created
 # 2025-01-12  1.1.0    mrosiere Add cflags arguments
+# 2025-01-15  1.2.0    mrosiere picoasm : dump rom style
 #-----------------------------------------------------------------------------
 
-name: asylum:utils:generators:1.1.0
+name: asylum:utils:generators:1.2.0
 description: A collection of useful generators
 
 generators:
@@ -31,7 +32,7 @@ generators:
       The generator requires the following parameters:
 
         file   : (Mandatory)
-                 source file
+                 Source file
        
         type   : (Mandatory)
                  Type of source file
@@ -41,13 +42,13 @@ generators:
 
         entity : (Optional)
                  Entity Name
-                 Default : OpenBlaze8_ROM
+                 Default     : OpenBlaze8_ROM
 
         model  : (Optional)
                  ROM Model 
                  "generic"   : Generic implementation
                  "xilinx"    : Xilinx  implementation
-                 Default : "generic"
+                 Default     : "generic"
 
         cflags : (Optional)
                  Compilation options for C file
