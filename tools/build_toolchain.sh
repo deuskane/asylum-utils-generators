@@ -115,7 +115,8 @@ function build_toolchain_main()
     # Directory
     dir_tools=`/bin/pwd`
     dir_picoasm=${dir_tools}/picoasm
-    dir_sdcc=${dir_tools}/pbccv2-src-20110901/sdcc3
+#   dir_sdcc=${dir_tools}/pbccv2-src-20110901/sdcc3
+    dir_sdcc=${dir_tools}/pbccv2-src-20111024/sdcc3
     dir_install=${dir_tools}/install
     
     BUILD_TOOLCHAIN_SDCC=false
