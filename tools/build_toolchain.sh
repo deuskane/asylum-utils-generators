@@ -55,6 +55,9 @@ function build_toolchain_sdcc()
     echo "[SDCC] Install"
     make -j install
 
+    echo "[SDCC] Clean"
+    make clean
+
     cd -
 }
 
@@ -85,6 +88,8 @@ function build_toolchain_picoasm()
     cp ${dir_src}/ROM/xilinx/ROM_form.vhd    ${dir_install}/share/picoasm/xilinx
     cp ${dir_src}/ROM/generic/ROM_form.vhd   ${dir_install}/share/picoasm/generic
 
+    echo "[PICOASM] Clean"
+    make -C ${dir_src} clean
 }
 
 #-----------------------------------------------------------------------------
