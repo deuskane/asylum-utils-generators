@@ -26,7 +26,10 @@ from pathlib                 import Path
 class pbcc(Generator):
     def run(self):
 
-        print("[INFO   ] Translate C file to PSM file")
+        print("[INFO   ]-------------------------------------------")
+        print("[INFO   ] Start Generator pbcc")
+        print("[INFO   ]-------------------------------------------")
+        print("[DEBUG  ] Work Directory    : {0}".format(os.getcwd()))
 
         #-------------------------------------------------
         # Get parameters
@@ -60,13 +63,13 @@ class pbcc(Generator):
         #-------------------------------------------------
         # Summary of parameters
         #-------------------------------------------------
-        print("[DEBUG  ] File C     : {0}".format(file_c    ))
-        print("[DEBUG  ] File PSM   : {0}".format(file_psm  ))
-        print("[DEBUG  ] File VHD   : {0}".format(file_vhd  ))
-        print("[DEBUG  ] File Type  : {0}".format(file_type ))
-        print("[DEBUG  ] ROM entity : {0}".format(rom_entity))
-        print("[DEBUG  ] ROM model  : {0}".format(rom_model ))
-        print("[DEBUG  ] CFLAGS     : {0}".format(cflags    ))
+        print("[DEBUG  ] File C            : {0}".format(file_c    ))
+        print("[DEBUG  ] File PSM          : {0}".format(file_psm  ))
+        print("[DEBUG  ] File VHD          : {0}".format(file_vhd  ))
+        print("[DEBUG  ] File Type         : {0}".format(file_type ))
+        print("[DEBUG  ] ROM entity        : {0}".format(rom_entity))
+        print("[DEBUG  ] ROM model         : {0}".format(rom_model ))
+        print("[DEBUG  ] CFLAGS            : {0}".format(cflags    ))
         
         #-------------------------------------------------
         # Convert C to PSM (in kcpsm3 dialect)
@@ -80,6 +83,7 @@ class pbcc(Generator):
             include_path = os.path.join(pbcc_home, "share", "sdcc", "include")
             
             print("[INFO   ] Translate C to PSM");
+            print("[DEBUG  ] PBCC_HOME         : {0}".format(pbcc_home))
             args = ["-I" + include_path, cflags, "-V", "-S", "--dialect=kcpsm3", file_c]
 
             print(f"{args}")
@@ -99,6 +103,7 @@ class pbcc(Generator):
             raise RuntimeError("[ERROR  ] PICOASM_HOME environment variable is undefined")
             
         print("[INFO   ] Translate PSM to VHD");
+        print("[DEBUG  ] PICOASM_HOME      : {0}".format(picoasm_home))
         args = ["-t" + picoasm_home + "/share/picoasm/"+rom_model+"/ROM_form.vhd","-v", "-m"+rom_entity, "-d.","-i"+file_psm,"-a"+file_type]
         try:
             Launcher(picoasm_home + "/bin/picoasm", args).run()
@@ -115,6 +120,9 @@ class pbcc(Generator):
             self.add_files(outfiles)
         else:
             raise RuntimeError("[ERROR  ] output files not found.")
+        print("[INFO   ]-------------------------------------------")
+        print("[INFO   ] End Generator pbcc")
+        print("[INFO   ]-------------------------------------------")
 
 if __name__ == '__main__':
     g = pbcc()
