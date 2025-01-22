@@ -1302,6 +1302,9 @@ static void genEndFunction(iCode * ic)
 
     _G.isCalleSaves = 0;
 
+    /* store globals. if changed */
+    freeGlobalsFromReg();
+
     /* interrupt routine or callee saves - pop saved registers back */
     if (IFFUNC_ISISR(sym->type) || IFFUNC_CALLEESAVES(sym->type)) {
 
@@ -1311,9 +1314,6 @@ static void genEndFunction(iCode * ic)
         }
         clearBitVect(_G.rUsedVect);
     }
-
-    /* store globals. if changed */
-    freeGlobalsFromReg();
 
     if (options.debug && currFunc) {
         debugFile->writeEndFunction(currFunc, ic, 1);
