@@ -84,7 +84,7 @@ class pbcc(Generator):
             
             print("[INFO   ] Translate C to PSM");
             print("[DEBUG  ] PBCC_HOME         : {0}".format(pbcc_home))
-            args = ["-I" + include_path, cflags, "-V", "-S", "--dialect=kcpsm3", file_c]
+            args =  cflags.split() + ["-I" + include_path, "-V", "-S", "--dialect=kcpsm3", file_c]
 
             print(f"{args}")
             try:
