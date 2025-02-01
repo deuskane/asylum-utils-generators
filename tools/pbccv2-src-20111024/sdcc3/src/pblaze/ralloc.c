@@ -1173,7 +1173,9 @@ regs *getReg(iCode * ic)
         /* callee saves */
         if (isCalleesaves()) {
             if (!isRegUsed(rtmp->rIdx)) {
-                pushStack(rtmp->rIdx, 0);
+	      printf("kane1\n");
+
+	      pushStack(rtmp->rIdx, 0);
             }
             setRegUsed(rtmp->rIdx);
         }
@@ -1225,6 +1227,7 @@ regs *getRegOper(iCode * ic, operand * op, int offset)
         /* callee saves */
         if (isCalleesaves()) {
             if (!isRegUsed(rtmp->rIdx)) {
+	      printf("kane2\n");
                 pushStack(rtmp->rIdx, 0);
             }
             setRegUsed(rtmp->rIdx);

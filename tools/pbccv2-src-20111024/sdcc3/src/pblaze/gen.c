@@ -535,6 +535,11 @@ int isRegUsed(int r)
     return bitVectBitValue(_G.rUsedVect, r);
 }
 
+void setRegUnusedAll()
+{
+  clearBitVect(_G.rUsedVect);
+	  
+}
 void clearBitVect(bitVect * bv)
 {
     int i;
@@ -557,6 +562,9 @@ short isCalleesaves(void)
 void pushStack(int rdx, int c)
 {
     regs *rStack;
+
+    printf("Push Stack %d\n",rdx);
+    
     rStack = pblaze_regWithIdx(rdx);
     pblaze_emitcodeStore(rStack->name, "sF");
     pblaze_emitcode("SUB", "sF, %s", dialectNum(1));
@@ -572,6 +580,9 @@ void pushStack(int rdx, int c)
 void popStack(int rdx, int c)
 {
     regs *rStack;
+
+    printf("Pop  Stack %d\n",rdx);
+	
     rStack = pblaze_regWithIdx(rdx);
 
     pblaze_emitcode("ADD", "sF, %s", dialectNum(1));
@@ -949,12 +960,14 @@ static void genIpush(iCode * ic)
             /* first load into registers */
             pblaze_emitcode("LOAD", "%s, %s", r->name, dialectNum((unsigned int) ((lit >> (offset++ * 8)) & 0x0FFL)));
             /* push onto the stack */
+	    printf("yo1\n");
             pushStack(r->rIdx, 1);
         }
 
     } else {
 
         while (size--) {
+	    printf("yo2\n");
             pushStack(aopGetReg(ic, left, offset)->rIdx, 1);
             offset++;
         }
@@ -1083,9 +1096,6 @@ static void genCall(iCode * ic)
 
     D(pblaze_emitcode(";", "genCall"));
 
-    /* store globals. if changed */
-    freeGlobalsFromReg();
-
     rSaved = newBitVect(pblaze_nRegs);
 
     /* test if its a multiply, div or mod call */
@@ -1097,10 +1107,12 @@ static void genCall(iCode * ic)
             r = pblaze_regWithIdx(i);
             if (i >= saveFrom && r->isFree == 0 && r->isReserved == 0 && r->currOper
                 && OP_LIVETO(r->currOper) > ic->seq) {
+	      printf("yo3\n");
                 pushStack(i, 1);
                 // noted that the registers were moved to the stack
                 bitVectSetBit(rSaved, i);
             } else if (i >= saveFrom && isOpVolatile(r->currOper) && !IS_OP_GLOBAL(r->currOper)) {
+	    printf("yo4\n");
                 pushStack(i, 1);
                 bitVectSetBit(rSaved, i);
             } else
@@ -1158,6 +1170,7 @@ static void genCall(iCode * ic)
                         pblaze_emitcode("LOAD", "%s, %s", r->name,
                                         dialectNum((unsigned int) ((lit >> (j * 8)) & 0x0FFL)));
                         /* push onto the stack */
+			printf("yo5\n");
                         pushStack(r->rIdx, 1);
                     }
                 }
@@ -1167,6 +1180,7 @@ static void genCall(iCode * ic)
                     for (i = 0; i < size; i++) {
                         /* push onto the stack */
                         if (aopGetReg(sic, sOp, i)) {
+			  printf("yo6\n");
                             pushStack(OP_SYMBOL(sOp)->regs[i]->rIdx, 1);;
                         }
                     }
@@ -1253,6 +1267,9 @@ static void genFunction(iCode * ic)
     symbol *sym;
     sym_link *ftype;
 
+    //printRegs();
+    //printMemory();
+    
     sym = OP_SYMBOL(IC_LEFT(ic));
 
     /* create the function header */
@@ -1268,6 +1285,14 @@ static void genFunction(iCode * ic)
         _G.isCalleSaves = 1;
     }
 
+    printf("[%s] Start %d\n",sym->name,_G.isCalleSaves);
+    for (int i = 0; i <= pblaze_nRegs; i++) {
+      if (!isRegUsed(i)) {
+	pushStack(i, 0);
+      }
+      setRegUsed(i);
+    }
+    
     /* is an interrupt function */
     if (IFFUNC_ISISR(sym->type)) {
 
@@ -1302,18 +1327,27 @@ static void genEndFunction(iCode * ic)
 
     _G.isCalleSaves = 0;
 
-    /* store globals. if changed */
+    printf("[%s] End %d - %d - %d %d %d\n",sym->name,_G.isCalleSaves,sym->type
+	   ,IFFUNC_ISISR(sym->type)
+	   ,IFFUNC_CALLEESAVES(sym->type)
+	   ,pblaze_nRegs
+	   );
+
+    // store globals. if changed
     freeGlobalsFromReg();
 
     /* interrupt routine or callee saves - pop saved registers back */
     if (IFFUNC_ISISR(sym->type) || IFFUNC_CALLEESAVES(sym->type)) {
 
         for (i = pblaze_nRegs - 1; i >= 0; i--) {
-            if (bitVectBitValue(_G.rUsedVect, i))
-                popStack(i, 0);
+	  if (isRegUsed(i))
+	    popStack(i, 0);
         }
-        clearBitVect(_G.rUsedVect);
+	setRegUnusedAll();
     }
+
+    // store globals. if changed
+    //freeGlobalsFromReg();
 
     if (options.debug && currFunc) {
         debugFile->writeEndFunction(currFunc, ic, 1);
