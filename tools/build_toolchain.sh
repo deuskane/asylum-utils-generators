@@ -104,7 +104,7 @@ function build_toolchain_usage()
 
     echo ""
     echo "Build toolchain for picoblaze"
-    echo " * C compiler based on SDCC 3.0.1"
+    echo " * C compiler based on SDCC"
     echo " * ROM Generator based on picoasm" 
     echo ""
     echo "Original project : https://www.fit.vutbr.cz/~meduna/work/doku.php?id=projects:vlam:pbcc:pbcc"
@@ -123,6 +123,7 @@ function build_toolchain_main()
 #   dir_sdcc=${dir_tools}/pbccv2-src-20110901/sdcc3
 #   dir_sdcc=${dir_tools}/pbccv2-src-20111024/sdcc3
     dir_sdcc=${dir_tools}/sdcc-3.1.0
+#   dir_sdcc=${dir_tools}/sdcc-3.3.0
     dir_install=${dir_tools}/install
     
     BUILD_TOOLCHAIN_SDCC=false
