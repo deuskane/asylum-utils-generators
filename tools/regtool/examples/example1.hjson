@@ -1,0 +1,53 @@
+{
+    name: "example1",
+    width: 32,
+    async_read: true,
+    registers: [
+        {
+            name: "reg1",
+            address: "00",
+            description: "Register 1",
+            width: 8,
+            type: "rw",
+            fields: [
+                {
+                    name: "field1",
+                    bit_position: 0,
+                    width: 1,
+                    init: "d0",
+                    description: "Field 1"
+                },
+                {
+                    name: "field2",
+                    bit_position: 1,
+                    width: 1,
+                    init: "b1",
+                    description: "Field 2"
+                }
+            ]
+        },
+        {
+            name: "reg2",
+            address: "04",
+            description: "Register 2",
+            width: 16,
+            type: "ro",
+            fields: [
+                {
+                    name: "field1",
+                    bit_position: 0,
+                    width: 8,
+                    init: "x00",
+                    description: "Field 1"
+                },
+                {
+                    name: "field2",
+                    bit_position: 8,
+                    width: 8,
+                    init: "xFF",
+                    description: "Field 2"
+                }
+            ]
+        }
+    ]
+}
