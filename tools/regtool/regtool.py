@@ -138,7 +138,7 @@ def generate_vhdl_module(registers, output_path):
                 "        case addr is\n"
             )
             for reg in registers['registers']:
-                if reg['type'] == 'rw' or reg['type'] == 'ro':
+                if reg['swaccess'] == 'rw' or reg['swaccess'] == 'ro':
                     case_statement += (
                         f"            when x\"{reg['address']}\" =>\n"
                         f"                data_out <= {reg['name']}_sig;\n"
@@ -158,7 +158,7 @@ def generate_vhdl_module(registers, output_path):
             file.write("        if rising_edge(clk) then\n")
             file.write("            case addr is\n")
             for reg in registers['registers']:
-                if reg['type'] == 'rw' or reg['type'] == 'ro':
+                if reg['swaccess'] == 'rw' or reg['swaccess'] == 'ro':
                     file.write(f"                when x\"{reg['address']}\" =>\n")
                     file.write(f"                    data_out <= {reg['name']}_sig;\n")
                     file.write(f"                    {reg['name']}_re <= '1';\n")
@@ -169,14 +169,14 @@ def generate_vhdl_module(registers, output_path):
             file.write("    end process;\n\n")
 
         for reg in registers['registers']:
-            if reg['type'] == 'rw' or reg['type'] == 'wo':
+            if reg['swaccess'] == 'rw' or reg['swaccess'] == 'wo':
                 # Write process
                 file.write("    process(clk, rst)\n")
                 file.write("    begin\n")
                 file.write("        if rst = '1' then\n")
                 for field in reg['fields']:
                     init_value = parse_init_value(field['init'], field['width'])
-                    bit_range = f"{field['bit_position']}+{field['width']-1} downto {field['bit_position']}"
+                    bit_range = f"{field['lsb']}+{field['width']-1} downto {field['lsb']}"
                     file.write(f"            {reg['name']}_sig({bit_range}) <= \"{init_value}\";\n")
                 file.write("        elsif rising_edge(clk) then\n")
                 file.write(f"            if we = '1' and addr = x\"{reg['address']}\" then\n")
@@ -187,7 +187,7 @@ def generate_vhdl_module(registers, output_path):
                 file.write("    end process;\n\n")
 
             # Assign output ports to signals
-            if reg['type'] == 'rw' or reg['type'] == 'ro':
+            if reg['swaccess'] == 'rw' or reg['swaccess'] == 'ro':
                 file.write(f"    {reg['name']} <= {reg['name']}_sig;\n")
 
         file.write("\nend architecture Behavioral;\n")

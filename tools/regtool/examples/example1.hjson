@@ -1,25 +1,26 @@
 {
-    name: "example1",
-    width: 32,
+    name      : "example1",
+    width     : 32,
     async_read: true,
-    registers: [
+    registers : [
         {
             name: "reg1",
             address: "00",
             description: "Register 1",
             width: 8,
-            type: "rw",
+            hwaccess: "rw",
+            swaccess: "rw",
             fields: [
                 {
-                    name: "field1",
-                    bit_position: 0,
-                    width: 1,
-                    init: "d0",
+                    name       : "field1",
+                    lsb        : 0,
+                    width      : 1,
+                    init       : "d0",
                     description: "Field 1"
                 },
                 {
                     name: "field2",
-                    bit_position: 1,
+                    lsb: 1,
                     width: 1,
                     init: "b1",
                     description: "Field 2"
@@ -31,18 +32,19 @@
             address: "04",
             description: "Register 2",
             width: 16,
-            type: "ro",
+            hwaccess: "ro",
+            swaccess: "ro",
             fields: [
                 {
                     name: "field1",
-                    bit_position: 0,
+                    lsb: 0,
                     width: 8,
                     init: "x00",
                     description: "Field 1"
                 },
                 {
                     name: "field2",
-                    bit_position: 8,
+                    lsb: 8,
                     width: 8,
                     init: "xFF",
                     description: "Field 2"
