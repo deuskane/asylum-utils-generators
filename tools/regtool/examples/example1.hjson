@@ -13,14 +13,13 @@
             fields: [
                 {
                     name       : "field1",
-                    lsb        : 0,
-                    width      : 1,
+                    bits       : 0,
                     init       : "d0",
                     description: "Field 1"
                 },
                 {
-                    name: "field2",
-                    lsb: 1,
+                    name.      : "field2",
+                    bits       : 1,
                     width: 1,
                     init: "b1",
                     description: "Field 2"
@@ -37,14 +36,13 @@
             fields: [
                 {
                     name: "field1",
-                    lsb: 0,
-                    width: 8,
+                    bits: 7:0,
                     init: "x00",
                     description: "Field 1"
                 },
                 {
                     name: "field2",
-                    lsb: 8,
+                    bits: 15:8,
                     width: 8,
                     init: "xFF",
                     description: "Field 2"
