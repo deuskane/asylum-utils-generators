@@ -18,9 +18,15 @@
                 },
                 {
                     name: "field2",
-                    bits: "1",
-                    init: "b1",
+                    bits: "2",
+                    init: "b00",
                     desc: "Field 2"
+#		    enum: [
+#				{ value: "0", name: "txlvl1", desc: "1 character" },
+#                          	{ value: "1", name: "txlvl4", desc: "4 characters" },
+#                          	{ value: "2", name: "txlvl8", desc: "8 characters" },
+#                          	{ value: "3", name: "txlvl16", desc: "16 characters" }
+#                ]
                 }
             ]
         },
