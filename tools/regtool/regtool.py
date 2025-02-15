@@ -1,9 +1,19 @@
 import hjson
 
+#--------------------------------------------
+#--------------------------------------------
 def read_register_description(file_path):
+    """
+    Read the file
+    
+    :param file_path: Path to the hjson file
+    :return: Returne an hjson structure
+    """
     with open(file_path, 'r') as file:
         return hjson.load(file)
 
+#--------------------------------------------
+#--------------------------------------------
 def parse_init_value(init_value, width):
     if init_value.startswith('d'):
         return f"{int(init_value[1:]):0{width}b}"
@@ -14,7 +24,23 @@ def parse_init_value(init_value, width):
     else:
         raise ValueError(f"Invalid init value format: {init_value}")
 
+def parse_bits(bits):
+    """
+    Cette fonction extrait le MSB (Most Significant Bit) et le LSB (Least Significant Bit)
+    à partir d'un champ bits qui peut prendre un numéro de bit ou un champ de bit de type 5:3.
 
+    :param bits: Champ bits sous forme de chaîne de caractères.
+    :return: Tuple contenant le MSB et le LSB.
+    """
+    if ':' in bits:
+        msb, lsb = map(int, bits.split(':'))
+    else:
+        msb = lsb = int(bits)
+    
+    return msb, lsb    
+
+#--------------------------------------------
+#--------------------------------------------
 def generate_c_header(registers, output_path):
     prefix = registers['name']
     
@@ -28,10 +54,13 @@ def generate_c_header(registers, output_path):
         for reg in registers['registers']:
             file.write(f"// Register: {reg['name']}\n")
             file.write(f"// Address: {reg['address']}\n")
-            file.write(f"// Description: {reg['description']}\n")
+            file.write(f"// Description: {reg['desc']}\n")
             file.write(f"typedef struct {{\n")
             for field in reg['fields']:
-                file.write(f"    uint{field['width']}_t {field['name']}; // {field['description']}\n")
+                msb,lsb    = parse_bits(field['bits'])
+                width      = msb-lsb+1
+
+                file.write(f"    uint{width}_t {field['name']}; // {field['desc']}\n")
             file.write(f"    uint8_t re;\n")
             file.write(f"    uint8_t we;\n")
             file.write(f"}} {prefix}_{reg['name']}_t;\n\n")
@@ -51,6 +80,8 @@ def generate_c_header(registers, output_path):
 
         file.write(f"\n#endif // {prefix.upper()}_REGISTERS_H\n")
 
+#--------------------------------------------
+#--------------------------------------------
 def generate_vhdl_package(registers, output_path):
     prefix = registers['name']
     
@@ -67,10 +98,13 @@ def generate_vhdl_package(registers, output_path):
         for reg in registers['registers']:
             file.write(f"  -- Register: {reg['name']}\n")
             file.write(f"  -- Address: {reg['address']}\n")
-            file.write(f"  -- Description: {reg['description']}\n")
+            file.write(f"  -- Description: {reg['desc']}\n")
             file.write(f"  type {prefix}_{reg['name']}_t is record\n")
             for field in reg['fields']:
-                file.write(f"    {field['name']} : std_logic_vector({field['width']-1} downto 0);\n")
+                msb,lsb    = parse_bits(field['bits'])
+                width      = msb-lsb+1
+                name       = field['name']
+                file.write(f"    {name} : std_logic_vector({width}-1 downto 0);\n")
             file.write(f"    re : std_logic;\n")
             file.write(f"    we : std_logic;\n")
             file.write(f"  end record {prefix}_{reg['name']}_t;\n\n")
@@ -86,6 +120,8 @@ def generate_vhdl_package(registers, output_path):
         file.write(f"package body {prefix}_registers_pkg is\n\n")
         file.write(f"end package body {prefix}_registers_pkg;\n")
 
+#--------------------------------------------
+#--------------------------------------------
 def generate_vhdl_module(registers, output_path):
     prefix = registers['name']
     async_read = registers.get('async_read', False)
@@ -100,10 +136,10 @@ def generate_vhdl_module(registers, output_path):
         # Generate VHDL entity and architecture
         file.write(f"entity {prefix}_registers is\n")
         file.write("    Port (\n")
-        file.write("        clk : in STD_LOGIC;\n")
-        file.write("        rst : in STD_LOGIC;\n")
-        file.write("        addr : in STD_LOGIC_VECTOR (31 downto 0);\n")
-        file.write("        data_in : in STD_LOGIC_VECTOR (31 downto 0);\n")
+        file.write("        clk      : in STD_LOGIC;\n")
+        file.write("        rst      : in STD_LOGIC;\n")
+        file.write("        addr     : in STD_LOGIC_VECTOR (31 downto 0);\n")
+        file.write("        data_in  : in STD_LOGIC_VECTOR (31 downto 0);\n")
         file.write("        data_out : out STD_LOGIC_VECTOR (31 downto 0);\n")
         file.write("        we : in STD_LOGIC;\n")
         file.write(f"        csr2hw : out {prefix}_registers_t;\n")
@@ -114,9 +150,12 @@ def generate_vhdl_module(registers, output_path):
         file.write(f"architecture Behavioral of {prefix}_registers is\n")
 
         for reg in registers['registers']:
-            init_values = ''.join([parse_init_value(field['init'], field['width']) for field in reg['fields']])
+            #msb,lsb    = parse_bits(field['bits'])
+            #width      = msb-lsb+1
+            width       = registers['width'] 
+            init_values = ''.join([parse_init_value(field['init'], width) for field in reg['fields']])
             signal_name = f"{reg['name']}_sig"
-            bit_range = f"{reg['width']-1} downto 0"
+            bit_range = f"{width}-1 downto 0"
             
             # Signal declaration
             file.write(f"    signal {signal_name} : std_logic_vector({bit_range}) := \"{init_values}\";\n")
@@ -175,12 +214,14 @@ def generate_vhdl_module(registers, output_path):
                 file.write("    begin\n")
                 file.write("        if rst = '1' then\n")
                 for field in reg['fields']:
-                    init_value = parse_init_value(field['init'], field['width'])
-                    bit_range = f"{field['lsb']}+{field['width']-1} downto {field['lsb']}"
+                    msb,lsb    = parse_bits(field['bits'])
+                    width      = msb-lsb+1
+                    init_value = parse_init_value(field['init'], width)
+                    bit_range  = f"{msb} downto {lsb}"
                     file.write(f"            {reg['name']}_sig({bit_range}) <= \"{init_value}\";\n")
                 file.write("        elsif rising_edge(clk) then\n")
                 file.write(f"            if we = '1' and addr = x\"{reg['address']}\" then\n")
-                file.write(f"                {reg['name']}_sig <= data_in({reg['width']-1} downto 0);\n")
+                file.write(f"                {reg['name']}_sig <= data_in({width}-1 downto 0);\n")
                 file.write(f"                {reg['name']}_we <= '1';\n")
                 file.write("            end if;\n")
                 file.write("        end if;\n")
@@ -192,6 +233,8 @@ def generate_vhdl_module(registers, output_path):
 
         file.write("\nend architecture Behavioral;\n")
 
+#--------------------------------------------
+#--------------------------------------------
 def main():
     input_file          = 'examples/example1.hjson'
     vhdl_package_output = 'generated_registers_pkg.vhdl'

@@ -4,48 +4,44 @@
     async_read: true,
     registers : [
         {
-            name: "reg1",
-            address: "00",
-            description: "Register 1",
-            width: 8,
-            hwaccess: "rw",
-            swaccess: "rw",
+            name       : "reg1",
+            address    : "00",
+            desc       : "Register 1",
+            hwaccess   : "rw",
+            swaccess   : "rw",
             fields: [
                 {
-                    name       : "field1",
-                    bits       : 0,
-                    init       : "d0",
-                    description: "Field 1"
+                    name: "field1",
+                    bits: "0",
+                    init: "d0",
+                    desc: "Field 1"
                 },
                 {
-                    name.      : "field2",
-                    bits       : 1,
-                    width: 1,
+                    name: "field2",
+                    bits: "1",
                     init: "b1",
-                    description: "Field 2"
+                    desc: "Field 2"
                 }
             ]
         },
         {
-            name: "reg2",
-            address: "04",
-            description: "Register 2",
-            width: 16,
-            hwaccess: "ro",
-            swaccess: "ro",
+            name       : "reg2",
+            address    : "04",
+            desc       : "Register 2",
+            hwaccess   : "ro",
+            swaccess   : "ro",
             fields: [
                 {
                     name: "field1",
-                    bits: 7:0,
+                    bits: "7:0",
                     init: "x00",
-                    description: "Field 1"
+                    desc: "Field 1"
                 },
                 {
                     name: "field2",
-                    bits: 15:8,
-                    width: 8,
+                    bits: "15:8",
                     init: "xFF",
-                    description: "Field 2"
+                    desc: "Field 2"
                 }
             ]
         }
