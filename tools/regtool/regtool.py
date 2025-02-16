@@ -4,7 +4,66 @@ Ce module contient des outils pour manipuler les registres.
 """
 
 import hjson
+import math
 
+#--------------------------------------------
+#--------------------------------------------
+def check_key(d, key, mandatory=True, default_value=None ):
+    """
+    Checks if the key is present in the dictionary. If the mandatory parameter is True,
+    raises an error if the key is not present. Otherwise, adds the key to the dictionary
+    with the given default value.
+
+    :param d: The dictionary to check.
+    :param key: The key to check.
+    :param mandatory: Boolean indicating if the key is mandatory.
+    :param default_value: The default value to add if the key is not present.
+    :return: The updated dictionary.
+    """
+    if key not in d:
+        if mandatory:
+            raise KeyError(f"The key '{key}' is mandatory but not present in the dictionary.")
+        else:
+            d[key] = default_value
+    return d
+
+#--------------------------------------------
+#--------------------------------------------
+def check_reg_width(n):
+    """
+    Checks if a number is a power of 2 and at least 8.
+    Returns the number of byte of the number if true, otherwise raises an exception.
+
+    :param n: The number to check.
+    :return: The log2 of the number if it is a power of 2 and at least 8.
+    :raises ValueError: If the number is not a power of 2 or is less than 8.
+    """
+    if n >= 8 and (n & (n - 1)) == 0:
+        return int(n/8)
+    else:
+        raise ValueError(f"The number {n} is not a power of 2 or is less than 8.")
+
+#--------------------------------------------
+#--------------------------------------------
+def check_reg_addr(reg,addrmap,addr_offset):
+    """
+    Checks if the address is already present in the addrmap dictionary.
+    If the address is present, raises an error. Otherwise, adds the address to the addrmap.
+
+    :param reg: Dictionary of register.
+    :param addrmap: Discotionary of Address.
+    :param addr_offset: mandatory offset between 2 registers 
+    :raises ValueError: If the address is already present in the addrmap.
+    """
+    if reg['address'] in addrmap.values():
+        raise ValueError(f"The address {reg['address']} is already present in the addrmap.")
+    else:
+        reg['address'] = int(reg['address'])
+        if reg['address'] & (addr_offset-1) == 0 :
+            addrmap[reg['name']] = reg['address']
+        else:
+            raise ValueError(f"The address {reg['address']} have invalid offset {addr_offset}.")
+    
 #--------------------------------------------
 #--------------------------------------------
 def parse_hjson(file_path):
@@ -18,6 +77,25 @@ def parse_hjson(file_path):
     with open(file_path, 'r') as file:
         csr=hjson.load(file)
 
+    addr    = 0
+    addrmap = {}
+    # Check Global variable
+    check_key      (csr,'name')
+    check_key      (csr,'width',     False,32)
+    addr_offset = check_reg_width(csr['width'])
+    check_key      (csr,'async_read',False,False)        
+    check_key      (csr,'desc',      False)
+
+    for reg in csr['registers']:
+        check_key      (reg,'name')
+        check_key      (reg,'address',False,str(addr))
+        check_reg_addr (reg,addrmap,addr_offset)        
+        addr += reg['address']+addr_offset;
+        
+
+    print("Address Map")
+    for reg in addrmap:
+        print(f"{addrmap[reg]:08x} : {reg}")
         
     return csr
 
@@ -92,7 +170,7 @@ def generate_c_header(csr, output_path):
         base_address = 0x40000000  # Example base address
         file.write(f"#define {module.upper()}_BASE_ADDRESS 0x{base_address:X}\n\n")
         for reg in csr['registers']:
-            offset = int(reg['address'], 16)
+            offset = reg['address']
             file.write(f"#define {module.upper()}_{reg['name'].upper()}_OFFSET 0x{offset:X}\n")
 
         file.write(f"\n#endif // {module.upper()}_REGISTERS_H\n")

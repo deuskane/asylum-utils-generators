@@ -5,7 +5,7 @@
     registers : [
         {
             name       : "reg1",
-            address    : "00",
+            address    : "8",
             desc       : "Register 1",
             hwaccess   : "rw",
             swaccess   : "rw",
@@ -32,7 +32,7 @@
         },
         {
             name       : "reg2",
-            address    : "04",
+            address    : "08",
             desc       : "Register 2",
             hwaccess   : "ro",
             swaccess   : "ro",
