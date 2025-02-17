@@ -162,7 +162,7 @@ def check_reg_addr(reg,addrmap,addr_offset):
     :param addr_offset: mandatory offset between 2 registers 
     :raises ValueError: If the address is already present in the addrmap.
     """
-    reg['address'] = int(reg['address'])
+    reg['address'] = parse_value(reg['address'])
 
     if reg['address'] & (addr_offset-1) != 0 :
         raise ValueError(f"The address {reg['address']} have invalid offset {addr_offset}.")
