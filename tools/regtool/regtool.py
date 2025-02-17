@@ -168,7 +168,23 @@ def check_reg_addr(reg,addrmap,addr_offset):
         raise ValueError(f"The address {reg['address']} have invalid offset {addr_offset}.")
 
     addrmap.add(reg['name'],reg['address'])
-        
+
+#--------------------------------------------
+#--------------------------------------------
+def check_access(reg):
+    """
+    Checks access is valid value
+
+    :param reg: Dictionary of register.
+    :raises ValueError: If hwaccess or swaccess is not valid
+    """
+    access = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
+
+    if reg['hwaccess'] not in access:
+        raise KeyError(f"hwaccess '{reg['hwaccess']}' must be in {access}.")
+    if reg['swaccess'] not in access:
+        raise KeyError(f"swaccess '{reg['swaccess']}' must be in {access}.")
+    
 #--------------------------------------------
 #--------------------------------------------
 def parse_hjson(file_path):
@@ -193,11 +209,14 @@ def parse_hjson(file_path):
 
     for reg in csr['registers']:
         check_key      (reg,'name')
-        check_key      (reg,'address',False,str(addr))
+        check_key      (reg,'address',   False,str(addr))
         check_reg_addr (reg,addrmap,addr_offset)        
         addr += reg['address']+addr_offset;
+        check_key      (reg,'desc',      False)
+        check_key      (reg,'hwaccess',  False,"rw")
+        check_key      (reg,'swaccess',  False,"rw")
+        check_access   (reg)
         
-
     addrmap.display()
     
     return csr
