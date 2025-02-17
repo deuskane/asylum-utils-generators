@@ -200,26 +200,51 @@ def parse_hjson(file_path):
 
     addr    = 0
     addrmap = AddrMap()
+
     # Check Global variable
     check_key      (csr,'name')
+    check_key      (csr,'desc',      False)
     check_key      (csr,'width',     False,32)
     addr_offset = check_reg_width(csr['width'])
     check_key      (csr,'async_read',False,False)        
-    check_key      (csr,'desc',      False)
 
     for reg in csr['registers']:
         check_key      (reg,'name')
+        check_key      (reg,'desc',      False)
         check_key      (reg,'address',   False,str(addr))
         check_reg_addr (reg,addrmap,addr_offset)        
         addr += reg['address']+addr_offset;
-        check_key      (reg,'desc',      False)
         check_key      (reg,'hwaccess',  False,"rw")
         check_key      (reg,'swaccess',  False,"rw")
         check_access   (reg)
+
+#        for field in reg['fields']:
         
     addrmap.display()
     
     return csr
+
+#--------------------------------------------
+#--------------------------------------------
+def parse_value(value):
+    """
+    Read the value and transform in binary
+    
+    :param value: Init value from hjson
+    :param width: Width of the value
+    :return: Return an hjson structure
+    """
+    if   value.startswith('b'):
+        return int(value[1:], 2)
+    elif value.startswith('o'):
+        return int(value[1:], 8)
+    elif value.startswith('x'):
+        return int(value[1:], 16)
+    elif value.startswith('d'):
+        return int(value[1:])
+    else:
+        # default : decimal
+        return int(value)
 
 #--------------------------------------------
 #--------------------------------------------
@@ -231,15 +256,9 @@ def parse_init_value(init_value, width):
     :param width: Width of the value
     :return: Return an hjson structure
     """
-    if   init_value.startswith('b'):
-        return init_value[1:]
-    elif init_value.startswith('x'):
-        return f"{int(init_value[1:], 16):0{width}b}"
-    elif init_value.startswith('d'):
-        return f"{int(init_value[1:]):0{width}b}"
-    else:
-        # default : decimal
-        return f"{int(init_value):0{width}b}"
+
+    value = parse_value(init_value)
+    return f"{value:0{width}b}"
 
 def parse_bits(bits):
     """
