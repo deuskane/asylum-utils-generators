@@ -5,6 +5,113 @@ Ce module contient des outils pour manipuler les registres.
 
 import hjson
 import math
+from prettytable import PrettyTable
+
+class AddrMap:
+    """
+    A class to manage register addresses ensuring unique register names and addresses.
+
+    Attributes
+    ----------
+    registers : dict
+        A dictionary to store register names and their corresponding addresses.
+
+    Methods
+    -------
+    add(name, address):
+        Adds a new register with a unique name and address.
+    
+    get(name):
+        Retrieves the address of a given register name.
+    
+    rm(name):
+        Removes a register by its name.
+    
+    display():
+        Displays a table of all registers with their names and addresses.
+    """
+
+    def __init__(self):
+        """
+        Initializes the AddrMap class with an empty dictionary to store registers.
+        """
+        self.registers = {}
+
+    def add(self, name, address):
+        """
+        Adds a new register with a unique name and address.
+
+        Parameters
+        ----------
+        name : str
+            The name of the register.
+        address : str
+            The address of the register.
+
+        Raises
+        ------
+        ValueError
+            If the register name or address already exists.
+        """
+        if name in self.registers:
+            raise ValueError(f"Register name '{name}' already exists.")
+        if address in self.registers.values():
+            raise ValueError(f"Register address '{address}' already exists.")
+        self.registers[name] = address
+
+    def get(self, name):
+        """
+        Retrieves the address of a given register name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the register.
+
+        Returns
+        -------
+        str or None
+            The address of the register if found, otherwise None.
+        """
+        return self.registers.get(name, None)
+
+    def rm(self, name):
+        """
+        Removes a register by its name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the register to be removed.
+
+        Raises
+        ------
+        ValueError
+            If the register name does not exist.
+        """
+        if name in self.registers:
+            del self.registers[name]
+        else:
+            raise ValueError(f"Register name '{name}' does not exist.")
+
+    def display(self):
+        """
+        Displays a table of all registers with their names and addresses.
+        
+        Returns
+        -------
+        None
+            Prints a table of all registers with their names and addresses.
+        """
+        
+        table = PrettyTable()
+        
+        table.field_names = ["Name", "Address"]
+        
+        for name, address in self.registers.items():
+            table.add_row([name, address])
+        
+        print(table)
 
 #--------------------------------------------
 #--------------------------------------------
@@ -55,15 +162,13 @@ def check_reg_addr(reg,addrmap,addr_offset):
     :param addr_offset: mandatory offset between 2 registers 
     :raises ValueError: If the address is already present in the addrmap.
     """
-    if reg['address'] in addrmap.values():
-        raise ValueError(f"The address {reg['address']} is already present in the addrmap.")
-    else:
-        reg['address'] = int(reg['address'])
-        if reg['address'] & (addr_offset-1) == 0 :
-            addrmap[reg['name']] = reg['address']
-        else:
-            raise ValueError(f"The address {reg['address']} have invalid offset {addr_offset}.")
-    
+    reg['address'] = int(reg['address'])
+
+    if reg['address'] & (addr_offset-1) != 0 :
+        raise ValueError(f"The address {reg['address']} have invalid offset {addr_offset}.")
+
+    addrmap.add(reg['name'],reg['address'])
+        
 #--------------------------------------------
 #--------------------------------------------
 def parse_hjson(file_path):
@@ -78,7 +183,7 @@ def parse_hjson(file_path):
         csr=hjson.load(file)
 
     addr    = 0
-    addrmap = {}
+    addrmap = AddrMap()
     # Check Global variable
     check_key      (csr,'name')
     check_key      (csr,'width',     False,32)
@@ -93,10 +198,8 @@ def parse_hjson(file_path):
         addr += reg['address']+addr_offset;
         
 
-    print("Address Map")
-    for reg in addrmap:
-        print(f"{addrmap[reg]:08x} : {reg}")
-        
+    addrmap.display()
+    
     return csr
 
 #--------------------------------------------
