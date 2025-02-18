@@ -264,10 +264,8 @@ def parse_hjson(file_path):
             
             check_range    (csr,field,regmap)
             
-            
     addrmap.display()
 
-    #print(csr)
     return csr
 
 #--------------------------------------------
@@ -373,7 +371,7 @@ def generate_vhdl_package(csr, output_path):
         file.write("use IEEE.STD_LOGIC_ARITH.ALL;\n")
         file.write("use IEEE.STD_LOGIC_UNSIGNED.ALL;\n\n")
         
-        file.write(f"package {module}_registers_pkg is\n\n")
+        file.write(f"package {module}_csr_pkg is\n\n")
         
         # Generate structs for each register
         for reg in csr['registers']:
@@ -396,10 +394,10 @@ def generate_vhdl_package(csr, output_path):
             file.write(f"    {reg['name']} : {module}_{reg['name']}_t;\n")
         file.write(f"  end record {module}_registers_t;\n\n")
 
-        file.write(f"end package {module}_registers_pkg;\n\n")
+        file.write(f"end package {module}_csr_pkg;\n\n")
 
-        file.write(f"package body {module}_registers_pkg is\n\n")
-        file.write(f"end package body {module}_registers_pkg;\n")
+        file.write(f"package body {module}_csr_pkg is\n\n")
+        file.write(f"end package body {module}_csr_pkg;\n")
 
 #--------------------------------------------
 #--------------------------------------------
@@ -518,17 +516,19 @@ def generate_vhdl_module(csr, output_path):
 #--------------------------------------------
 def main():
     input_file          = 'examples/example1.hjson'
-    vhdl_package_output = 'generated_registers_pkg.vhdl'
-    vhdl_module_output  = 'generated_registers.vhdl'
-    c_header_output     = 'generated_registers.h'
     
     csr                 = parse_hjson(input_file)
+
+    vhdl_package_output = csr['name']+'_csr_pkg.vhdl'
+    vhdl_module_output  = csr['name']+'_csr.vhdl'
+    c_header_output     = csr['name']+'_csr.h'
+
     generate_vhdl_package (csr, vhdl_package_output)
     generate_vhdl_module  (csr, vhdl_module_output)
     generate_c_header     (csr, c_header_output)
     print(f"VHDL package generated in {vhdl_package_output}")
-    print(f"VHDL module generated in {vhdl_module_output}")
-    print(f"C header generated in {c_header_output}")
+    print(f"VHDL module  generated in {vhdl_module_output}")
+    print(f"C    header  generated in {c_header_output}")
 
 if __name__ == "__main__":
     main()
