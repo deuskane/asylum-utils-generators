@@ -54,9 +54,9 @@ class AddrMap:
             If the register name or address already exists.
         """
         if name in self.registers:
-            raise ValueError(f"Register name '{name}' already exists.")
+            raise ValueError(f"Name '{name}' already exists.")
         if address in self.registers.values():
-            raise ValueError(f"Register address '{address}' already exists.")
+            raise ValueError(f"Address '{address}' already exists.")
         self.registers[name] = address
 
     def get(self, name):
@@ -92,7 +92,7 @@ class AddrMap:
         if name in self.registers:
             del self.registers[name]
         else:
-            raise ValueError(f"Register name '{name}' does not exist.")
+            raise ValueError(f"Name '{name}' does not exist.")
 
     def display(self):
         """
@@ -184,6 +184,40 @@ def check_access(reg):
         raise KeyError(f"hwaccess '{reg['hwaccess']}' must be in {access}.")
     if reg['swaccess'] not in access:
         raise KeyError(f"swaccess '{reg['swaccess']}' must be in {access}.")
+
+#--------------------------------------------
+#--------------------------------------------
+def check_range(csr,field,regmap):
+    """
+    Check range value and add un addrmap
+
+    :param csr: Dictionary of csr
+    :param field: Dictionary of field
+    :param regmap: Register Map
+    :raises ValueError: bits is invalid
+    """
+    
+    msb,lsb    = parse_bits(field['bits'])
+
+    if msb < lsb:
+        raise KeyError(f"field {field['name']} : msb ({msb}) is lower than lsb ({lsb})")
+
+    width      = msb-lsb+1
+
+    if msb >= csr['width'] :
+        raise KeyError(f"field {field['name']} : msb ({msb}) is greater or equal than csr width ({csr['width']})")
+
+    if lsb < 0 :
+        raise KeyError(f"field {field['name']} : lsb ({lsb}) is lower than 0")
+    
+    for i in range(msb, lsb-1, -1):
+        regmap.add(field['name']+'['+str(i)+']',i)
+
+    
+    field['msb']  = msb
+    field['lsb']  = lsb
+    field['width']= width
+
     
 #--------------------------------------------
 #--------------------------------------------
@@ -201,7 +235,7 @@ def parse_hjson(file_path):
     addr    = 0
     addrmap = AddrMap()
 
-    # Check Global variable
+    # Check Global variables
     check_key      (csr,'name')
     check_key      (csr,'desc',      False)
     check_key      (csr,'width',     False,32)
@@ -209,6 +243,7 @@ def parse_hjson(file_path):
     check_key      (csr,'async_read',False,False)        
 
     for reg in csr['registers']:
+        # Check Register variables
         check_key      (reg,'name')
         check_key      (reg,'desc',      False)
         check_key      (reg,'address',   False,str(addr))
@@ -218,10 +253,21 @@ def parse_hjson(file_path):
         check_key      (reg,'swaccess',  False,"rw")
         check_access   (reg)
 
-#        for field in reg['fields']:
-        
+        regmap = AddrMap()
+        for field in reg['fields']:
+            # Check Field variables
+            check_key      (field,'name')
+            check_key      (field,'desc',      False)
+            check_key      (field,'init',      False,"0")
+            field['init'] = parse_value(field['init'])
+            check_key      (field,'bits')
+            
+            check_range    (csr,field,regmap)
+            
+            
     addrmap.display()
-    
+
+    #print(csr)
     return csr
 
 #--------------------------------------------
@@ -257,8 +303,7 @@ def parse_init_value(init_value, width):
     :return: Return an hjson structure
     """
 
-    value = parse_value(init_value)
-    return f"{value:0{width}b}"
+    return f"{init_value:0{width}b}"
 
 def parse_bits(bits):
     """

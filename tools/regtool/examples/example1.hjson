@@ -5,7 +5,7 @@
     registers : [
         {
             name       : "reg1",
-            address    : "0",
+            address    : "x10",
             desc       : "Register 1",
             hwaccess   : "rw",
             swaccess   : "rw",
