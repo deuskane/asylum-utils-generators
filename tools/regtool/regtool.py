@@ -53,7 +53,7 @@ class AddrMap:
         ValueError
             If the register name or address already exists.
         """
-        if name in self.registers:
+        if name    in self.registers:
             raise ValueError(f"Name '{name}' already exists.")
         if address in self.registers.values():
             raise ValueError(f"Address '{address}' already exists.")
@@ -109,7 +109,7 @@ class AddrMap:
         table.field_names = ["Name", "Address"]
         
         for name, address in self.registers.items():
-            table.add_row([name, address])
+            table.add_row([address, name])
         
         print(table)
 
@@ -136,7 +136,7 @@ def check_key(d, key, mandatory=True, default_value=None ):
 
 #--------------------------------------------
 #--------------------------------------------
-def check_reg_width(n):
+def check_reg_width(csr):
     """
     Checks if a number is a power of 2 and at least 8.
     Returns the number of byte of the number if true, otherwise raises an exception.
@@ -145,8 +145,9 @@ def check_reg_width(n):
     :return: The log2 of the number if it is a power of 2 and at least 8.
     :raises ValueError: If the number is not a power of 2 or is less than 8.
     """
+    n = csr['width']
     if n >= 8 and (n & (n - 1)) == 0:
-        return int(n/8)
+        csr['addr_offset'] = int(n/8)
     else:
         raise ValueError(f"The number {n} is not a power of 2 or is less than 8.")
 
@@ -212,12 +213,10 @@ def check_range(csr,field,regmap):
     
     for i in range(msb, lsb-1, -1):
         regmap.add(field['name']+'['+str(i)+']',i)
-
     
-    field['msb']  = msb
-    field['lsb']  = lsb
-    field['width']= width
-
+    field['msb']   = msb
+    field['lsb']   = lsb
+    field['width'] = width
     
 #--------------------------------------------
 #--------------------------------------------
@@ -239,7 +238,7 @@ def parse_hjson(file_path):
     check_key      (csr,'name')
     check_key      (csr,'desc',      False)
     check_key      (csr,'width',     False,32)
-    addr_offset = check_reg_width(csr['width'])
+    check_reg_width(csr)
     check_key      (csr,'async_read',False,False)        
 
     for reg in csr['registers']:
@@ -247,8 +246,8 @@ def parse_hjson(file_path):
         check_key      (reg,'name')
         check_key      (reg,'desc',      False)
         check_key      (reg,'address',   False,str(addr))
-        check_reg_addr (reg,addrmap,addr_offset)        
-        addr += reg['address']+addr_offset;
+        check_reg_addr (reg,addrmap,csr['addr_offset'])        
+        addr += reg['address']+csr['addr_offset'];
         check_key      (reg,'hwaccess',  False,"rw")
         check_key      (reg,'swaccess',  False,"rw")
         check_access   (reg)
@@ -303,6 +302,8 @@ def parse_init_value(init_value, width):
 
     return f"{init_value:0{width}b}"
 
+#--------------------------------------------
+#--------------------------------------------
 def parse_bits(bits):
     """
     Cette fonction extrait le MSB (Most Significant Bit) et le LSB (Least Significant Bit)
@@ -325,37 +326,61 @@ def generate_c_header(csr, output_path):
     
     with open(output_path, 'w') as file:
         file.write(f"#ifndef {module.upper()}_REGISTERS_H\n")
-        file.write(f"#define {module.upper()}_REGISTERS_H\n\n")
+        file.write(f"#define {module.upper()}_REGISTERS_H\n")
+        file.write( "\n")
+        file.write( "#include <stdint.h>\n")
+        file.write( "\n")
+
+        file.write(f"// Module      : {csr['name']}\n")
+        file.write(f"// Description : {csr['desc']}\n")
+        file.write(f"// Width       : {csr['width']}\n")
+        file.write( "\n")
         
-        file.write("#include <stdint.h>\n\n")
+        regmap = {}
         
         # Define structs for each register
         for reg in csr['registers']:
-            file.write(f"// Register: {reg['name']}\n")
-            file.write(f"// Address: {reg['address']}\n")
-            file.write(f"// Description: {reg['desc']}\n")
-            file.write(f"typedef struct {{\n")
-            for field in reg['fields']:
-                msb,lsb    = parse_bits(field['bits'])
-                width      = msb-lsb+1
+            regmap[reg['address']] = reg['name'];
+            
+            file.write( "//==================================\n")
+            file.write(f"// Register    : {reg['name']}\n")
+            file.write(f"// Description : {reg['desc']}\n")
+            file.write(f"// Address     : 0x{reg['address']:X}\n")
+            file.write( "//==================================\n")
 
-                file.write(f"    uint{width}_t {field['name']}; // {field['desc']}\n")
-            file.write(f"    uint8_t re;\n")
-            file.write(f"    uint8_t we;\n")
-            file.write(f"}} {module}_{reg['name']}_t;\n\n")
+            file.write(f"#define {module.upper()}_{reg['name'].upper()} 0x{reg['address']:X}\n")
+            file.write( "\n")
+
+            for field in reg['fields']:
+                file.write(f"// Field       : {reg['name']}.{field['name']}\n")
+                file.write(f"// Description : {field['desc']}\n")
+                if (field['width'] == 1):
+                    file.write(f"// Range       : [{field['lsb']}]\n")
+                else:
+                    file.write(f"// Range       : [{field['msb']}:{field['lsb']}]\n")
+                file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}      {field['lsb']}\n")
+                file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_MASK {(1<<field['width'])-1}\n")
+
+                file.write( "\n")
+                
+            
+        file.write( "//----------------------------------\n")
+        file.write( "// Structure\n")
+        file.write( "//----------------------------------\n")
+
+        # Last address covered
+        curaddr = 0;
         
         # Define global struct containing all registers
         file.write(f"typedef struct {{\n")
-        for reg in csr['registers']:
-            file.write(f"    {module}_{reg['name']}_t {reg['name']};\n")
-        file.write(f"}} {module}_registers_t;\n\n")
 
-        # Define base address and offsets for each register
-        base_address = 0x40000000  # Example base address
-        file.write(f"#define {module.upper()}_BASE_ADDRESS 0x{base_address:X}\n\n")
-        for reg in csr['registers']:
-            offset = reg['address']
-            file.write(f"#define {module.upper()}_{reg['name'].upper()}_OFFSET 0x{offset:X}\n")
+        for addr in sorted(regmap.keys()):
+            for i in range(curaddr, addr, csr['addr_offset']):
+                file.write(f"  uint{csr['width']}_t __dummy_0x{i:X}__\n")
+            curaddr = addr+csr['addr_offset']
+            file.write(f"  uint{csr['width']}_t {regmap[addr]}; // 0x{addr:X}\n")
+        file.write(f"}} {module}_t;\n")
+
 
         file.write(f"\n#endif // {module.upper()}_REGISTERS_H\n")
 
@@ -372,7 +397,7 @@ def generate_vhdl_package(csr, output_path):
         file.write("use IEEE.STD_LOGIC_UNSIGNED.ALL;\n\n")
         
         file.write(f"package {module}_csr_pkg is\n\n")
-        
+
         # Generate structs for each register
         for reg in csr['registers']:
             file.write(f"  -- Register: {reg['name']}\n")
