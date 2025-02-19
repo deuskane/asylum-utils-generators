@@ -1,7 +1,6 @@
 {
     name      : "example1",
     width     : 32,
-    async_read: true,
     registers : [
         {
             name       : "reg1",

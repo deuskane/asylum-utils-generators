@@ -188,6 +188,23 @@ def check_access(reg):
 
 #--------------------------------------------
 #--------------------------------------------
+def parse_access(access):
+    """
+    Check access need an read or write
+
+    :param access: Access
+    :return: tuple read enable, write enable
+    """
+    list_re = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    list_we = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s']
+
+    re      = access in list_re
+    we      = access in list_we
+
+    return re,we
+    
+#--------------------------------------------
+#--------------------------------------------
 def check_range(csr,field,regmap):
     """
     Check range value and add un addrmap
@@ -239,7 +256,6 @@ def parse_hjson(file_path):
     check_key      (csr,'desc',      False)
     check_key      (csr,'width',     False,32)
     check_reg_width(csr)
-    check_key      (csr,'async_read',False,False)        
 
     for reg in csr['registers']:
         # Check Register variables
@@ -435,114 +451,101 @@ def generate_vhdl_package(csr, output_path):
 #--------------------------------------------
 def generate_vhdl_module(csr, output_path):
     module = csr['name']
-    async_read = csr.get('async_read', False)
     
     with open(output_path, 'w') as file:
         file.write(f"-- Generated VHDL Module for {module}\n\n")
-        file.write("library IEEE;\n")
-        file.write("use IEEE.STD_LOGIC_1164.ALL;\n")
-        file.write("use IEEE.STD_LOGIC_ARITH.ALL;\n")
-        file.write("use IEEE.STD_LOGIC_UNSIGNED.ALL;\n\n")
+        file.write( "\n")
+        file.write( "library ieee;\n")
+        file.write( "use     ieee.std_logic_1164.all;\n")
+        file.write( "use     ieee.std_logic_arith.all;\n")
+        file.write( "use     ieee.std_logic_unsigned.all;\n")
+        file.write( "use     work.pbi_pkg.all;\n")
+        file.write( "\n")
 
         # Generate VHDL entity and architecture
         file.write(f"entity {module}_registers is\n")
-        file.write( "    Port (\n")
-        file.write( "        clk      : in  STD_LOGIC;\n")
-        file.write( "        rst      : in  STD_LOGIC;\n")
-        file.write( "        addr     : in  STD_LOGIC_VECTOR (31 downto 0);\n")
-        file.write( "        data_in  : in  STD_LOGIC_VECTOR (31 downto 0);\n")
-        file.write( "        data_out : out STD_LOGIC_VECTOR (31 downto 0);\n")
-        file.write( "        we       : in  STD_LOGIC;\n")
-        file.write(f"        sw2hw    : out {module}_t;\n")
-        file.write(f"        hw2sw    : in  {module}_t\n")
-        file.write( "    );\n")
+        file.write( "  port (\n")
+        file.write( "    -- Clock and Reset\n")
+        file.write( "    clk_i      : in  std_logic;\n")
+        file.write( "    arst_b_i   : in  std_logic;\n")
+        file.write( "    -- Bus\n")
+        file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
+        file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
+        file.write( "    -- CSR\n")
+        file.write(f"    sw2hw      : out {module}_t;\n")
+        file.write(f"    hw2sw      : in  {module}_t\n")
+        file.write( "  );\n")
         file.write(f"end entity {module}_registers;\n\n")
 
         file.write(f"architecture rtl of {module}_registers is\n")
+        file.write( "\n")
+        file.write( "  constant SIZE_ADDR : integer := pbi_ini_i.addr'length;")
+        file.write( "\n")
 
         for reg in csr['registers']:
-            #msb,lsb    = parse_bits(field['bits'])
-            #width      = msb-lsb+1
-            width       = csr['width'] 
-            init_values = ''.join([parse_init_value(field['init'], width) for field in reg['fields']])
-            signal_name = f"{reg['name']}_sig"
-            bit_range = f"{width}-1 downto 0"
+            for field in reg['fields']:
+                file.write(f"  signal {reg['name']}_cs    : std_logic;\n");
+                file.write(f"  signal {reg['name']}_we    : std_logic;\n");
+                file.write(f"  signal {reg['name']}_re    : std_logic;\n");
+                file.write(f"  signal {reg['name']}_rdata : std_logic_vector({csr['width']}-1 downto 0);\n");
+                file.write(f"  signal {reg['name']}_wdata : std_logic_vector({csr['width']}-1 downto 0);\n");
+                file.write(f"  signal {reg['name']}_{field['name']}_rdata : std_logic_vector({field['width']}-1 downto 0);\n");
+                file.write( "\n")
+
+        file.write( "begin  -- architecture rtl\n")
+        file.write( "\n")
+        for reg in csr['registers']:
+            file.write( "  --==================================\n")
+            file.write(f"  -- Register    : {reg['name']}\n")
+            file.write(f"  -- Description : {reg['desc']}\n")
+            file.write(f"  -- Address     : 0x{reg['address']:X}\n")
+            file.write( "  --==================================\n")
+            file.write( "\n")
+            file.write(f"  {reg['name']}_cs     <= '1' when pbi_ini_i.addr = std_logic_vector(to_unsigned({reg['address']}),SIZE_ADDR))\" else '0';\n")
+            file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
+            file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
+            file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
+            file.write(f"  {reg['name']}_rdata  <= (\n");
+            for field in reg['fields']:
+                file.write(f"    ({field['msb']} downto {field['lsb']}) => {reg['name']}_{field['name']}_rdata,\n")
+            file.write(f"    others => '0') when {reg['name']}_cs = '1' else (others => '0');\n")
+            file.write( "\n")
+
+            for field in reg['fields']:
+                file.write(f"  -- Field       : {reg['name']}.{field['name']}\n")
+                file.write(f"  -- Description : {field['desc']}\n")
+                file.write(f"  ins_{reg['name']}_{field['name']} : entity work.csr_reg(rtl)\n")
+                file.write( "    generic map\n")
+                file.write(f"      (WIDTH       => {field['width']}\n")
+                file.write(f"      ,INIT        => \"{parse_init_value(field['init'],field['width'])}\"\n")
+                file.write(f"      ,MODEL       => \"{reg['swaccess']}\"\n")
+                file.write( "      )\n")
+                file.write( "    port map\n")
+                file.write( "      (clk_i       => clk_i\n")
+                file.write( "      ,arst_b_i    => arst_b_i\n")
+                file.write(f"      ,sw_wd_i     => {reg['name']}_wdata({field['msb']} downto {field['lsb']})\n")
+                file.write(f"      ,sw_rd_o     => {reg['name']}_{field['name']}_rdata\n")
+                file.write(f"      ,sw_we_i     => {reg['name']}_we\n")
+                file.write(f"      ,sw_re_i     => {reg['name']}_re\n")
+                file.write(f"      ,hw_wd_i     => hw2sw.{reg['name']}.{field['name']}\n")
+                file.write(f"      ,hw_rd_o     => sw2hw.{reg['name']}.{field['name']}\n")
+                file.write(f"      ,hw_we_i     => hw2sw.{reg['name']}.we\n")
+                file.write(f"      ,hw_sw_re_o  => sw2hw.{reg['name']}.re\n")
+                file.write(f"      ,hw_sw_we_o  => sw2hw.{reg['name']}.we\n")
+                file.write( "      );\n")
+                file.write( "\n")
+
+        file.write(f"  pbi_tgt_o.busy  <= '0';\n");
+        file.write(f"  pbi_tgt_o.rdata <= \n");
+        first = True
+        for reg in csr['registers']:
+            if not first :
+                file.write( " or\n")
+            file.write(f"    {reg['name']}_rdata");
             
-            # Signal declaration
-            file.write(f"    signal {signal_name} : std_logic_vector({bit_range}) := \"{init_values}\";\n")
-
-            # RE and WE signals
-            re_signal = f"{reg['name']}_re"
-            we_signal = f"{reg['name']}_we"
-            file.write(f"    signal {re_signal} : std_logic := '0';\n")
-            file.write(f"    signal {we_signal} : std_logic := '0';\n")
-
-        # Begin architecture body
-        file.write("\nbegin\n\n")
-
-        if async_read:
-            # Asynchronous read process
-            case_statement = (
-                "    process(addr)\n"
-                "    begin\n"
-                "        case addr is\n"
-            )
-            for reg in csr['registers']:
-                if reg['swaccess'] == 'rw' or reg['swaccess'] == 'ro':
-                    case_statement += (
-                        f"            when x\"{reg['address']}\" =>\n"
-                        f"                data_out <= {reg['name']}_sig;\n"
-                        f"                {reg['name']}_re <= '1';\n"
-                    )
-            case_statement += (
-                "            when others =>\n"
-                "                data_out <= (others => '0');\n"
-                "        end case;\n"
-                "    end process;\n\n"
-            )
-            file.write(case_statement)
-        else:
-            # Synchronous read process
-            file.write("    process(clk)\n")
-            file.write("    begin\n")
-            file.write("        if rising_edge(clk) then\n")
-            file.write("            case addr is\n")
-            for reg in csr['registers']:
-                if reg['swaccess'] == 'rw' or reg['swaccess'] == 'ro':
-                    file.write(f"                when x\"{reg['address']}\" =>\n")
-                    file.write(f"                    data_out <= {reg['name']}_sig;\n")
-                    file.write(f"                    {reg['name']}_re <= '1';\n")
-            file.write("                when others =>\n")
-            file.write("                    data_out <= (others => '0');\n")
-            file.write("            end case;\n")
-            file.write("        end if;\n")
-            file.write("    end process;\n\n")
-
-        for reg in csr['registers']:
-            if reg['swaccess'] == 'rw' or reg['swaccess'] == 'wo':
-                # Write process
-                file.write("    process(clk, rst)\n")
-                file.write("    begin\n")
-                file.write("        if rst = '1' then\n")
-                for field in reg['fields']:
-                    msb,lsb    = parse_bits(field['bits'])
-                    width      = msb-lsb+1
-                    init_value = parse_init_value(field['init'], width)
-                    bit_range  = f"{msb} downto {lsb}"
-                    file.write(f"            {reg['name']}_sig({bit_range}) <= \"{init_value}\";\n")
-                file.write("        elsif rising_edge(clk) then\n")
-                file.write(f"            if we = '1' and addr = x\"{reg['address']}\" then\n")
-                file.write(f"                {reg['name']}_sig <= data_in({width}-1 downto 0);\n")
-                file.write(f"                {reg['name']}_we <= '1';\n")
-                file.write("            end if;\n")
-                file.write("        end if;\n")
-                file.write("    end process;\n\n")
-
-            # Assign output ports to signals
-            if reg['swaccess'] == 'rw' or reg['swaccess'] == 'ro':
-                file.write(f"    {reg['name']} <= {reg['name']}_sig;\n")
-
-        file.write("\nend architecture rtl;\n")
+            first = False;
+        file.write( ";\n")
+        file.write( "end architecture rtl;\n")
 
 #--------------------------------------------
 #--------------------------------------------

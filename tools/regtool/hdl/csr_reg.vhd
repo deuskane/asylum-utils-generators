@@ -46,7 +46,7 @@ entity csr_reg is
     hw_rd_o   : out std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Read  Data
     hw_we_i   : in  std_logic;                           -- Hardware Side Write Enable
     hw_sw_re_o: in  std_logic;                           -- Hardware Side CSR was Read
-    hw_sw_re_o: in  std_logic                            -- Hardware Side CSR was Write
+    hw_sw_we_o: in  std_logic                            -- Hardware Side CSR was Write
 );
 end entity csr_reg;
 
@@ -116,4 +116,7 @@ begin  -- architecture rtl
     end if;
   end process;
 
+  hw_sw_re_o <= q_sw_we_r;
+  hw_sw_we_o <= q_sw_re_r;
+  
 end architecture rtl;
