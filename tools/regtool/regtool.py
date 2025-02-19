@@ -365,7 +365,7 @@ def generate_c_header(csr, output_path):
                 
             
         file.write( "//----------------------------------\n")
-        file.write( "// Structure\n")
+        file.write( "// Structure {module}_t\n")
         file.write( "//----------------------------------\n")
 
         # Last address covered
@@ -381,7 +381,6 @@ def generate_c_header(csr, output_path):
             file.write(f"  uint{csr['width']}_t {regmap[addr]}; // 0x{addr:X}\n")
         file.write(f"}} {module}_t;\n")
 
-
         file.write(f"\n#endif // {module.upper()}_REGISTERS_H\n")
 
 #--------------------------------------------
@@ -396,33 +395,41 @@ def generate_vhdl_package(csr, output_path):
         file.write("use IEEE.STD_LOGIC_ARITH.ALL;\n")
         file.write("use IEEE.STD_LOGIC_UNSIGNED.ALL;\n\n")
         
+        file.write(f"-- Module      : {csr['name']}\n")
+        file.write(f"-- Description : {csr['desc']}\n")
+        file.write(f"-- Width       : {csr['width']}\n")
+        file.write( "\n")
         file.write(f"package {module}_csr_pkg is\n\n")
 
         # Generate structs for each register
         for reg in csr['registers']:
-            file.write(f"  -- Register: {reg['name']}\n")
-            file.write(f"  -- Address: {reg['address']}\n")
-            file.write(f"  -- Description: {reg['desc']}\n")
+            file.write( "  --==================================\n")
+            file.write(f"  -- Register    : {reg['name']}\n")
+            file.write(f"  -- Description : {reg['desc']}\n")
+            file.write(f"  -- Address     : 0x{reg['address']:X}\n")
+            file.write( "  --==================================\n")
             file.write(f"  type {module}_{reg['name']}_t is record\n")
-            for field in reg['fields']:
-                msb,lsb    = parse_bits(field['bits'])
-                width      = msb-lsb+1
-                name       = field['name']
-                file.write(f"    {name} : std_logic_vector({width}-1 downto 0);\n")
             file.write(f"    re : std_logic;\n")
             file.write(f"    we : std_logic;\n")
+            for field in reg['fields']:
+                file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
+                file.write(f"    -- Description : {field['desc']}\n")
+                file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
             file.write(f"  end record {module}_{reg['name']}_t;\n\n")
         
         # Generate global struct containing all registers
-        file.write(f"  type {module}_registers_t is record\n")
+        file.write( "  ------------------------------------\n")
+        file.write( "  -- Structure {module}_t\n")
+        file.write( "  ------------------------------------\n")
+        file.write(f"  type {module}_t is record\n")
         for reg in csr['registers']:
             file.write(f"    {reg['name']} : {module}_{reg['name']}_t;\n")
-        file.write(f"  end record {module}_registers_t;\n\n")
+        file.write(f"  end record {module}_t;\n\n")
 
         file.write(f"end package {module}_csr_pkg;\n\n")
 
-        file.write(f"package body {module}_csr_pkg is\n\n")
-        file.write(f"end package body {module}_csr_pkg;\n")
+        #file.write(f"package body {module}_csr_pkg is\n\n")
+        #file.write(f"end package body {module}_csr_pkg;\n")
 
 #--------------------------------------------
 #--------------------------------------------
@@ -446,8 +453,8 @@ def generate_vhdl_module(csr, output_path):
         file.write( "        data_in  : in  STD_LOGIC_VECTOR (31 downto 0);\n")
         file.write( "        data_out : out STD_LOGIC_VECTOR (31 downto 0);\n")
         file.write( "        we       : in  STD_LOGIC;\n")
-        file.write(f"        sw2hw    : out {module}_registers_t;\n")
-        file.write(f"        hw2sw    : in  {module}_registers_t\n")
+        file.write(f"        sw2hw    : out {module}_t;\n")
+        file.write(f"        hw2sw    : in  {module}_t\n")
         file.write( "    );\n")
         file.write(f"end entity {module}_registers;\n\n")
 
