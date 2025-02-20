@@ -128,6 +128,7 @@ def check_key(d, key, mandatory=True, default_value=None ):
     :param default_value: The default value to add if the key is not present.
     :return: The updated dictionary.
     """
+
     if key not in d:
         if mandatory:
             raise KeyError(f"The key '{key}' is mandatory but not present in the dictionary.")
@@ -252,7 +253,6 @@ def parse_hjson(file_path):
     :param file_path: Path to the hjson file
     :return: Return an hjson structure
     """
-
     with open(file_path, 'r') as file:
         csr=hjson.load(file)
 
@@ -560,22 +560,21 @@ def generate_vhdl_module(csr, output_path):
 #--------------------------------------------
 #--------------------------------------------
 def main():
-
     parser = argparse.ArgumentParser(description='Generate VHDL and C files from HJSON input.')
     parser.add_argument('input_file'    , type=str, help='Path to the HJSON input file')
     parser.add_argument('--vhdl_package', type=str, help='Path to the VHDL package output file')
     parser.add_argument('--vhdl_module' , type=str, help='Path to the VHDL module output file')
     parser.add_argument('--c_header'    , type=str, help='Path to the C header output file')
     
-    args = parser.parse_args()
+    args         = parser.parse_args()
 
-    csr                 = parse_hjson(args.input_file)
-
+    csr          = parse_hjson(args.input_file)
+    
     # Define output file names if not provided
-    vhdl_package = args.vhdl_package or f"{csr['name']}_csr_pkg.vhdl"
-    vhdl_module  = args.vhdl_module  or f"{csr['name']}_csr.vhdl"
+    vhdl_package = args.vhdl_package or f"{csr['name']}_csr_pkg.vhd"
+    vhdl_module  = args.vhdl_module  or f"{csr['name']}_csr.vhd"
     c_header     = args.c_header     or f"{csr['name']}_csr.h"
-
+    
     generate_vhdl_package (csr, vhdl_package)
     generate_vhdl_module  (csr, vhdl_module)
     generate_c_header     (csr, c_header)
