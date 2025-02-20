@@ -7,7 +7,7 @@
             address    : "x0",
             desc       : "Register 1",
             hwaccess   : "rw",
-            swaccess   : "rw",
+            swaccess   : "rw1c",
             fields: [
                 {
                     name: "field1",
@@ -34,7 +34,7 @@
             address    : "08",
             desc       : "Register 2",
             hwaccess   : "ro",
-            swaccess   : "ro",
+            swaccess   : "rw",
             fields: [
                 {
                     name: "field1",

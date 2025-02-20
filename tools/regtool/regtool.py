@@ -3,6 +3,7 @@ Module regtool.py
 Ce module contient des outils pour manipuler les registres.
 """
 
+import argparse
 import hjson
 import math
 from prettytable import PrettyTable
@@ -172,36 +173,43 @@ def check_reg_addr(reg,addrmap,addr_offset):
 
 #--------------------------------------------
 #--------------------------------------------
-def check_access(reg):
+def check_swaccess(reg):
     """
     Checks access is valid value
 
     :param reg: Dictionary of register.
-    :raises ValueError: If hwaccess or swaccess is not valid
+    :raises ValueError: If swaccess is not valid
     """
-    access = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    access  = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
 
-    if reg['hwaccess'] not in access:
-        raise KeyError(f"hwaccess '{reg['hwaccess']}' must be in {access}.")
+    list_re = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    list_we = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    
     if reg['swaccess'] not in access:
         raise KeyError(f"swaccess '{reg['swaccess']}' must be in {access}.")
 
+    reg['sw_reg_re'] = reg['swaccess'] in list_re
+    reg['sw_reg_we'] = reg['swaccess'] in list_we
+
 #--------------------------------------------
 #--------------------------------------------
-def parse_access(access):
+def check_hwaccess(reg):
     """
-    Check access need an read or write
+    Checks access is valid value
 
-    :param access: Access
-    :return: tuple read enable, write enable
+    :param reg: Dictionary of register.
+    :raises ValueError: If hwaccess is not valid
     """
-    list_re = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
-    list_we = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    access  = ['rw','wo','ro',"none"]
 
-    re      = access in list_re
-    we      = access in list_we
+    list_re = ['rw', 'ro']
+    list_we = ['rw', 'wo']
+    
+    if reg['hwaccess'] not in access:
+        raise KeyError(f"hwaccess '{reg['hwaccess']}' must be in {access}.")
 
-    return re,we
+    reg['hw_reg_re'] = reg['hwaccess'] in list_re
+    reg['hw_reg_we'] = reg['hwaccess'] in list_we
     
 #--------------------------------------------
 #--------------------------------------------
@@ -266,7 +274,8 @@ def parse_hjson(file_path):
         addr += reg['address']+csr['addr_offset'];
         check_key      (reg,'hwaccess',  False,"rw")
         check_key      (reg,'swaccess',  False,"rw")
-        check_access   (reg)
+        check_swaccess (reg)
+        check_hwaccess (reg)
 
         regmap = AddrMap()
         for field in reg['fields']:
@@ -425,6 +434,7 @@ def generate_vhdl_package(csr, output_path):
             file.write(f"  -- Address     : 0x{reg['address']:X}\n")
             file.write( "  --==================================\n")
             file.write(f"  type {module}_{reg['name']}_t is record\n")
+
             file.write(f"    re : std_logic;\n")
             file.write(f"    we : std_logic;\n")
             for field in reg['fields']:
@@ -550,20 +560,28 @@ def generate_vhdl_module(csr, output_path):
 #--------------------------------------------
 #--------------------------------------------
 def main():
-    input_file          = 'examples/example1.hjson'
+
+    parser = argparse.ArgumentParser(description='Generate VHDL and C files from HJSON input.')
+    parser.add_argument('input_file'    , type=str, help='Path to the HJSON input file')
+    parser.add_argument('--vhdl_package', type=str, help='Path to the VHDL package output file')
+    parser.add_argument('--vhdl_module' , type=str, help='Path to the VHDL module output file')
+    parser.add_argument('--c_header'    , type=str, help='Path to the C header output file')
     
-    csr                 = parse_hjson(input_file)
+    args = parser.parse_args()
 
-    vhdl_package_output = csr['name']+'_csr_pkg.vhdl'
-    vhdl_module_output  = csr['name']+'_csr.vhdl'
-    c_header_output     = csr['name']+'_csr.h'
+    csr                 = parse_hjson(args.input_file)
 
-    generate_vhdl_package (csr, vhdl_package_output)
-    generate_vhdl_module  (csr, vhdl_module_output)
-    generate_c_header     (csr, c_header_output)
-    print(f"VHDL package generated in {vhdl_package_output}")
-    print(f"VHDL module  generated in {vhdl_module_output}")
-    print(f"C    header  generated in {c_header_output}")
+    # Define output file names if not provided
+    vhdl_package = args.vhdl_package or f"{csr['name']}_csr_pkg.vhdl"
+    vhdl_module  = args.vhdl_module  or f"{csr['name']}_csr.vhdl"
+    c_header     = args.c_header     or f"{csr['name']}_csr.h"
+
+    generate_vhdl_package (csr, vhdl_package)
+    generate_vhdl_module  (csr, vhdl_module)
+    generate_c_header     (csr, c_header)
+    print(f"VHDL package generated in {vhdl_package}")
+    print(f"VHDL module  generated in {vhdl_module}")
+    print(f"C    header  generated in {c_header}")
 
 if __name__ == "__main__":
     main()
