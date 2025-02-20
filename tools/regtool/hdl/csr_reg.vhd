@@ -27,7 +27,7 @@ entity csr_reg is
   
   generic (
     WIDTH : positive := 1;                              -- Register Width
-    INIT  : std_logic_vector                            -- Reset
+    INIT  : std_logic_vector;                           -- Reset
     MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s"
                               
     ); 

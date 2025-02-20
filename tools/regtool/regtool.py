@@ -511,13 +511,13 @@ def generate_vhdl_module(csr, output_path):
             file.write(f"  -- Address     : 0x{reg['address']:X}\n")
             file.write( "  --==================================\n")
             file.write( "\n")
-            file.write(f"  {reg['name']}_cs     <= '1' when pbi_ini_i.addr = std_logic_vector(to_unsigned({reg['address']}),SIZE_ADDR))\" else '0';\n")
+            file.write(f"  {reg['name']}_cs     <= '1' when (pbi_ini_i.addr = std_logic_vector(to_unsigned({reg['address']}),SIZE_ADDR)) else '0';\n")
             file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
             file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
             file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
             file.write(f"  {reg['name']}_rdata  <= (\n");
             for field in reg['fields']:
-                file.write(f"    ({field['msb']} downto {field['lsb']}) => {reg['name']}_{field['name']}_rdata,\n")
+                file.write(f"    {field['msb']} downto {field['lsb']} => {reg['name']}_{field['name']}_rdata,\n")
             file.write(f"    others => '0') when {reg['name']}_cs = '1' else (others => '0');\n")
             file.write( "\n")
 
