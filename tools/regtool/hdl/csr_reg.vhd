@@ -118,5 +118,7 @@ begin  -- architecture rtl
 
   hw_sw_re_o <= q_sw_we_r;
   hw_sw_we_o <= q_sw_re_r;
+  hw_rd_o    <= q_r      ;
+  sw_rd_o    <= q_r      ;
   
 end architecture rtl;
