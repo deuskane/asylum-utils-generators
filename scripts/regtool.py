@@ -40,7 +40,6 @@ class regtool(Generator):
         dir_root      = self.files_root
 
         file_in       = os.path.join(dir_root,self.config.get("file"))
-        dir_hjson     = Path(file_in).resolve().parent
 
         name          = self.config.get("name")
         script        = os.path.join(dir_script,"tools","regtool","regtool.py")
@@ -49,7 +48,16 @@ class regtool(Generator):
         file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
         file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
         file_h        = os.path.join(dir_work,name+'_csr.h')    
-        copy          = self.config.get("copy",False)
+        copy          = self.config.get("copy",None)
+
+        if copy != None:
+            dir_copy = os.path.join(dir_root,copy)
+
+            if not os.path.isdir(dir_copy):
+                raise RuntimeError(f"[ERROR  ] Invalid directory \"{dir_copy}\"")
+        else:
+            dir_copy = None
+            
         #-------------------------------------------------
         # Summary of parameters
         #-------------------------------------------------
@@ -57,7 +65,7 @@ class regtool(Generator):
         print(f"[DEBUG  ] dir_script         : {dir_script}")
         print(f"[DEBUG  ] dir_work           : {dir_work}")  
         print(f"[DEBUG  ] dir_root           : {dir_root}")  
-        print(f"[DEBUG  ] dir_hjson          : {dir_hjson}")
+        print(f"[DEBUG  ] dir_copy           : {dir_copy}")
         print(f"[DEBUG  ] Script             : {script}")
         print(f"[DEBUG  ] File In            : {file_in}")
         print(f"[DEBUG  ] file_csr           : {file_csr}")
@@ -86,12 +94,12 @@ class regtool(Generator):
         else:
             raise RuntimeError("[ERROR  ] output files not found.")
 
-        if copy:
-            print(f"[INFO   ] Copy generated files in {dir_hjson}")
-#           shutil.copy(file_csr     , dir_hjson)
-            shutil.copy(file_vhdl_pkg, dir_hjson)
-            shutil.copy(file_vhdl_csr, dir_hjson)
-            shutil.copy(file_h       , dir_hjson)
+        if copy != None:
+            print(f"[INFO   ] Copy generated files in {dir_copy}")
+#           shutil.copy(file_csr     , dir_copy)
+            shutil.copy(file_vhdl_pkg, dir_copy)
+            shutil.copy(file_vhdl_csr, dir_copy)
+            shutil.copy(file_h       , dir_copy)
         
         print("[INFO   ]-------------------------------------------")
         print("[INFO   ] End Generator regtool")
