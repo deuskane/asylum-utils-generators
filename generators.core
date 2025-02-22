@@ -24,8 +24,13 @@ CAPI=2:
 name       : asylum:utils:generators:2.0.0
 description: A collection of useful generators
 
+#=========================================
 generators:
+#=========================================
+
+  #---------------------------------------
   pbcc_gen:
+  #---------------------------------------
     interpreter: python3
     command    : scripts/pbcc.py
     description: ROM Generator
@@ -57,7 +62,9 @@ generators:
                  Compilation options for C file
 
 
+  #---------------------------------------
   regtool:
+  #---------------------------------------
     interpreter: python3
     command    : scripts/regtool.py
     description: CSR Generator
@@ -71,3 +78,5 @@ generators:
 
         name  : (Mandatory)
                 Name prefix
+
+        copy  : (Optional)

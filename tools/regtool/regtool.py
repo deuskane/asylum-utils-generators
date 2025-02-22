@@ -561,10 +561,10 @@ def generate_vhdl_module(csr, output_path):
 #--------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description='Generate VHDL and C files from HJSON input.')
-    parser.add_argument('input_file'    , type=str, help='Path to the HJSON input file')
-    parser.add_argument('--vhdl_package', type=str, help='Path to the VHDL package output file')
-    parser.add_argument('--vhdl_module' , type=str, help='Path to the VHDL module output file')
-    parser.add_argument('--c_header'    , type=str, help='Path to the C header output file')
+    parser.add_argument('input_file'    , type=str,  help='Path to the HJSON input file')
+    parser.add_argument('--vhdl_package', type=str,  help='Path to the VHDL package output file')
+    parser.add_argument('--vhdl_module' , type=str,  help='Path to the VHDL module output file')
+    parser.add_argument('--c_header'    , type=str,  help='Path to the C header output file')
     
     args         = parser.parse_args()
 

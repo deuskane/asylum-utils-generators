@@ -17,11 +17,12 @@
 import os
 
 import sys
-from fusesoc.capi2.generator import Generator
+from   fusesoc.capi2.generator import Generator
 import subprocess
-from fusesoc.utils           import Launcher
-from glob                    import glob
-from pathlib                 import Path
+from   fusesoc.utils           import Launcher
+from   glob                    import glob
+from   pathlib                 import Path
+import shutil
 
 class regtool(Generator):
     def run(self):
@@ -34,26 +35,36 @@ class regtool(Generator):
         #-------------------------------------------------
         # Get parameters
         #-------------------------------------------------
-        name          = self.config.get("name")
-        file_in       = os.path.join(self.files_root,self.config.get("file"))
         dir_script    = Path(__file__).resolve().parent.parent
+        dir_work      = os.getcwd()
+        dir_root      = self.files_root
+
+        file_in       = os.path.join(dir_root,self.config.get("file"))
+        dir_hjson     = Path(file_in).resolve().parent
+
+        name          = self.config.get("name")
         script        = os.path.join(dir_script,"tools","regtool","regtool.py")
 
         file_csr      = os.path.join(dir_script,"tools","regtool","hdl","csr_reg.vhd")
-        file_vhdl_pkg = os.path.join(os.getcwd(),name+'_csr_pkg.vhd')
-        file_vhdl_csr = os.path.join(os.getcwd(),name+'_csr.vhd')    
-        file_h        = os.path.join(os.getcwd(),name+'_csr.h')    
-        
+        file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
+        file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
+        file_h        = os.path.join(dir_work,name+'_csr.h')    
+        copy          = self.config.get("copy",False)
         #-------------------------------------------------
         # Summary of parameters
         #-------------------------------------------------
-        print(f"[DEBUG  ] File In            : {file_in}")
-        print(f"[DEBUG  ] Script             : {script}")
         print(f"[DEBUG  ] Name               : {name}")
+        print(f"[DEBUG  ] dir_script         : {dir_script}")
+        print(f"[DEBUG  ] dir_work           : {dir_work}")  
+        print(f"[DEBUG  ] dir_root           : {dir_root}")  
+        print(f"[DEBUG  ] dir_hjson          : {dir_hjson}")
+        print(f"[DEBUG  ] Script             : {script}")
+        print(f"[DEBUG  ] File In            : {file_in}")
         print(f"[DEBUG  ] file_csr           : {file_csr}")
         print(f"[DEBUG  ] file_vhdl_pkg      : {file_vhdl_pkg}")
         print(f"[DEBUG  ] file_vhdl_csr      : {file_vhdl_csr}")
         print(f"[DEBUG  ] file_h             : {file_h}")
+        print(f"[DEBUG  ] Copy               : {copy}")
 
         args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h]
 
@@ -75,6 +86,13 @@ class regtool(Generator):
         else:
             raise RuntimeError("[ERROR  ] output files not found.")
 
+        if copy:
+            print(f"[INFO   ] Copy generated files in {dir_hjson}")
+#           shutil.copy(file_csr     , dir_hjson)
+            shutil.copy(file_vhdl_pkg, dir_hjson)
+            shutil.copy(file_vhdl_csr, dir_hjson)
+            shutil.copy(file_h       , dir_hjson)
+        
         print("[INFO   ]-------------------------------------------")
         print("[INFO   ] End Generator regtool")
         print("[INFO   ]-------------------------------------------")
