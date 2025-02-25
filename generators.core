@@ -73,10 +73,14 @@ generators:
 
       The generator requires the following parameters:
 
-        file  : (Mandatory)
-                Hjson description file
+        file         : (Mandatory)
+                       Hjson description file
 
-        name  : (Mandatory)
-                Name prefix
+        name         : (Mandatory)
+                       Name prefix
 
-        copy  : (Optional)
+        copy         : (Optional)
+                       Default : None
+
+        logical_name : (Optional)
+                       Default : work

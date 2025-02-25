@@ -8,6 +8,8 @@ import hjson
 import math
 from prettytable import PrettyTable
 
+#--------------------------------------------
+#--------------------------------------------
 class AddrMap:
     """
     A class to manage register addresses ensuring unique register names and addresses.
@@ -256,6 +258,7 @@ def parse_hjson(file_path):
     with open(file_path, 'r') as file:
         csr=hjson.load(file)
 
+    addr_max=0
     addr    = 0
     addrmap = AddrMap()
 
@@ -272,6 +275,8 @@ def parse_hjson(file_path):
         check_key      (reg,'address',   False,str(addr))
         check_reg_addr (reg,addrmap,csr['addr_offset'])        
         addr += reg['address']+csr['addr_offset'];
+        if addr_max < reg['address']:
+            addr_max = reg['address']
         check_key      (reg,'hwaccess',  False,"rw")
         check_key      (reg,'swaccess',  False,"rw")
         check_swaccess (reg)
@@ -287,7 +292,8 @@ def parse_hjson(file_path):
             check_key      (field,'bits')
             
             check_range    (csr,field,regmap)
-            
+
+    csr['size_addr'] = int(math.ceil(math.log2(addr_max)))
     addrmap.display()
 
     return csr
@@ -415,10 +421,9 @@ def generate_vhdl_package(csr, output_path):
     
     with open(output_path, 'w') as file:
         file.write(f"-- Generated VHDL Package for {module}\n\n")
-        file.write("library IEEE;\n")
-        file.write("use IEEE.STD_LOGIC_1164.ALL;\n")
-        file.write("use IEEE.STD_LOGIC_ARITH.ALL;\n")
-        file.write("use IEEE.STD_LOGIC_UNSIGNED.ALL;\n\n")
+        file.write( "library IEEE;\n")
+        file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
+        file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
         
         file.write(f"-- Module      : {csr['name']}\n")
         file.write(f"-- Description : {csr['desc']}\n")
@@ -465,11 +470,11 @@ def generate_vhdl_module(csr, output_path):
     with open(output_path, 'w') as file:
         file.write(f"-- Generated VHDL Module for {module}\n\n")
         file.write( "\n")
-        file.write( "library ieee;\n")
-        file.write( "use     ieee.std_logic_1164.all;\n")
-        file.write( "use     ieee.std_logic_arith.all;\n")
-        file.write( "use     ieee.std_logic_unsigned.all;\n")
-        file.write( "use     work.pbi_pkg.all;\n")
+        file.write( "library IEEE;\n")
+        file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
+        file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
+        file.write(f"library {csr['logical_name']};\n");
+        file.write(f"use     {csr['logical_name']}.{module}_csr_pkg.ALL;\n");
         file.write( "\n")
 
         # Generate VHDL entity and architecture
@@ -479,8 +484,15 @@ def generate_vhdl_module(csr, output_path):
         file.write( "    clk_i      : in  std_logic;\n")
         file.write( "    arst_b_i   : in  std_logic;\n")
         file.write( "    -- Bus\n")
-        file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
-        file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
+        file.write(f"    cs_i       : in    std_logic;\n")
+        file.write(f"    re_i       : in    std_logic;\n")
+        file.write(f"    we_i       : in    std_logic;\n")
+        file.write(f"    addr_i     : in    std_logic_vector ({csr['size_addr']}-1 downto 0);\n")
+        file.write(f"    wdata_i    : in    std_logic_vector ({csr['width']}-1 downto 0);\n")
+        file.write(f"    rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0);\n")
+        file.write(f"    busy_o     : out   std_logic;\n")
+        #file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
+        #file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
         file.write( "    -- CSR\n")
         file.write(f"    sw2hw      : out {module}_t;\n")
         file.write(f"    hw2sw      : in  {module}_t\n")
@@ -489,17 +501,18 @@ def generate_vhdl_module(csr, output_path):
 
         file.write(f"architecture rtl of {module}_registers is\n")
         file.write( "\n")
-        file.write( "  constant SIZE_ADDR : integer := pbi_ini_i.addr'length;")
+        #file.write( "  constant SIZE_ADDR : integer := pbi_ini_i.addr'length;")
+        file.write(f"  constant SIZE_ADDR : integer := {csr['size_addr']};")
         file.write( "\n")
 
         for reg in csr['registers']:
             for field in reg['fields']:
-                file.write(f"  signal {reg['name']}_cs    : std_logic;\n");
-                file.write(f"  signal {reg['name']}_we    : std_logic;\n");
-                file.write(f"  signal {reg['name']}_re    : std_logic;\n");
-                file.write(f"  signal {reg['name']}_rdata : std_logic_vector({csr['width']}-1 downto 0);\n");
-                file.write(f"  signal {reg['name']}_wdata : std_logic_vector({csr['width']}-1 downto 0);\n");
-                file.write(f"  signal {reg['name']}_{field['name']}_rdata : std_logic_vector({field['width']}-1 downto 0);\n");
+                file.write(f"  signal   {reg['name']}_cs    : std_logic;\n");
+                file.write(f"  signal   {reg['name']}_we    : std_logic;\n");
+                file.write(f"  signal   {reg['name']}_re    : std_logic;\n");
+                file.write(f"  signal   {reg['name']}_rdata : std_logic_vector({csr['width']}-1 downto 0);\n");
+                file.write(f"  signal   {reg['name']}_wdata : std_logic_vector({csr['width']}-1 downto 0);\n");
+                file.write(f"  signal   {reg['name']}_{field['name']}_rdata : std_logic_vector({field['msb']} downto {field['lsb']});\n");
                 file.write( "\n")
 
         file.write( "begin  -- architecture rtl\n")
@@ -511,13 +524,18 @@ def generate_vhdl_module(csr, output_path):
             file.write(f"  -- Address     : 0x{reg['address']:X}\n")
             file.write( "  --==================================\n")
             file.write( "\n")
-            file.write(f"  {reg['name']}_cs     <= '1' when (pbi_ini_i.addr = std_logic_vector(to_unsigned({reg['address']}),SIZE_ADDR)) else '0';\n")
-            file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
-            file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
-            file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
+            #file.write(f"  {reg['name']}_cs     <= '1' when (pbi_ini_i.addr = std_logic_vector(to_unsigned({reg['address']}),SIZE_ADDR)) else '0';\n")
+            #file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
+            #file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
+            #file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
+            file.write(f"  {reg['name']}_cs     <= '1' when (addr_i = std_logic_vector(to_unsigned({reg['address']},SIZE_ADDR))) else '0';\n")
+            file.write(f"  {reg['name']}_we     <= cs_i and {reg['name']}_cs and we_i;\n")
+            file.write(f"  {reg['name']}_re     <= cs_i and {reg['name']}_cs and re_i;\n")
+            file.write(f"  {reg['name']}_wdata  <= wdata_i;\n")
             file.write(f"  {reg['name']}_rdata  <= (\n");
             for field in reg['fields']:
-                file.write(f"    {field['msb']} downto {field['lsb']} => {reg['name']}_{field['name']}_rdata,\n")
+                for i in range(field['msb'], field['lsb']-1, -1):
+                    file.write(f"    {i} => {reg['name']}_{field['name']}_rdata({i}),\n")
             file.write(f"    others => '0') when {reg['name']}_cs = '1' else (others => '0');\n")
             file.write( "\n")
 
@@ -545,8 +563,10 @@ def generate_vhdl_module(csr, output_path):
                 file.write( "      );\n")
                 file.write( "\n")
 
-        file.write(f"  pbi_tgt_o.busy  <= '0';\n");
-        file.write(f"  pbi_tgt_o.rdata <= \n");
+        #file.write(f"  pbi_tgt_o.busy  <= '0';\n");
+        #file.write(f"  pbi_tgt_o.rdata <= \n");
+        file.write(f"  busy_o  <= '0';\n");
+        file.write(f"  rdata_o <= \n");
         first = True
         for reg in csr['registers']:
             if not first :
@@ -565,10 +585,13 @@ def main():
     parser.add_argument('--vhdl_package', type=str,  help='Path to the VHDL package output file')
     parser.add_argument('--vhdl_module' , type=str,  help='Path to the VHDL module output file')
     parser.add_argument('--c_header'    , type=str,  help='Path to the C header output file')
+    parser.add_argument('--logical_name', type=str,  help='Library', default='work')
     
     args         = parser.parse_args()
 
     csr          = parse_hjson(args.input_file)
+    csr['logical_name'] = args.logical_name
+    
     
     # Define output file names if not provided
     vhdl_package = args.vhdl_package or f"{csr['name']}_csr_pkg.vhd"
