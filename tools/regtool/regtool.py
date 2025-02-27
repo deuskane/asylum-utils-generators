@@ -226,6 +226,9 @@ def check_alias(csr,reg):
 
     check_key(reg,'address_write',False,[])
 
+
+    if reg['alias_write'] == None :
+        reg_alias['address_write'].append(reg['address'])
     
     if reg['alias_write'] != None :
         if reg['alias_write'] == reg['name']:
@@ -237,6 +240,7 @@ def check_alias(csr,reg):
             raise KeyError(f"Register '{reg['name']}', alias_write {reg['alias_write']} is not valid register.")
 
         check_key(reg_alias,'address_write',False,[])
+
         reg_alias['address_write'].append(reg['address'])
     
 #--------------------------------------------
@@ -555,10 +559,12 @@ def generate_vhdl_module(csr, output_path):
             #file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
             #file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
             #file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
-            file.write(f"  {reg['name']}_cs     <= '1' when (addr_i = std_logic_vector(to_unsigned({reg['address']},SIZE_ADDR))) ")
+            file.write(f"  {reg['name']}_cs     <= '1' when ")
 
+            prefix="    "
             for waddr in reg['address_write']:
-                file.write(f" or (addr_i = std_logic_vector(to_unsigned({waddr},SIZE_ADDR))) ")
+                file.write(f"{prefix} (addr_i = std_logic_vector(to_unsigned({waddr},SIZE_ADDR))) ")
+                prefix=" or "
             
             file.write(f" else '0';\n")
 
