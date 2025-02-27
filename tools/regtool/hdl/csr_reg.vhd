@@ -61,6 +61,11 @@ architecture rtl of csr_reg is
   
 begin  -- architecture rtl
 
+  gen_ro: if MODEL="ro" generate
+    q_r_next <= hw_wd_i when hw_we_i = '1' else
+                q_r;
+  end generate gen_ro;
+
   gen_rw: if MODEL="rw" generate
     q_r_next <= sw_wd_i when sw_we_i = '1' else
                 hw_wd_i when hw_we_i = '1' else
