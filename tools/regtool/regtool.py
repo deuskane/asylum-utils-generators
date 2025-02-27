@@ -6,7 +6,7 @@ Ce module contient des outils pour manipuler les registres.
 import argparse
 import hjson
 import math
-from prettytable import PrettyTable
+from   prettytable import PrettyTable
 
 #--------------------------------------------
 #--------------------------------------------
@@ -213,6 +213,31 @@ def check_hwaccess(reg):
 
     reg['hw_reg_re'] = reg['hwaccess'] in list_re
     reg['hw_reg_we'] = reg['hwaccess'] in list_we
+
+#--------------------------------------------
+#--------------------------------------------
+def check_alias(csr,reg):
+    """
+    Checks if alias is valide
+
+    :param reg: Dictionary of register.
+    :raises ValueError: If alias is not valid
+    """
+
+    check_key(reg,'address_write',False,[])
+
+    
+    if reg['alias_write'] != None :
+        if reg['alias_write'] == reg['name']:
+            raise KeyError(f"Register '{reg['name']}', self aliases (alias_write {reg['alias_write']}).")
+
+        reg_alias = next((item for item in csr['registers'] if item.get('name') == reg['alias_write']), None)
+        
+        if reg_alias == None:
+            raise KeyError(f"Register '{reg['name']}', alias_write {reg['alias_write']} is not valid register.")
+
+        check_key(reg_alias,'address_write',False,[])
+        reg_alias['address_write'].append(reg['address'])
     
 #--------------------------------------------
 #--------------------------------------------
@@ -271,17 +296,19 @@ def parse_hjson(file_path):
     for reg in csr['registers']:
         # Check Register variables
         check_key      (reg,'name')
-        check_key      (reg,'desc',      False)
-        check_key      (reg,'address',   False,str(addr))
+        check_key      (reg,'desc',       False)
+        check_key      (reg,'address',    False,str(addr))
         check_reg_addr (reg,addrmap,csr['addr_offset'])        
         addr += reg['address']+csr['addr_offset'];
         if addr_max < reg['address']:
             addr_max = reg['address']
-        check_key      (reg,'hwaccess',  False,"rw")
-        check_key      (reg,'swaccess',  False,"rw")
+        check_key      (reg,'hwaccess',   False,"rw")
+        check_key      (reg,'swaccess',   False,"rw")
         check_swaccess (reg)
         check_hwaccess (reg)
-
+        check_key      (reg,'alias_write',False,None)
+        check_alias    (csr,reg)
+        
         regmap = AddrMap()
         for field in reg['fields']:
             # Check Field variables
@@ -494,8 +521,8 @@ def generate_vhdl_module(csr, output_path):
         #file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
         #file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
         file.write( "    -- CSR\n")
-        file.write(f"    sw2hw      : out {module}_t;\n")
-        file.write(f"    hw2sw      : in  {module}_t\n")
+        file.write(f"    sw2hw_o    : out {module}_t;\n")
+        file.write(f"    hw2sw_i    : in  {module}_t\n")
         file.write( "  );\n")
         file.write(f"end entity {module}_registers;\n\n")
 
@@ -528,7 +555,13 @@ def generate_vhdl_module(csr, output_path):
             #file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
             #file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
             #file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
-            file.write(f"  {reg['name']}_cs     <= '1' when (addr_i = std_logic_vector(to_unsigned({reg['address']},SIZE_ADDR))) else '0';\n")
+            file.write(f"  {reg['name']}_cs     <= '1' when (addr_i = std_logic_vector(to_unsigned({reg['address']},SIZE_ADDR))) ")
+
+            for waddr in reg['address_write']:
+                file.write(f" or (addr_i = std_logic_vector(to_unsigned({waddr},SIZE_ADDR))) ")
+            
+            file.write(f" else '0';\n")
+
             file.write(f"  {reg['name']}_we     <= cs_i and {reg['name']}_cs and we_i;\n")
             file.write(f"  {reg['name']}_re     <= cs_i and {reg['name']}_cs and re_i;\n")
             file.write(f"  {reg['name']}_wdata  <= wdata_i;\n")
@@ -555,11 +588,11 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"      ,sw_rd_o     => {reg['name']}_{field['name']}_rdata\n")
                 file.write(f"      ,sw_we_i     => {reg['name']}_we\n")
                 file.write(f"      ,sw_re_i     => {reg['name']}_re\n")
-                file.write(f"      ,hw_wd_i     => hw2sw.{reg['name']}.{field['name']}\n")
-                file.write(f"      ,hw_rd_o     => sw2hw.{reg['name']}.{field['name']}\n")
-                file.write(f"      ,hw_we_i     => hw2sw.{reg['name']}.we\n")
-                file.write(f"      ,hw_sw_re_o  => sw2hw.{reg['name']}.re\n")
-                file.write(f"      ,hw_sw_we_o  => sw2hw.{reg['name']}.we\n")
+                file.write(f"      ,hw_wd_i     => hw2sw_i.{reg['name']}.{field['name']}\n")
+                file.write(f"      ,hw_rd_o     => sw2hw_o.{reg['name']}.{field['name']}\n")
+                file.write(f"      ,hw_we_i     => hw2sw_i.{reg['name']}.we\n")
+                file.write(f"      ,hw_sw_re_o  => sw2hw_o.{reg['name']}.re\n")
+                file.write(f"      ,hw_sw_we_o  => sw2hw_o.{reg['name']}.we\n")
                 file.write( "      );\n")
                 file.write( "\n")
 
