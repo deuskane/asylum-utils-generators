@@ -228,7 +228,7 @@ def check_alias(csr,reg):
 
 
     if reg['alias_write'] == None :
-        reg_alias['address_write'].append(reg['address'])
+        reg['address_write'].append(reg['address'])
     
     if reg['alias_write'] != None :
         if reg['alias_write'] == reg['name']:
@@ -538,7 +538,8 @@ def generate_vhdl_module(csr, output_path):
 
         for reg in csr['registers']:
             for field in reg['fields']:
-                file.write(f"  signal   {reg['name']}_cs    : std_logic;\n");
+                file.write(f"  signal   {reg['name']}_wcs   : std_logic;\n");
+                file.write(f"  signal   {reg['name']}_rcs   : std_logic;\n");
                 file.write(f"  signal   {reg['name']}_we    : std_logic;\n");
                 file.write(f"  signal   {reg['name']}_re    : std_logic;\n");
                 file.write(f"  signal   {reg['name']}_rdata : std_logic_vector({csr['width']}-1 downto 0);\n");
@@ -555,27 +556,27 @@ def generate_vhdl_module(csr, output_path):
             file.write(f"  -- Address     : 0x{reg['address']:X}\n")
             file.write( "  --==================================\n")
             file.write( "\n")
-            #file.write(f"  {reg['name']}_cs     <= '1' when (pbi_ini_i.addr = std_logic_vector(to_unsigned({reg['address']}),SIZE_ADDR)) else '0';\n")
-            #file.write(f"  {reg['name']}_we     <= {reg['name']}_cs and pbi_ini_i.we;\n")
-            #file.write(f"  {reg['name']}_re     <= {reg['name']}_cs and pbi_ini_i.re;\n")
-            #file.write(f"  {reg['name']}_wdata  <= pbi_ini_i.wdata;\n")
-            file.write(f"  {reg['name']}_cs     <= '1' when ")
+            file.write(f"  {reg['name']}_rcs     <= '1' when     (addr_i = std_logic_vector(to_unsigned({reg['address']},SIZE_ADDR))) else '0';\n")
 
-            prefix="    "
-            for waddr in reg['address_write']:
-                file.write(f"{prefix} (addr_i = std_logic_vector(to_unsigned({waddr},SIZE_ADDR))) ")
-                prefix=" or "
-            
-            file.write(f" else '0';\n")
+            if reg['address_write'] == []:
+                file.write(f"  {reg['name']}_wcs     <= '0';\n")
+            else:
+                file.write(f"  {reg['name']}_wcs     <= '1' when ")
+                prefix="    "
+                for waddr in reg['address_write']:
+                    file.write(f"{prefix}(addr_i = std_logic_vector(to_unsigned({waddr},SIZE_ADDR)))")
+                    prefix=" or "
+                
+                file.write(f" else '0';\n")
 
-            file.write(f"  {reg['name']}_we     <= cs_i and {reg['name']}_cs and we_i;\n")
-            file.write(f"  {reg['name']}_re     <= cs_i and {reg['name']}_cs and re_i;\n")
+            file.write(f"  {reg['name']}_we     <= cs_i and {reg['name']}_wcs and we_i;\n")
+            file.write(f"  {reg['name']}_re     <= cs_i and {reg['name']}_rcs and re_i;\n")
             file.write(f"  {reg['name']}_wdata  <= wdata_i;\n")
             file.write(f"  {reg['name']}_rdata  <= (\n");
             for field in reg['fields']:
                 for i in range(field['msb'], field['lsb']-1, -1):
                     file.write(f"    {i} => {reg['name']}_{field['name']}_rdata({i}),\n")
-            file.write(f"    others => '0') when {reg['name']}_cs = '1' else (others => '0');\n")
+            file.write(f"    others => '0') when {reg['name']}_rcs = '1' else (others => '0');\n")
             file.write( "\n")
 
             for field in reg['fields']:
