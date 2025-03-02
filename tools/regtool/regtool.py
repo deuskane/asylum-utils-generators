@@ -68,48 +68,44 @@ def check_reg_addr(reg,addrmap,addr_offset):
 
 #--------------------------------------------
 #--------------------------------------------
-def check_swaccess(reg):
+def check_access(reg):
     """
     Checks access is valid value
 
     :param reg: Dictionary of register.
-    :raises ValueError: If swaccess is not valid
+    :raises ValueError: If swaccess is not valid or if hwaccess is not valid
     """
-    access  = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    swaccess  = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
 
-    list_re = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
-    list_we = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    list_swre = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s']
+    list_swwe = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s']
     
-    if reg['swaccess'] not in access:
-        raise KeyError(f"swaccess '{reg['swaccess']}' must be in {access}.")
+    if reg['swaccess'] not in swaccess:
+        raise KeyError(f"swaccess '{reg['swaccess']}' must be in {swaccess}.")
 
-    reg['sw2hw_re'] = reg['swaccess'] in list_re
-    reg['sw2hw_we'] = reg['swaccess'] in list_we
+    reg['sw2hw_re'] = reg['swaccess'] in list_swre
+    reg['sw2hw_we'] = reg['swaccess'] in list_swwe
 
     if reg['alias_write'] != None :
         reg['sw2hw_we'] = False
 
+    hwaccess  = ['rw','wo','ro',"none"]
+
+    list_hwre = ['rw', 'ro']
+    list_hwwe = ['rw', 'wo']
     
-#--------------------------------------------
-#--------------------------------------------
-def check_hwaccess(reg):
-    """
-    Checks access is valid value
+    if reg['hwaccess'] not in hwaccess:
+        raise KeyError(f"hwaccess '{reg['hwaccess']}' must be in {hwaccess}.")
 
-    :param reg: Dictionary of register.
-    :raises ValueError: If hwaccess is not valid
-    """
-    access  = ['rw','wo','ro',"none"]
+    #reg['hw2sw_re'] = reg['hwaccess'] in list_hwre
+    reg['hw2sw_re']    = False
+    reg['hw2sw_we']    = reg['hwaccess'] in list_hwwe
+    reg['hw2sw_data']  = reg['hwaccess'] in list_hwwe
+    reg['sw2hw_data']  = reg['hwaccess'] in list_hwre
 
-    list_re = ['rw', 'ro']
-    list_we = ['rw', 'wo']
+    reg['sw2hw']       = reg['sw2hw_re'] or reg['sw2hw_we'] or reg['sw2hw_data']
+    reg['hw2sw']       = reg['hw2sw_re'] or reg['hw2sw_we'] or reg['hw2sw_data']
     
-    if reg['hwaccess'] not in access:
-        raise KeyError(f"hwaccess '{reg['hwaccess']}' must be in {access}.")
-
-    reg['hw2sw_re'] = reg['hwaccess'] in list_re
-    reg['hw2sw_we'] = reg['hwaccess'] in list_we
-
 #--------------------------------------------
 #--------------------------------------------
 def check_alias(csr,reg):
@@ -207,9 +203,8 @@ def parse_hjson(file_path):
         check_key      (reg,'hwext',      False,False)
         check_key      (reg,'alias_write',False,None)
         check_alias    (csr,reg)
-        check_swaccess (reg)
-        check_hwaccess (reg)
-        
+        check_access   (reg)
+
         regmap = AddrMap()
         for field in reg['fields']:
             # Check Field variables
@@ -366,29 +361,35 @@ def generate_vhdl_package(csr, output_path):
             file.write(f"  -- Description : {reg['desc']}\n")
             file.write(f"  -- Address     : 0x{reg['address']:X}\n")
             file.write( "  --==================================\n")
-            file.write(f"  type {module}_{reg['name']}_sw2hw_t is record\n")
 
-            if reg['sw2hw_re']:
-                file.write(f"    re : std_logic;\n")
-            if reg['sw2hw_we']:
-                file.write(f"    we : std_logic;\n")
-            for field in reg['fields']:
-                file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
-                file.write(f"    -- Description : {field['desc']}\n")
-                file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
-            file.write(f"  end record {module}_{reg['name']}_sw2hw_t;\n\n")
-            file.write( "\n")
+            if (reg['sw2hw']):
+                file.write(f"  type {module}_{reg['name']}_sw2hw_t is record\n")
 
-            file.write(f"  type {module}_{reg['name']}_hw2sw_t is record\n")
-            if reg['hw2sw_re']:
-                file.write(f"    re : std_logic;\n")
-            if reg['hw2sw_we']:
-                file.write(f"    we : std_logic;\n")
-            for field in reg['fields']:
-                file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
-                file.write(f"    -- Description : {field['desc']}\n")
-                file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
-            file.write(f"  end record {module}_{reg['name']}_hw2sw_t;\n\n")
+                if reg['sw2hw_re']:
+                    file.write(f"    re : std_logic;\n")
+                if reg['sw2hw_we']:
+                    file.write(f"    we : std_logic;\n")
+                if reg['sw2hw_data']:
+                    for field in reg['fields']:
+                        file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
+                        file.write(f"    -- Description : {field['desc']}\n")
+                        file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
+                file.write(f"  end record {module}_{reg['name']}_sw2hw_t;\n")
+                file.write( "\n")
+
+            if (reg['hw2sw']):
+                file.write(f"  type {module}_{reg['name']}_hw2sw_t is record\n")
+                if reg['hw2sw_re']:
+                    file.write(f"    re : std_logic;\n")
+                if reg['hw2sw_we']:
+                    file.write(f"    we : std_logic;\n")
+                if reg['hw2sw_data']:
+                    for field in reg['fields']:
+                        file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
+                        file.write(f"    -- Description : {field['desc']}\n")
+                        file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
+                file.write(f"  end record {module}_{reg['name']}_hw2sw_t;\n")
+                file.write( "\n")
 
             
         # Generate global struct containing all registers
@@ -397,17 +398,19 @@ def generate_vhdl_package(csr, output_path):
         file.write( "  ------------------------------------\n")
         file.write(f"  type {module}_sw2hw_t is record\n")
         for reg in csr['registers']:
-            file.write(f"    {reg['name']} : {module}_{reg['name']}_sw2hw_t;\n")
-        file.write(f"  end record {module}_sw2hw_t;\n\n")
+            if (reg['sw2hw']):
+                file.write(f"    {reg['name']} : {module}_{reg['name']}_sw2hw_t;\n")
+        file.write(f"  end record {module}_sw2hw_t;\n")
         file.write( "\n")
         file.write(f"  type {module}_hw2sw_t is record\n")
         for reg in csr['registers']:
-            file.write(f"    {reg['name']} : {module}_{reg['name']}_hw2sw_t;\n")
-        file.write(f"  end record {module}_hw2sw_t;\n\n")
+            if (reg['hw2sw']):
+                file.write(f"    {reg['name']} : {module}_{reg['name']}_hw2sw_t;\n")
+        file.write(f"  end record {module}_hw2sw_t;\n")
 
-        file.write(f"end package {module}_csr_pkg;\n\n")
+        file.write(f"end package {module}_csr_pkg;\n")
 
-        #file.write(f"package body {module}_csr_pkg is\n\n")
+        #file.write(f"package body {module}_csr_pkg is\n")
         #file.write(f"end package body {module}_csr_pkg;\n")
 
 #--------------------------------------------
@@ -500,7 +503,7 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"  {reg['name']}_we      <= cs_i and {reg['name']}_wcs and we_i;\n")
                 file.write(f"  {reg['name']}_wdata   <= wdata_i;\n")
             else:
-                file.write(f"  {reg['name']}_wcs     <= '0';\n")
+                file.write(f"  {reg['name']}_wcs     <= '0';\n") 
                 file.write(f"  {reg['name']}_we      <= '0';\n")
                 file.write(f"  {reg['name']}_wdata   <= (others=>'0');\n")
 
@@ -532,8 +535,14 @@ def generate_vhdl_module(csr, output_path):
                     file.write(f"      ,sw_rd_o     => {reg['name']}_{field['name']}_rdata\n")
                     file.write(f"      ,sw_we_i     => {reg['name']}_we\n")
                     file.write(f"      ,sw_re_i     => {reg['name']}_re\n")
-                    file.write(f"      ,hw_wd_i     => hw2sw_i.{reg['name']}.{field['name']}\n")
-                    file.write(f"      ,hw_rd_o     => sw2hw_o.{reg['name']}.{field['name']}\n")
+                    if reg['hw2sw_data']:
+                        file.write(f"      ,hw_wd_i     => hw2sw_i.{reg['name']}.{field['name']}\n")
+                    else:
+                        file.write(f"      ,hw_wd_i     => (others => '0')\n")
+                    if reg['sw2hw_data']:
+                        file.write(f"      ,hw_rd_o     => sw2hw_o.{reg['name']}.{field['name']}\n")
+                    else:
+                        file.write(f"      ,hw_rd_o     => open\n")
                     if reg['hw2sw_we']:
                         file.write(f"      ,hw_we_i     => hw2sw_i.{reg['name']}.we\n")
                     else:
