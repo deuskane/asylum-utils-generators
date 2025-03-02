@@ -1,0 +1,54 @@
+{
+    name      : "example1",
+    width     : 32,
+    registers : [
+        {
+            name       : "reg1",
+            address    : "x0",
+            desc       : "Register 1",
+            hwaccess   : "rw",
+            swaccess   : "rw1c",
+            fields: [
+                {
+                    name: "field1",
+                    bits: "0",
+                    init: "d0",
+                    desc: "Field 1"
+                },
+                {
+                    name: "field2",
+                    bits: "2",
+                    init: "b00",
+                    desc: "Field 2"
+#		    enum: [
+#				{ value: "0", name: "txlvl1", desc: "1 character" },
+#                          	{ value: "1", name: "txlvl4", desc: "4 characters" },
+#                          	{ value: "2", name: "txlvl8", desc: "8 characters" },
+#                          	{ value: "3", name: "txlvl16", desc: "16 characters" }
+#                ]
+                }
+            ]
+        },
+        {
+            name       : "reg2",
+            address    : "08",
+            desc       : "Register 2",
+            hwaccess   : "ro",
+            swaccess   : "rw",
+            fields: [
+                {
+                    name: "field1",
+                    bits: "7:0",
+                    init: "x00",
+                    desc: "Field 1"
+                },
+                {
+                    name: "field2",
+                    bits: "15:8",
+                    init: "xFF",
+                    desc: "Field 2"
+                }
+            ]
+        }
+    ]
+}
