@@ -49,7 +49,7 @@ class regtool(Generator):
         file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
         file_h        = os.path.join(dir_work,name+'_csr.h')    
         copy          = self.config.get("copy",None)
-        logical_name  = self.config.get("logical_name","work")
+        logical_name  = self.config.get("logical_name",None)
 
         if copy != None:
             dir_copy = os.path.join(dir_root,copy)
@@ -75,9 +75,15 @@ class regtool(Generator):
         print(f"[DEBUG  ] file_h             : {file_h}")
         print(f"[DEBUG  ] Copy               : {copy}")
         print(f"[DEBUG  ] logical_name       : {logical_name}")
-        
-        args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h,"--logical_name",logical_name]
 
+        
+        args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h]
+        
+        if (logical_name == None):
+            args.extend(["--logical_name",'work'])
+        else:
+            args.extend(["--logical_name",logical_name])
+            
         try:
             Launcher("python3", args).run()
         except subprocess.CalledProcessError as e:
@@ -87,10 +93,15 @@ class regtool(Generator):
         # Add outfile in source files
         #-------------------------------------------------
         outfiles = []
-        outfiles.append({file_csr      : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
-        outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
-        outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
-
+        if (logical_name == None):
+            outfiles.append({file_csr      : {'file_type' : 'vhdlSource'}})
+            outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource'}})
+            outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource'}})
+        else:
+            outfiles.append({file_csr      : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            
         if outfiles:
             self.add_files(outfiles)
         else:
