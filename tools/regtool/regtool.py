@@ -407,7 +407,11 @@ def generate_vhdl_package(csr, output_path):
             if (reg['hw2sw']):
                 file.write(f"    {reg['name']} : {module}_{reg['name']}_hw2sw_t;\n")
         file.write(f"  end record {module}_hw2sw_t;\n")
-
+        file.write( "\n")
+        file.write(f"  constant {module}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
+        file.write(f"  constant {module}_DATA_WIDTH : natural := {csr['width']};\n")
+        file.write( "\n")
+        
         file.write(f"end package {module}_csr_pkg;\n")
 
         #file.write(f"package body {module}_csr_pkg is\n")
