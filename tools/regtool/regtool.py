@@ -98,7 +98,7 @@ def check_access(reg):
     
     reg['sw2hw_re']    = reg['swaccess'] in list_sw_re
     reg['sw2hw_we']    = reg['swaccess'] in list_sw_we
-    reg['hw2sw_re']    = reg['hwtype'] == 'fifo'
+    reg['hw2sw_re']    = reg['hwaccess'] in list_hw_re and reg['hwtype'] == 'fifo'
     reg['hw2sw_we']    = reg['hwaccess'] in list_hw_we
     reg['hw2sw_data']  = reg['hwaccess'] in list_hw_we
     reg['sw2hw_data']  = reg['hwaccess'] in list_hw_re
@@ -109,21 +109,16 @@ def check_access(reg):
     if reg['alias_write'] != None :
         reg['sw2hw_we'] = False
 
-    if reg['hwtype'] == 'fifo':
-    	reg['sw2hw_name_re']    = "tready"
-    	reg['sw2hw_name_we']    = "tvalid"
-    	reg['sw2hw_name_data']  = "tdata"
-    	reg['hw2sw_name_re']    = "tready"
-    	reg['hw2sw_name_we']    = "tvalid"
-    	reg['hw2sw_name_data']  = "tdata"
+    if reg['hwtype'] in ['fifo']:
+    	reg['sw2hw_name_re']    = "ready"
+    	reg['sw2hw_name_we']    = "valid"
+    	reg['hw2sw_name_re']    = "ready"
+    	reg['hw2sw_name_we']    = "valid"
     else:
     	reg['sw2hw_name_re']    = "re"
     	reg['sw2hw_name_we']    = "we"
-    	reg['sw2hw_name_data']  = "data"
     	reg['hw2sw_name_re']    = "re"
     	reg['hw2sw_name_we']    = "we"
-    	reg['hw2sw_name_data']  = "data"
-        
 
 #--------------------------------------------
 #--------------------------------------------
@@ -407,14 +402,14 @@ def generate_vhdl_package(csr, output_path):
         # Generate structs for each register
         for reg in csr['registers']:
             print_vhdl_header_reg(reg,file)
-            
+
             if (reg['sw2hw']):
                 file.write(f"  type {module}_{reg['name']}_sw2hw_t is record\n")
 
                 if reg['sw2hw_re']:
-                    file.write(f"    re : std_logic;\n")
+                    file.write(f"    {reg['sw2hw_name_re']} : std_logic;\n")
                 if reg['sw2hw_we']:
-                    file.write(f"    we : std_logic;\n")
+                    file.write(f"    {reg['sw2hw_name_we']} : std_logic;\n")
                 if reg['sw2hw_data']:
                     for field in reg['fields']:
                         print_vhdl_header_field(field,file)
@@ -425,9 +420,9 @@ def generate_vhdl_package(csr, output_path):
             if (reg['hw2sw']):
                 file.write(f"  type {module}_{reg['name']}_hw2sw_t is record\n")
                 if reg['hw2sw_re']:
-                    file.write(f"    re : std_logic;\n")
+                    file.write(f"    {reg['hw2sw_name_re']} : std_logic;\n")
                 if reg['hw2sw_we']:
-                    file.write(f"    we : std_logic;\n")
+                    file.write(f"    {reg['hw2sw_name_we']} : std_logic;\n")
                 if reg['hw2sw_data']:
                     for field in reg['fields']:
                         print_vhdl_header_field(field,file)
@@ -564,70 +559,112 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
 
+
             file.write(f"  ins_{reg['name']} : entity work.csr_{reg['hwtype']}(rtl)\n")
             file.write( "    generic map\n")
-            file.write(f"      (WIDTH       => {reg['width']}\n")
-            if reg['hwtype'] == "reg":
-                file.write(f"      ,INIT        => ")
+            file.write(f"      (WIDTH         => {reg['width']}\n")
+            
+            if reg['hwtype'] in ['reg']:
+                file.write(f"      ,INIT          => ")
                 first = True
                 for field in reg['fields']:
                     if not first :
-                        file.write( "                     &")
+                        file.write( "                       &")
                     file.write(f"\"{parse_init_value(field['init'],field['width'])}\"\n")
                     first = False;
-                file.write(f"      ,MODEL       => \"{reg['swaccess']}\"\n")
+                file.write(f"      ,MODEL         => \"{reg['swaccess']}\"\n")
             file.write( "      )\n")
             file.write( "    port map\n")
-            file.write( "      (clk_i       => clk_i\n")
-            file.write( "      ,arst_b_i    => arst_b_i\n")
-            file.write(f"      ,sw_wd_i     => ")
+            file.write( "      (clk_i         => clk_i\n")
+            file.write( "      ,arst_b_i      => arst_b_i\n")
+            file.write(f"      ,sw_wd_i       => ")
             first = True
             for field in reg['fields']:
                 if not first :
-                    file.write("                     &")
+                    file.write("                       &")
                 file.write(f"{reg['name']}_wdata({field['msb']} downto {field['lsb']})\n")
                 first = False;
-            file.write(f"      ,sw_rd_o     => ")
+            file.write(f"      ,sw_rd_o       => ")
             first = True
             for field in reg['fields']:
                 if not first :
-                    file.write( "                     &")
+                    file.write( "                       &")
                 file.write(f"{reg['name']}_{field['name']}_rdata\n")
                 first = False;
-            file.write(f"      ,sw_we_i     => {reg['name']}_we\n")
-            file.write(f"      ,sw_re_i     => {reg['name']}_re\n")
-            if reg['hw2sw_data']:
-                file.write(f"      ,hw_wd_i     => ")
-                first = True
-                for field in reg['fields']:
-                    if not first :
-                        file.write( "                     &")
-                    file.write(f"hw2sw_i.{reg['name']}.{field['name']}\n")
-                    first = False;
-            else:
-                file.write(f"      ,hw_wd_i     => (others => '0')\n")
-            if reg['sw2hw_data']:
-                file.write(f"      ,hw_rd_o     => ")
-                first = True
-                for field in reg['fields']:
-                    if not first :
-                        file.write( "                     &")
-                    file.write(f"sw2hw_o.{reg['name']}.{field['name']}\n")
-                    first = False;
-            else:
-                file.write(f"      ,hw_rd_o     => open\n")
-            if reg['hw2sw_we']:
-                file.write(f"      ,hw_we_i     => hw2sw_i.{reg['name']}.we\n")
-            else:
-                file.write(f"      ,hw_we_i     => '0'\n")
-            if reg['sw2hw_re']:
-                file.write(f"      ,hw_sw_re_o  => sw2hw_o.{reg['name']}.re\n")
-            else:
-                file.write(f"      ,hw_sw_re_o  => open\n")
-            if reg['sw2hw_we']:
-                file.write(f"      ,hw_sw_we_o  => sw2hw_o.{reg['name']}.we\n")
-            else:
-                file.write(f"      ,hw_sw_we_o  => open\n")
+            file.write(f"      ,sw_we_i       => {reg['name']}_we\n")
+            file.write(f"      ,sw_re_i       => {reg['name']}_re\n")
+
+            if reg['hwtype'] in ['reg','ext']:
+                if reg['hw2sw_data']:
+                    file.write(f"      ,hw_wd_i       => ")
+                    first = True
+                    for field in reg['fields']:
+                        if not first :
+                            file.write( "                       &")
+                        file.write(f"hw2sw_i.{reg['name']}.{field['name']}\n")
+                        first = False;
+                else:
+                    file.write(f"      ,hw_wd_i       => (others => '0')\n")
+                if reg['sw2hw_data']:
+                    file.write(f"      ,hw_rd_o       => ")
+                    first = True
+                    for field in reg['fields']:
+                        if not first :
+                            file.write( "                       &")
+                        file.write(f"sw2hw_o.{reg['name']}.{field['name']}\n")
+                        first = False;
+                else:
+                    file.write(f"      ,hw_rd_o       => open\n")
+                if reg['hw2sw_we']:
+                    file.write(f"      ,hw_we_i       => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
+                else:
+                    file.write(f"      ,hw_we_i       => '0'\n")
+                if reg['sw2hw_re']:
+                    file.write(f"      ,hw_sw_re_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
+                else:
+                    file.write(f"      ,hw_sw_re_o    => open\n")
+                if reg['sw2hw_we']:
+                    file.write(f"      ,hw_sw_we_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
+                else:
+                    file.write(f"      ,hw_sw_we_o      => open\n")
+
+            if reg['hwtype'] in ['fifo']:
+                if reg['hw2sw_we']:
+                    file.write(f"      ,hw_tx_valid_i => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
+                else:
+                    file.write(f"      ,hw_tx_valid_i => '0'\n")
+                if reg['sw2hw_re']:
+                    file.write(f"      ,hw_tx_ready_o => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
+                else:
+                    file.write(f"      ,hw_tx_ready_o => open\n")
+                if reg['hw2sw_data']:
+                    file.write(f"      ,hw_tx_data_i  => ")
+                    first = True
+                    for field in reg['fields']:
+                        if not first :
+                            file.write( "                       &")
+                        file.write(f"hw2sw_i.{reg['name']}.{field['name']}\n")
+                        first = False;
+                else:
+                    file.write(f"      ,hw_tx_data_i  => (others => '0')\n")
+                if reg['sw2hw_we']:
+                    file.write(f"      ,hw_rx_valid_o => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
+                else:
+                    file.write(f"      ,hw_rx_valid_o => open\n")
+                if reg['hw2sw_re']:
+                    file.write(f"      ,hw_rx_ready_i => hw2sw_i.{reg['name']}.{reg['hw2sw_name_re']}\n")
+                else:
+                    file.write(f"      ,hw_rx_ready_i => '1'\n")
+                if reg['sw2hw_data']:
+                    file.write(f"      ,hw_rx_data_o  => ")
+                    first = True
+                    for field in reg['fields']:
+                        if not first :
+                            file.write( "                       &")
+                        file.write(f"sw2hw_o.{reg['name']}.{field['name']}\n")
+                        first = False;
+                else:
+                    file.write(f"      ,hw_rx_data_o  => open\n")
             file.write( "      );\n")
             file.write( "\n")
 

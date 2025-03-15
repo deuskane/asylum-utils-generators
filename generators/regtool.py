@@ -44,7 +44,7 @@ class regtool(Generator):
         name          = self.config.get("name")
         script        = os.path.join(dir_script,"tools","regtool","regtool.py")
 
-        files_hdl     = ["csr_reg.vhd","csr_ext.vhd"]
+        files_hdl     = ["csr_reg.vhd","csr_ext.vhd","csr_fifo.vhd"]
         dir_hdl       = os.path.join(dir_script,"tools","regtool","hdl",)
 
         file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
