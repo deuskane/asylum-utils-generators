@@ -1,5 +1,6 @@
 {
     name      : "example1",
+    desc      : "The example 1",
     width     : 32,
     registers : [
         {

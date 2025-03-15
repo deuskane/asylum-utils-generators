@@ -360,7 +360,16 @@ def generate_c_header(csr, output_path):
 
 #--------------------------------------------
 #--------------------------------------------
-def print_header_reg(reg,file):
+def print_vhdl_header_csr(csr,file):
+    file.write( "--==================================\n")
+    file.write(f"-- Module      : {csr['name']}\n")
+    file.write(f"-- Description : {csr['desc']}\n")
+    file.write(f"-- Width       : {csr['width']}\n")
+    file.write( "--==================================\n")
+        
+#--------------------------------------------
+#--------------------------------------------
+def print_vhdl_header_reg(reg,file):
     file.write( "  --==================================\n")
     file.write(f"  -- Register    : {reg['name']}\n")
     file.write(f"  -- Description : {reg['desc']}\n")
@@ -369,6 +378,15 @@ def print_header_reg(reg,file):
     file.write(f"  -- Sw Access   : {reg['swaccess']}\n")
     file.write(f"  -- Hw Access   : {reg['hwaccess']}\n")
     file.write(f"  -- Hw Type     : {reg['hwtype']}\n")
+    file.write( "  --==================================\n")
+
+#--------------------------------------------
+#--------------------------------------------
+def print_vhdl_header_field(field,file):
+    file.write( "  --==================================\n")
+    file.write(f"  -- Field       : {field['name']}\n")
+    file.write(f"  -- Description : {field['desc']}\n")
+    file.write(f"  -- Width       : {field['width']}\n")
     file.write( "  --==================================\n")
 
 #--------------------------------------------
@@ -382,15 +400,13 @@ def generate_vhdl_package(csr, output_path):
         file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
         file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
         
-        file.write(f"-- Module      : {csr['name']}\n")
-        file.write(f"-- Description : {csr['desc']}\n")
-        file.write(f"-- Width       : {csr['width']}\n")
+        print_vhdl_header_csr(csr,file)
         file.write( "\n")
         file.write(f"package {module}_csr_pkg is\n\n")
 
         # Generate structs for each register
         for reg in csr['registers']:
-            print_header_reg(reg,file)
+            print_vhdl_header_reg(reg,file)
             
             if (reg['sw2hw']):
                 file.write(f"  type {module}_{reg['name']}_sw2hw_t is record\n")
@@ -401,8 +417,7 @@ def generate_vhdl_package(csr, output_path):
                     file.write(f"    we : std_logic;\n")
                 if reg['sw2hw_data']:
                     for field in reg['fields']:
-                        file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
-                        file.write(f"    -- Description : {field['desc']}\n")
+                        print_vhdl_header_field(field,file)
                         file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
                 file.write(f"  end record {module}_{reg['name']}_sw2hw_t;\n")
                 file.write( "\n")
@@ -415,8 +430,7 @@ def generate_vhdl_package(csr, output_path):
                     file.write(f"    we : std_logic;\n")
                 if reg['hw2sw_data']:
                     for field in reg['fields']:
-                        file.write(f"    -- Field       : {reg['name']}.{field['name']}\n")
-                        file.write(f"    -- Description : {field['desc']}\n")
+                        print_vhdl_header_field(field,file)
                         file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
                 file.write(f"  end record {module}_{reg['name']}_hw2sw_t;\n")
                 file.write( "\n")
@@ -462,6 +476,8 @@ def generate_vhdl_module(csr, output_path):
         file.write(f"use     {csr['logical_name']}.{module}_csr_pkg.ALL;\n");
         file.write( "\n")
 
+        print_vhdl_header_csr(csr,file)
+        
         # Generate VHDL entity and architecture
         file.write(f"entity {module}_registers is\n")
         file.write( "  port (\n")
@@ -506,7 +522,12 @@ def generate_vhdl_module(csr, output_path):
         file.write( "\n")
         for reg in csr['registers']:
 
-            print_header_reg(reg,file)
+            print_vhdl_header_reg(reg,file)
+
+            for field in reg['fields']:
+                print_vhdl_header_field(field,file)
+                file.write( "\n")
+                
 
             file.write( "\n")
             if reg['sw2hw_re']:
@@ -542,19 +563,6 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"  {reg['name']}_wdata   <= (others=>'0');\n")
 
             file.write( "\n")
-
-            for field in reg['fields']:
-                file.write(f"  -- Field       : {reg['name']}.{field['name']}\n")
-                file.write(f"  -- Description : {field['desc']}\n")
-
-                if reg['hwtype'] == "ext":
-                    file.write(f"  {reg['name']}_{field['name']}_rdata <= hw2sw_i.{reg['name']}.{field['name']};\n")
-                    file.write(f"  sw2hw_o.{reg['name']}.{field['name']} <= {reg['name']}_wdata({field['msb']} downto {field['lsb']});\n")
-                    if reg['sw2hw_re']:
-                        file.write(f"  sw2hw_o.{reg['name']}.re <= {reg['name']}_re;\n")
-                    if reg['sw2hw_we']:
-                        file.write(f"  sw2hw_o.{reg['name']}.we <= {reg['name']}_we;\n")
-
 
             file.write(f"  ins_{reg['name']} : entity work.csr_{reg['hwtype']}(rtl)\n")
             file.write( "    generic map\n")
