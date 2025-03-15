@@ -44,7 +44,8 @@ class regtool(Generator):
         name          = self.config.get("name")
         script        = os.path.join(dir_script,"tools","regtool","regtool.py")
 
-        file_csr      = os.path.join(dir_script,"tools","regtool","hdl","csr_reg.vhd")
+        file_csr_reg  = os.path.join(dir_script,"tools","regtool","hdl","csr_reg.vhd")
+        file_csr_ext  = os.path.join(dir_script,"tools","regtool","hdl","csr_ext.vhd")
         file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
         file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
         file_h        = os.path.join(dir_work,name+'_csr.h')    
@@ -69,7 +70,8 @@ class regtool(Generator):
         print(f"[DEBUG  ] dir_copy           : {dir_copy}")
         print(f"[DEBUG  ] Script             : {script}")
         print(f"[DEBUG  ] File In            : {file_in}")
-        print(f"[DEBUG  ] file_csr           : {file_csr}")
+        print(f"[DEBUG  ] file_csr_reg       : {file_csr_reg}")
+        print(f"[DEBUG  ] file_csr_ext       : {file_csr_ext}")
         print(f"[DEBUG  ] file_vhdl_pkg      : {file_vhdl_pkg}")
         print(f"[DEBUG  ] file_vhdl_csr      : {file_vhdl_csr}")
         print(f"[DEBUG  ] file_h             : {file_h}")
@@ -94,11 +96,13 @@ class regtool(Generator):
         #-------------------------------------------------
         outfiles = []
         if (logical_name == None):
-            outfiles.append({file_csr      : {'file_type' : 'vhdlSource'}})
+            outfiles.append({file_csr_reg  : {'file_type' : 'vhdlSource'}})
+            outfiles.append({file_csr_ext  : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource'}})
         else:
-            outfiles.append({file_csr      : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({file_csr_reg  : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({file_csr_ext  : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             
@@ -109,7 +113,6 @@ class regtool(Generator):
 
         if copy != None:
             print(f"[INFO   ] Copy generated files in {dir_copy}")
-#           shutil.copy(file_csr     , dir_copy)
             shutil.copy(file_vhdl_pkg, dir_copy)
             shutil.copy(file_vhdl_csr, dir_copy)
             shutil.copy(file_h       , dir_copy)

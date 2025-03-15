@@ -20,9 +20,10 @@ CAPI=2:
 # 2025-02-05  1.4.0    mrosiere pbcc : use sdcc 3.1.0
 # 2025-02-20  2.0.0    mrosiere regtool
 # 2025-03-08  2.0.1    mrosiere regtool: don't force logical name if unset
+# 2025-03-15  2.1.0    mrosiere regtool: fix field management
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.0.1
+name       : asylum:utils:generators:2.1.0
 description: A collection of useful generators
 
 #=========================================
