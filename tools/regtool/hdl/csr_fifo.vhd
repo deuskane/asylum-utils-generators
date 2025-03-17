@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
--- Title      : csr_ext
+-- Title      : csr_fifo
 -- Project    : regtool
 -------------------------------------------------------------------------------
--- File       : csr_ext.vhd
+-- File       : csr_fifo.vhd
 -- Author     : Mathieu Rosiere
 -- Company    : 
 -- Created    : 2025-03-13
@@ -10,7 +10,7 @@
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
 -- Description:
---  Macro from https://opentitan.org/book/util/reggen/index.html
+--  Interface from csr to FIFO
 -------------------------------------------------------------------------------
 -- Copyright (c) 2017 
 -------------------------------------------------------------------------------
@@ -20,42 +20,49 @@
 -------------------------------------------------------------------------------
 
 library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+use     ieee.std_logic_1164.all;
+use     ieee.numeric_std.all;
 
-entity csr_ext is
+entity csr_fifo is
   
   generic (
-    WIDTH : positive := 1                                 -- Register Width
+    WIDTH : positive := 1
     ); 
 
   port (
     -- Clock & Reset
-    clk_i         : in  std_logic;                            -- Clock
-    arst_b_i      : in  std_logic;                            -- Asynchronous Reset active low
+    clk_i         : in  std_logic;                           -- Clock
+    arst_b_i      : in  std_logic;                           -- Asynchronous Reset active low
+
     -- Software Side
     sw_wd_i       : in  std_logic_vector(WIDTH-1 downto 0);  -- Software Side Write Data
     sw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Read  Data
     sw_we_i       : in  std_logic;                           -- Software Side Write Enable
     sw_re_i       : in  std_logic;                           -- Software Side Read  Enable
     sw_busy_o     : out std_logic;                           -- Software Side Busy
-    -- Hardware Side
-    hw_wd_i       : in  std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Write Data
-    hw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Read  Data
-    hw_we_i       : in  std_logic;                           -- Hardware Side Write Enable
-    hw_sw_re_o    : out std_logic;                           -- Hardware Side CSR was Read
-    hw_sw_we_o    : out std_logic                            -- Hardware Side CSR was Write
-);
-end entity csr_ext;
 
-architecture rtl of csr_ext is
+    -- Hardware Side
+    hw_tx_valid_i : in  std_logic;                           -- Hardware Side TX Valid
+    hw_tx_ready_o : out std_logic;                           -- Hardware Side TX Ready
+    hw_tx_data_i  : in  std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side TX Data
+
+    hw_rx_valid_o : out std_logic;                           -- Hardware Side RX Valid
+    hw_rx_ready_i : in  std_logic;                           -- Hardware Side RX Ready
+    hw_rx_data_o  : out std_logic_vector(WIDTH-1 downto 0)   -- Hardware Side RX Data
+);
+end entity csr_fifo;
+
+architecture rtl of csr_fifo is
   
 begin  -- architecture rtl
 
-  sw_busy_o  <= '0';
-  sw_rd_o    <= hw_wd_i;
-  hw_rd_o    <= sw_wd_i;
-  hw_sw_re_o <= sw_we_i; 
-  hw_sw_we_o <= sw_re_i;
-  
+  hw_rx_valid_o <= sw_we_i;
+  hw_rx_data_o  <= sw_wd_i;
+
+  -- Unblocking read and unmasked
+  hw_tx_ready_o <= sw_re_i;
+  sw_rd_o       <= hw_tx_data_i;
+
+  sw_busy_o     <= (sw_we_i and not hw_rx_ready_i);
+
 end architecture rtl;

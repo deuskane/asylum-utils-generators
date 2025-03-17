@@ -44,8 +44,9 @@ class regtool(Generator):
         name          = self.config.get("name")
         script        = os.path.join(dir_script,"tools","regtool","regtool.py")
 
-        file_csr_reg  = os.path.join(dir_script,"tools","regtool","hdl","csr_reg.vhd")
-        file_csr_ext  = os.path.join(dir_script,"tools","regtool","hdl","csr_ext.vhd")
+        files_hdl     = ["csr_reg.vhd","csr_ext.vhd","csr_fifo.vhd"]
+        dir_hdl       = os.path.join(dir_script,"tools","regtool","hdl",)
+
         file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
         file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
         file_h        = os.path.join(dir_work,name+'_csr.h')    
@@ -68,10 +69,9 @@ class regtool(Generator):
         print(f"[DEBUG  ] dir_work           : {dir_work}")  
         print(f"[DEBUG  ] dir_root           : {dir_root}")  
         print(f"[DEBUG  ] dir_copy           : {dir_copy}")
+        print(f"[DEBUG  ] dir_hdl            : {dir_hdl}")
         print(f"[DEBUG  ] Script             : {script}")
         print(f"[DEBUG  ] File In            : {file_in}")
-        print(f"[DEBUG  ] file_csr_reg       : {file_csr_reg}")
-        print(f"[DEBUG  ] file_csr_ext       : {file_csr_ext}")
         print(f"[DEBUG  ] file_vhdl_pkg      : {file_vhdl_pkg}")
         print(f"[DEBUG  ] file_vhdl_csr      : {file_vhdl_csr}")
         print(f"[DEBUG  ] file_h             : {file_h}")
@@ -96,13 +96,14 @@ class regtool(Generator):
         #-------------------------------------------------
         outfiles = []
         if (logical_name == None):
-            outfiles.append({file_csr_reg  : {'file_type' : 'vhdlSource'}})
-            outfiles.append({file_csr_ext  : {'file_type' : 'vhdlSource'}})
+            for f in files_hdl:
+                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
+
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource'}})
         else:
-            outfiles.append({file_csr_reg  : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
-            outfiles.append({file_csr_ext  : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            for f in files_hdl:
+                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             

@@ -34,20 +34,21 @@ entity csr_reg is
 
   port (
     -- Clock & Reset
-    clk_i     : in  std_logic;                           -- Clock
-    arst_b_i  : in  std_logic;                           -- Asynchronous Reset active low
+    clk_i         : in  std_logic;                            -- Clock
+    arst_b_i      : in  std_logic;                            -- Asynchronous Reset active low
     -- Software Side
-    sw_wd_i   : in  std_logic_vector(WIDTH-1 downto 0);  -- Software Side Write Data
-    sw_rd_o   : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Read  Data
-    sw_we_i   : in  std_logic;                           -- Software Side Write Enable
-    sw_re_i   : in  std_logic;                           -- Software Side Read Enable
+    sw_wd_i       : in  std_logic_vector(WIDTH-1 downto 0);  -- Software Side Write Data
+    sw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Read  Data
+    sw_we_i       : in  std_logic;                           -- Software Side Write Enable
+    sw_re_i       : in  std_logic;                           -- Software Side Read  Enable
+    sw_busy_o     : out std_logic;                           -- Software Side Busy
     -- Hardware Side
-    hw_wd_i   : in  std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Write Data
-    hw_rd_o   : out std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Read  Data
-    hw_we_i   : in  std_logic;                           -- Hardware Side Write Enable
-    hw_sw_re_o: out std_logic;                           -- Hardware Side CSR was Read
-    hw_sw_we_o: out std_logic                            -- Hardware Side CSR was Write
-);
+    hw_wd_i       : in  std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Write Data
+    hw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Read  Data
+    hw_we_i       : in  std_logic;                           -- Hardware Side Write Enable
+    hw_sw_re_o    : out std_logic;                           -- Hardware Side CSR was Read
+    hw_sw_we_o    : out std_logic                            -- Hardware Side CSR was Write
+    );
 end entity csr_reg;
 
 architecture rtl of csr_reg is
@@ -125,5 +126,6 @@ begin  -- architecture rtl
   hw_sw_we_o <= q_sw_re_r;
   hw_rd_o    <= q_r      ;
   sw_rd_o    <= q_r      ;
+  sw_busy_o  <= '0';
   
 end architecture rtl;
