@@ -20,14 +20,13 @@
 -------------------------------------------------------------------------------
 
 library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+use     ieee.std_logic_1164.all;
+use     ieee.numeric_std.all;
 
 entity csr_fifo is
   
   generic (
-    WIDTH : positive := 1;                                -- Register Width
-    DEPTH : positive := 0                                 -- Register Width
+    WIDTH : positive := 1
     ); 
 
   port (
@@ -40,7 +39,7 @@ entity csr_fifo is
     sw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Read  Data
     sw_we_i       : in  std_logic;                           -- Software Side Write Enable
     sw_re_i       : in  std_logic;                           -- Software Side Read  Enable
-    sw_busy_o     : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Busy
+    sw_busy_o     : out std_logic;                           -- Software Side Busy
 
     -- Hardware Side
     hw_tx_valid_i : in  std_logic;                           -- Hardware Side TX Valid

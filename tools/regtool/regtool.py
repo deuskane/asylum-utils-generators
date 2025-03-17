@@ -232,7 +232,7 @@ def parse_hjson(file_path):
             check_range    (csr,field,regmap)
             reg['width'] += field['width'];
         
-    csr['size_addr'] = int(math.ceil(math.log2(addr_max)))
+    csr['size_addr'] = int(math.ceil(math.log2(addr_max+1)))
     addrmap.display()
 
     return csr
@@ -433,7 +433,7 @@ def generate_vhdl_package(csr, output_path):
             
         # Generate global struct containing all registers
         file.write( "  ------------------------------------\n")
-        file.write( "  -- Structure {module}_t\n")
+        file.write(f"  -- Structure {module}_t\n")
         file.write( "  ------------------------------------\n")
         file.write(f"  type {module}_sw2hw_t is record\n")
         for reg in csr['registers']:
@@ -497,9 +497,6 @@ def generate_vhdl_module(csr, output_path):
 
         file.write(f"architecture rtl of {module}_registers is\n")
         file.write( "\n")
-        #file.write( "  constant SIZE_ADDR : integer := pbi_ini_i.addr'length;")
-        file.write(f"  constant SIZE_ADDR : integer := {csr['size_addr']};")
-        file.write( "\n")
 
         for reg in csr['registers']:
             file.write(f"  signal   {reg['name']}_wcs   : std_logic;\n");
@@ -526,19 +523,17 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
             if reg['sw2hw_re']:
-                file.write(f"  {reg['name']}_rcs     <= '1' when     (addr_i = std_logic_vector(to_unsigned({reg['address']},SIZE_ADDR))) else '0';\n")
+                file.write(f"  {reg['name']}_rcs     <= '1' when     (addr_i = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
                 file.write(f"  {reg['name']}_re      <= cs_i and {reg['name']}_rcs and re_i;\n")
                 file.write(f"  {reg['name']}_rdata   <= (\n");
                 for field in reg['fields']:
                     for i in range(field['msb'], field['lsb']-1, -1):
                         file.write(f"    {i} => {reg['name']}_{field['name']}_rdata({i}),\n")
                 file.write(f"    others => '0') when {reg['name']}_rcs = '1' else (others => '0');\n")
-                file.write(f"  {reg['name']}_rbusy   <= '0';\n");
             else:
                 file.write(f"  {reg['name']}_rcs     <= '0';\n")
                 file.write(f"  {reg['name']}_re      <= '0';\n")
                 file.write(f"  {reg['name']}_rdata   <= (others=>'0');\n");
-                file.write(f"  {reg['name']}_rbusy   <= '0';\n");
 
             file.write( "\n")
 
@@ -546,7 +541,7 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"  {reg['name']}_wcs     <= '1' when ")
                 prefix="    "
                 for waddr in reg['address_write']:
-                    file.write(f"{prefix}(addr_i = std_logic_vector(to_unsigned({waddr},SIZE_ADDR)))")
+                    file.write(f"{prefix}(addr_i = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
                     prefix=" or "
                 
                 file.write(f" else '0';\n")
@@ -593,6 +588,7 @@ def generate_vhdl_module(csr, output_path):
                 first = False;
             file.write(f"      ,sw_we_i       => {reg['name']}_we\n")
             file.write(f"      ,sw_re_i       => {reg['name']}_re\n")
+            file.write(f"      ,sw_busy_o     => {reg['name']}_rbusy\n")
 
             if reg['hwtype'] in ['reg','ext']:
                 if reg['hw2sw_data']:
