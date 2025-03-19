@@ -1,0 +1,14 @@
+tools/install*
+tools/install*
+tools/*/build
+tools/*/build.sdcc
+tools/*/__pycache__/
+
+tools/utia-pblaze-cc-2.1.0/
+tools/pbccv3-master/
+tools/sdcc-3.0.0/
+tools/sdcc-3.3.0/
+tools/sdcc-3.9.0/
+tools/sdcc-4.5.0/
+tools/sdcc-orig/
+
