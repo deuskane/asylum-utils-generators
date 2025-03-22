@@ -21,9 +21,10 @@ CAPI=2:
 # 2025-02-20  2.0.0    mrosiere regtool
 # 2025-03-08  2.0.1    mrosiere regtool: don't force logical name if unset
 # 2025-03-15  2.1.0    mrosiere regtool: fix field management
+# 2025-03-22  2.2.0    mrosiere regtool: Select interface between reg or pbi
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.1.0
+name       : asylum:utils:generators:2.2.0
 description: A collection of useful generators
 
 #=========================================
