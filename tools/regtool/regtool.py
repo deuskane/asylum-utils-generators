@@ -584,7 +584,7 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
             if reg['sw2hw_re']:
-                file.write(f"  {reg['name']}_rcs     <= '1' when     ({sig_raddr} = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
+                file.write(f"  {reg['name']}_rcs     <= '1' when     ({sig_raddr}({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
                 file.write(f"  {reg['name']}_re      <= {sig_rcs} and {reg['name']}_rcs and {sig_re};\n")
                 file.write(f"  {reg['name']}_rdata   <= (\n");
                 for field in reg['fields']:
@@ -602,7 +602,7 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"  {reg['name']}_wcs     <= '1' when ")
                 prefix="    "
                 for waddr in reg['address_write']:
-                    file.write(f"{prefix}({sig_waddr} = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
+                    file.write(f"{prefix}({sig_waddr}({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
                     prefix=" or "
                 
                 file.write(f" else '0';\n")
@@ -742,6 +742,20 @@ def generate_vhdl_module(csr, output_path):
             
             first = False;
         file.write( ";\n")
+
+        file.write( "\n")
+        file.write( "-- pragma translate_off\n")
+        file.write( "\n")
+#       file.write( "  process is\n")
+#       file.write( "  begin  -- process\n")
+#       file.write( "\n")
+#       file.write( "\n")
+#       file.write( "    wait;\n")
+#       file.write( "  end process;\n")
+        file.write( "\n")
+        file.write( "-- pragma translate_on  \n")
+        file.write( "\n")
+        
         file.write( "end architecture rtl;\n")
 
 #--------------------------------------------
