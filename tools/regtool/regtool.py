@@ -558,7 +558,17 @@ def generate_vhdl_module(csr, output_path):
 
         file.write(f"architecture rtl of {module}_registers is\n")
         file.write( "\n")
-
+        file.write( "  signal   sig_wcs   : std_logic;\n")
+        file.write( "  signal   sig_we    : std_logic;\n")
+        file.write(f"  signal   sig_waddr : std_logic_vector({sig_waddr}'length-1 downto 0);\n")
+        file.write(f"  signal   sig_wdata : std_logic_vector({sig_wdata}'length-1 downto 0);\n")
+        file.write( "\n")
+        file.write( "  signal   sig_rcs   : std_logic;\n")
+        file.write( "  signal   sig_re    : std_logic;\n")
+        file.write(f"  signal   sig_raddr : std_logic_vector({sig_raddr}'length-1 downto 0);\n")
+        file.write(f"  signal   sig_rdata : std_logic_vector({sig_rdata}'length-1 downto 0);\n")
+        file.write( "  signal   sig_rbusy : std_logic;\n")
+        file.write( "\n")
         for reg in csr['registers']:
             file.write(f"  signal   {reg['name']}_wcs   : std_logic;\n");
             file.write(f"  signal   {reg['name']}_rcs   : std_logic;\n");
@@ -573,6 +583,20 @@ def generate_vhdl_module(csr, output_path):
 
         file.write( "begin  -- architecture rtl\n")
         file.write( "\n")
+
+        file.write( "  -- Interface \n")
+        file.write(f"  sig_wcs   <= {sig_wcs};\n")
+        file.write(f"  sig_we    <= {sig_we};\n")
+        file.write(f"  sig_waddr <= {sig_waddr};\n")
+        file.write(f"  sig_wdata <= {sig_wdata};\n")
+        file.write( "\n")
+        file.write(f"  sig_rcs   <= {sig_rcs};\n")
+        file.write(f"  sig_re    <= {sig_re};\n")
+        file.write(f"  sig_raddr <= {sig_raddr};\n")
+        file.write(f"  {sig_rdata} <= sig_rdata;\n")
+        file.write(f"  {sig_rbusy} <= sig_rbusy;\n")
+        file.write( "\n")
+
         for reg in csr['registers']:
 
             print_vhdl_header_reg(reg,file)
@@ -584,8 +608,8 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
             if reg['sw2hw_re']:
-                file.write(f"  {reg['name']}_rcs     <= '1' when     ({sig_raddr}({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
-                file.write(f"  {reg['name']}_re      <= {sig_rcs} and {reg['name']}_rcs and {sig_re};\n")
+                file.write(f"  {reg['name']}_rcs     <= '1' when     (sig_raddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
+                file.write(f"  {reg['name']}_re      <= sig_rcs and {reg['name']}_rcs and sig_re;\n")
                 file.write(f"  {reg['name']}_rdata   <= (\n");
                 for field in reg['fields']:
                     for i in range(field['msb'], field['lsb']-1, -1):
@@ -602,12 +626,12 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"  {reg['name']}_wcs     <= '1' when ")
                 prefix="    "
                 for waddr in reg['address_write']:
-                    file.write(f"{prefix}({sig_waddr}({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
+                    file.write(f"{prefix}(sig_waddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
                     prefix=" or "
                 
                 file.write(f" else '0';\n")
-                file.write(f"  {reg['name']}_we      <= {sig_wcs} and {reg['name']}_wcs and {sig_we};\n")
-                file.write(f"  {reg['name']}_wdata   <= {sig_wdata};\n")
+                file.write(f"  {reg['name']}_we      <= sig_wcs and {reg['name']}_wcs and sig_we;\n")
+                file.write(f"  {reg['name']}_wdata   <= sig_wdata;\n")
             else:
                 file.write(f"  {reg['name']}_wcs     <= '0';\n") 
                 file.write(f"  {reg['name']}_we      <= '0';\n")
@@ -725,7 +749,7 @@ def generate_vhdl_module(csr, output_path):
             file.write( "      );\n")
             file.write( "\n")
 
-        file.write(f"  {sig_rbusy}  <= \n");
+        file.write(f"  sig_rbusy  <= \n");
         first = True
         for reg in csr['registers']:
             if not first :
@@ -733,7 +757,7 @@ def generate_vhdl_module(csr, output_path):
             file.write(f"    {reg['name']}_rbusy");
             first = False;
         file.write( ";\n")
-        file.write(f"  {sig_rdata} <= \n");
+        file.write(f"  sig_rdata <= \n");
         first = True
         for reg in csr['registers']:
             if not first :
@@ -743,18 +767,21 @@ def generate_vhdl_module(csr, output_path):
             first = False;
         file.write( ";\n")
 
-        file.write( "\n")
-        file.write( "-- pragma translate_off\n")
-        file.write( "\n")
-#       file.write( "  process is\n")
-#       file.write( "  begin  -- process\n")
-#       file.write( "\n")
-#       file.write( "\n")
-#       file.write( "    wait;\n")
-#       file.write( "  end process;\n")
-        file.write( "\n")
-        file.write( "-- pragma translate_on  \n")
-        file.write( "\n")
+#        file.write( "\n")
+#        file.write( "-- pragma translate_off\n")
+#        file.write( "\n")
+#        file.write( "  process is\n")
+#        file.write( "  begin  -- process\n")
+#        file.write( "\n")
+#        file.write(f"    report \"Address Size : \"&integer'image(sig_raddr'length) severity note;\n");  
+#        file.write(f"    report \"Data    Size : \"&integer'image(sig_raddr'length) severity note;\n");  
+#
+#        file.write( "\n")
+#        file.write( "    wait;\n")
+#        file.write( "  end process;\n")
+#        file.write( "\n")
+#        file.write( "-- pragma translate_on  \n")
+#        file.write( "\n")
         
         file.write( "end architecture rtl;\n")
 
