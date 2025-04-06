@@ -570,13 +570,14 @@ def generate_vhdl_module(csr, output_path):
         file.write( "  signal   sig_rbusy : std_logic;\n")
         file.write( "\n")
         for reg in csr['registers']:
-            file.write(f"  signal   {reg['name']}_wcs   : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_rcs   : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_we    : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_re    : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_rdata : std_logic_vector({csr['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_wdata : std_logic_vector({csr['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_rbusy : std_logic;\n");
+            file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
+            file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
+            file.write(f"  signal   {reg['name']}_wdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
+                                                            
+            file.write(f"  signal   {reg['name']}_rcs       : std_logic;\n");
+            file.write(f"  signal   {reg['name']}_re        : std_logic;\n");
+            file.write(f"  signal   {reg['name']}_rdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
+            file.write(f"  signal   {reg['name']}_rbusy     : std_logic;\n");
             for field in reg['fields']:
                 file.write(f"  signal   {reg['name']}_{field['name']}_rdata : std_logic_vector({field['msb']} downto {field['lsb']});\n");
             file.write( "\n")
@@ -614,10 +615,12 @@ def generate_vhdl_module(csr, output_path):
                 for field in reg['fields']:
                     for i in range(field['msb'], field['lsb']-1, -1):
                         file.write(f"    {i} => {reg['name']}_{field['name']}_rdata({i}),\n")
-                file.write(f"    others => '0') when {reg['name']}_rcs = '1' else (others => '0');\n")
+                file.write(f"    others => '0');\n")
+
             else:
                 file.write(f"  {reg['name']}_rcs     <= '0';\n")
                 file.write(f"  {reg['name']}_re      <= '0';\n")
+                file.write(f"  {reg['name']}_rbusy   <= '0';\n")
                 file.write(f"  {reg['name']}_rdata   <= (others=>'0');\n");
 
             file.write( "\n")
@@ -749,23 +752,34 @@ def generate_vhdl_module(csr, output_path):
             file.write( "      );\n")
             file.write( "\n")
 
-        file.write(f"  sig_rbusy  <= \n");
-        first = True
+#       file.write(f"  sig_rbusy  <= \n");
+#       first = True
+#       for reg in csr['registers']:
+#           if not first :
+#               file.write( " or\n")
+#           file.write(f"    {reg['name']}_rbusy");
+#           first = False;
+#       file.write( ";\n")
+#
+#       file.write(f"  sig_rdata <= \n");
+#       first = True
+#       for reg in csr['registers']:
+#           if not first :
+#               file.write( " or\n")
+#           file.write(f"    {reg['name']}_rdata");
+#           
+#           first = False;
+#       file.write( ";\n")
+
+        file.write(f"  sig_rbusy <= \n");
         for reg in csr['registers']:
-            if not first :
-                file.write( " or\n")
-            file.write(f"    {reg['name']}_rbusy");
-            first = False;
-        file.write( ";\n")
+            file.write(f"    {reg['name']}_rbusy when {reg['name']}_rcs = '1' else\n");
+        file.write(f"    '0'; -- Bad Address, no busy\n")
+
         file.write(f"  sig_rdata <= \n");
-        first = True
         for reg in csr['registers']:
-            if not first :
-                file.write( " or\n")
-            file.write(f"    {reg['name']}_rdata");
-            
-            first = False;
-        file.write( ";\n")
+            file.write(f"    {reg['name']}_rdata when {reg['name']}_rcs = '1' else\n");
+        file.write(f"    (others => '0'); -- Bad Address, return 0\n")
 
 #        file.write( "\n")
 #        file.write( "-- pragma translate_off\n")
