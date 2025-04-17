@@ -23,9 +23,10 @@ CAPI=2:
 # 2025-03-15  2.1.0    mrosiere regtool: fix field management
 # 2025-03-22  2.2.0    mrosiere regtool: Select interface between reg or pbi
 # 2025-04-02  2.2.1    mrosiere regtool: Select range
+# 2025-04-17  2.2.2    mrosiere regtool: Header C copy into workdir
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.2.1
+name       : asylum:utils:generators:2.2.2
 description: A collection of useful generators
 
 #=========================================

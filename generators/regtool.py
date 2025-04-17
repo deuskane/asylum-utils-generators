@@ -106,6 +106,8 @@ class regtool(Generator):
                 outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+
+        outfiles.append({file_h : {'file_type' : 'user', 'copyto' : os.path.basename(file_h)}})
             
         if outfiles:
             self.add_files(outfiles)
