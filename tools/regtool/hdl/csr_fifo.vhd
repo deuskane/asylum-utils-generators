@@ -26,7 +26,9 @@ use     ieee.numeric_std.all;
 entity csr_fifo is
   
   generic (
-    WIDTH : positive := 1
+    WIDTH          : positive := 1;
+    BLOCKING_READ  : boolean  := false;
+    BLOCKING_WRITE : boolean  := true
     ); 
 
   port (
@@ -39,7 +41,8 @@ entity csr_fifo is
     sw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Read  Data
     sw_we_i       : in  std_logic;                           -- Software Side Write Enable
     sw_re_i       : in  std_logic;                           -- Software Side Read  Enable
-    sw_busy_o     : out std_logic;                           -- Software Side Busy
+    sw_rbusy_o    : out std_logic;                           -- Software Side Read  Busy
+    sw_wbusy_o    : out std_logic;                           -- Software Side Write Busy
 
     -- Hardware Side
     hw_tx_valid_i : in  std_logic;                           -- Hardware Side TX Valid
@@ -63,6 +66,25 @@ begin  -- architecture rtl
   hw_tx_ready_o <= sw_re_i;
   sw_rd_o       <= hw_tx_data_i;
 
-  sw_busy_o     <= (sw_we_i and not hw_rx_ready_i);
+  gen_blocking_write  : if BLOCKING_WRITE = true
+  generate
+    sw_wbusy_o    <= (sw_we_i and not hw_rx_ready_i);
+  end generate gen_blocking_write;
+
+  gen_blocking_write_b: if BLOCKING_WRITE = false
+  generate
+    sw_wbusy_o    <= '0';
+  end generate gen_blocking_write_b;
+
+  gen_blocking_read  : if BLOCKING_READ = true
+  generate
+    sw_rbusy_o    <= (sw_re_i and not hw_tx_valid_i);
+  end generate gen_blocking_read;
+
+  gen_blocking_read_b: if BLOCKING_READ = false
+  generate
+    sw_rbusy_o    <= '0';
+  end generate gen_blocking_read_b;
+  
 
 end architecture rtl;

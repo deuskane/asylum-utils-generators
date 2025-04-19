@@ -21,6 +21,8 @@ def check_key(d, key, mandatory=True, default_value=None ):
     :param mandatory: Boolean indicating if the key is mandatory.
     :param default_value: The default value to add if the key is not present.
     :return: The updated dictionary.
+    :raises KeyError: Rise error if mandatory is true and key in not in dictionary
+
     """
 
     if key not in d:
@@ -37,7 +39,7 @@ def check_reg_width(csr):
     Checks if a number is a power of 2 and at least 8.
     Returns the number of byte of the number if true, otherwise raises an exception.
 
-    :param n: The number to check.
+    :param csr: Dictionary of csr
     :return: The log2 of the number if it is a power of 2 and at least 8.
     :raises ValueError: If the number is not a power of 2 or is less than 8.
     """
@@ -511,7 +513,8 @@ def generate_vhdl_module(csr, output_path):
         sig_re    = ""
         sig_raddr = ""
         sig_rdata = ""
-        sig_rbusy = ""
+
+        sig_busy  = ""
         
         if csr["interface"] == "reg":
             
@@ -532,7 +535,8 @@ def generate_vhdl_module(csr, output_path):
             sig_re    = "re_i"
             sig_raddr = "addr_i"
             sig_rdata = "rdata_o"
-            sig_rbusy = "busy_o"
+
+            sig_busy  = "busy_o"
 
         if csr["interface"] == "pbi":
             
@@ -548,7 +552,8 @@ def generate_vhdl_module(csr, output_path):
             sig_re    = "pbi_ini_i.re"
             sig_raddr = "pbi_ini_i.addr"
             sig_rdata = "pbi_tgt_o.rdata"
-            sig_rbusy = "pbi_tgt_o.busy"
+
+            sig_busy  = "pbi_tgt_o.busy"
 
         file.write( "    -- CSR\n")
         file.write(f"    sw2hw_o    : out {module}_sw2hw_t;\n")
@@ -562,6 +567,7 @@ def generate_vhdl_module(csr, output_path):
         file.write( "  signal   sig_we    : std_logic;\n")
         file.write(f"  signal   sig_waddr : std_logic_vector({sig_waddr}'length-1 downto 0);\n")
         file.write(f"  signal   sig_wdata : std_logic_vector({sig_wdata}'length-1 downto 0);\n")
+        file.write( "  signal   sig_wbusy : std_logic;\n")
         file.write( "\n")
         file.write( "  signal   sig_rcs   : std_logic;\n")
         file.write( "  signal   sig_re    : std_logic;\n")
@@ -573,6 +579,7 @@ def generate_vhdl_module(csr, output_path):
             file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
             file.write(f"  signal   {reg['name']}_wdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
+            file.write(f"  signal   {reg['name']}_wbusy     : std_logic;\n");
                                                             
             file.write(f"  signal   {reg['name']}_rcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_re        : std_logic;\n");
@@ -595,7 +602,7 @@ def generate_vhdl_module(csr, output_path):
         file.write(f"  sig_re    <= {sig_re};\n")
         file.write(f"  sig_raddr <= {sig_raddr};\n")
         file.write(f"  {sig_rdata} <= sig_rdata;\n")
-        file.write(f"  {sig_rbusy} <= sig_rbusy;\n")
+        file.write(f"  {sig_busy} <= sig_wbusy or sig_rbusy;\n")
         file.write( "\n")
 
         for reg in csr['registers']:
@@ -610,7 +617,7 @@ def generate_vhdl_module(csr, output_path):
             file.write( "\n")
             if reg['sw2hw_re']:
                 file.write(f"  {reg['name']}_rcs     <= '1' when     (sig_raddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
-                file.write(f"  {reg['name']}_re      <= sig_rcs and {reg['name']}_rcs and sig_re;\n")
+                file.write(f"  {reg['name']}_re      <= sig_rcs and sig_re and {reg['name']}_rcs;\n")
                 file.write(f"  {reg['name']}_rdata   <= (\n");
                 for field in reg['fields']:
                     for i in range(field['msb'], field['lsb']-1, -1):
@@ -633,11 +640,12 @@ def generate_vhdl_module(csr, output_path):
                     prefix=" or "
                 
                 file.write(f" else '0';\n")
-                file.write(f"  {reg['name']}_we      <= sig_wcs and {reg['name']}_wcs and sig_we;\n")
+                file.write(f"  {reg['name']}_we      <= sig_wcs and sig_we and {reg['name']}_wcs;\n")
                 file.write(f"  {reg['name']}_wdata   <= sig_wdata;\n")
             else:
                 file.write(f"  {reg['name']}_wcs     <= '0';\n") 
                 file.write(f"  {reg['name']}_we      <= '0';\n")
+                file.write(f"  {reg['name']}_wbusy   <= '0';\n")
                 file.write(f"  {reg['name']}_wdata   <= (others=>'0');\n")
 
             file.write( "\n")
@@ -676,7 +684,8 @@ def generate_vhdl_module(csr, output_path):
                 first = False;
             file.write(f"      ,sw_we_i       => {reg['name']}_we\n")
             file.write(f"      ,sw_re_i       => {reg['name']}_re\n")
-            file.write(f"      ,sw_busy_o     => {reg['name']}_rbusy\n")
+            file.write(f"      ,sw_rbusy_o    => {reg['name']}_rbusy\n")
+            file.write(f"      ,sw_wbusy_o    => {reg['name']}_wbusy\n")
 
             if reg['hwtype'] in ['reg','ext']:
                 if reg['hw2sw_data']:
@@ -752,7 +761,7 @@ def generate_vhdl_module(csr, output_path):
             file.write( "      );\n")
             file.write( "\n")
 
-#       file.write(f"  sig_rbusy  <= \n");
+#       file.write(f"  sig_busy   <= \n");
 #       first = True
 #       for reg in csr['registers']:
 #           if not first :
@@ -770,6 +779,11 @@ def generate_vhdl_module(csr, output_path):
 #           
 #           first = False;
 #       file.write( ";\n")
+
+        file.write(f"  sig_wbusy <= \n");
+        for reg in csr['registers']:
+            file.write(f"    {reg['name']}_wbusy when {reg['name']}_wcs = '1' else\n");
+        file.write(f"    '0'; -- Bad Address, no busy\n")
 
         file.write(f"  sig_rbusy <= \n");
         for reg in csr['registers']:
