@@ -575,6 +575,8 @@ def generate_vhdl_module(csr, output_path):
         file.write(f"  signal   sig_rdata : std_logic_vector({sig_rdata}'length-1 downto 0);\n")
         file.write( "  signal   sig_rbusy : std_logic;\n")
         file.write( "\n")
+        file.write( "  signal   sig_busy  : std_logic;\n")
+        file.write( "\n")
         for reg in csr['registers']:
             file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
@@ -602,7 +604,11 @@ def generate_vhdl_module(csr, output_path):
         file.write(f"  sig_re    <= {sig_re};\n")
         file.write(f"  sig_raddr <= {sig_raddr};\n")
         file.write(f"  {sig_rdata} <= sig_rdata;\n")
-        file.write(f"  {sig_busy} <= sig_wbusy or sig_rbusy;\n")
+        file.write(f"  {sig_busy} <= sig_busy;\n")
+        file.write( "\n")
+        file.write(f"  sig_busy  <= sig_wbusy when sig_we = '1' else\n")
+        file.write(f"               sig_rbusy when sig_re = '1' else\n")
+        file.write(f"               '0';\n")
         file.write( "\n")
 
         for reg in csr['registers']:
