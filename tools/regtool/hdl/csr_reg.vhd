@@ -41,7 +41,8 @@ entity csr_reg is
     sw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Software Side Read  Data
     sw_we_i       : in  std_logic;                           -- Software Side Write Enable
     sw_re_i       : in  std_logic;                           -- Software Side Read  Enable
-    sw_busy_o     : out std_logic;                           -- Software Side Busy
+    sw_rbusy_o    : out std_logic;                           -- Software Side Read  Busy
+    sw_wbusy_o    : out std_logic;                           -- Software Side Write Busy
     -- Hardware Side
     hw_wd_i       : in  std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Write Data
     hw_rd_o       : out std_logic_vector(WIDTH-1 downto 0);  -- Hardware Side Read  Data
@@ -126,6 +127,7 @@ begin  -- architecture rtl
   hw_sw_we_o <= q_sw_re_r;
   hw_rd_o    <= q_r      ;
   sw_rd_o    <= q_r      ;
-  sw_busy_o  <= '0';
+  sw_rbusy_o <= '0';
+  sw_wbusy_o <= '0';
   
 end architecture rtl;
