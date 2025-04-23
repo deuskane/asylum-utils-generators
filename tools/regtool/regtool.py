@@ -375,6 +375,40 @@ def generate_c_header(csr, output_path):
 
 #--------------------------------------------
 #--------------------------------------------
+def generate_doc_markdown(csr, output_path):
+    module = csr['name']
+
+    regmap = {}
+        
+    # Define structs for each register
+    for reg in csr['registers']:
+        regmap[reg['address']] = reg['name'];
+
+    
+    with open(output_path, 'w') as file:
+        file.write(f"# {csr['name']}\n")
+        file.write(f"{csr['desc']}\n")
+        file.write( "\n")
+        file.write( "| Address | Registers |\n")
+        file.write( "|---------|-----------|\n")
+        for addr in sorted(regmap.keys()):
+            file.write(f"|0x{addr:X}|{regmap[addr]}|\n")
+        file.write( "\n")
+        
+        # Define structs for each register
+        for reg in csr['registers']:
+            
+            file.write(f"## 0x{reg['address']:X} {reg['name']}\n")
+            file.write(f"{reg['desc']}\n")
+            file.write( "\n")
+
+            for field in reg['fields']:
+                file.write(f"### [{field['msb']}:{field['lsb']}] {field['name']}\n")
+                file.write(f"{field['desc']}\n")
+                file.write( "\n")
+        
+#--------------------------------------------
+#--------------------------------------------
 def print_vhdl_header_csr(csr,file):
     file.write( "--==================================\n")
     file.write(f"-- Module      : {csr['name']}\n")
@@ -820,6 +854,7 @@ def main():
     parser.add_argument('--vhdl_package', type=str,  help='Path to the VHDL package output file')
     parser.add_argument('--vhdl_module' , type=str,  help='Path to the VHDL module output file')
     parser.add_argument('--c_header'    , type=str,  help='Path to the C header output file')
+    parser.add_argument('--doc_markdown', type=str,  help='Path to the Markdown Documentation output file')
     parser.add_argument('--logical_name', type=str,  help='Library', default='work')
     
     args         = parser.parse_args()
@@ -832,13 +867,16 @@ def main():
     vhdl_package = args.vhdl_package or f"{csr['name']}_csr_pkg.vhd"
     vhdl_module  = args.vhdl_module  or f"{csr['name']}_csr.vhd"
     c_header     = args.c_header     or f"{csr['name']}_csr.h"
+    doc_markdown = args.doc_markdown or f"{csr['name']}_csr.md"
     
     generate_vhdl_package (csr, vhdl_package)
     generate_vhdl_module  (csr, vhdl_module)
     generate_c_header     (csr, c_header)
-    print(f"VHDL package generated in {vhdl_package}")
-    print(f"VHDL module  generated in {vhdl_module}")
-    print(f"C    header  generated in {c_header}")
+    generate_doc_markdown (csr, doc_markdown)
+    print(f"VHDL package  generated in {vhdl_package}")
+    print(f"VHDL module   generated in {vhdl_module}")
+    print(f"C    header   generated in {c_header}")
+    print(f"Doc  markdown generated in {doc_markdown}")
 
 if __name__ == "__main__":
     main()
