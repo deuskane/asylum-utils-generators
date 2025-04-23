@@ -128,15 +128,15 @@ def check_access(reg):
         reg['sw2hw_we'] = False
 
     if reg['hwtype'] in ['fifo']:
-    	reg['sw2hw_name_re']    = "ready"
-    	reg['sw2hw_name_we']    = "valid"
-    	reg['hw2sw_name_re']    = "ready"
-    	reg['hw2sw_name_we']    = "valid"
+        reg['sw2hw_name_re']    = "ready"
+        reg['sw2hw_name_we']    = "valid"
+        reg['hw2sw_name_re']    = "ready"
+        reg['hw2sw_name_we']    = "valid"
     else:
-    	reg['sw2hw_name_re']    = "re"
-    	reg['sw2hw_name_we']    = "we"
-    	reg['hw2sw_name_re']    = "re"
-    	reg['hw2sw_name_we']    = "we"
+        reg['sw2hw_name_re']    = "re"
+        reg['sw2hw_name_we']    = "we"
+        reg['hw2sw_name_re']    = "re"
+        reg['hw2sw_name_we']    = "we"
 
 #--------------------------------------------
 #--------------------------------------------
@@ -515,7 +515,8 @@ def generate_vhdl_module(csr, output_path):
         sig_rdata = ""
 
         sig_busy  = ""
-        
+
+        # Generate Port for interface "reg"
         if csr["interface"] == "reg":
             
             file.write(f"    cs_i       : in    std_logic;\n")
@@ -538,6 +539,7 @@ def generate_vhdl_module(csr, output_path):
 
             sig_busy  = "busy_o"
 
+        # Generate Port for interface "pbi"
         if csr["interface"] == "pbi":
             
             file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
@@ -561,8 +563,11 @@ def generate_vhdl_module(csr, output_path):
         file.write( "  );\n")
         file.write(f"end entity {module}_registers;\n\n")
 
+        # Architecture
         file.write(f"architecture rtl of {module}_registers is\n")
         file.write( "\n")
+
+        # Declare tmp signal (easier for debug)
         file.write( "  signal   sig_wcs   : std_logic;\n")
         file.write( "  signal   sig_we    : std_logic;\n")
         file.write(f"  signal   sig_waddr : std_logic_vector({sig_waddr}'length-1 downto 0);\n")
@@ -577,6 +582,8 @@ def generate_vhdl_module(csr, output_path):
         file.write( "\n")
         file.write( "  signal   sig_busy  : std_logic;\n")
         file.write( "\n")
+        
+        # Declare register and field signals
         for reg in csr['registers']:
             file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
@@ -670,6 +677,11 @@ def generate_vhdl_module(csr, output_path):
                     file.write(f"\"{parse_init_value(field['init'],field['width'])}\"\n")
                     first = False;
                 file.write(f"      ,MODEL         => \"{reg['swaccess']}\"\n")
+            if reg['hwtype'] in ['fifo']:
+                params=reg['params']
+                for param in reg['params']:
+                    file.write(f"      ,{param} => {params[param]}\n")
+                
             file.write( "      )\n")
             file.write( "    port map\n")
             file.write( "      (clk_i         => clk_i\n")
@@ -766,25 +778,6 @@ def generate_vhdl_module(csr, output_path):
                     file.write(f"      ,hw_rx_data_o  => open\n")
             file.write( "      );\n")
             file.write( "\n")
-
-#       file.write(f"  sig_busy   <= \n");
-#       first = True
-#       for reg in csr['registers']:
-#           if not first :
-#               file.write( " or\n")
-#           file.write(f"    {reg['name']}_rbusy");
-#           first = False;
-#       file.write( ";\n")
-#
-#       file.write(f"  sig_rdata <= \n");
-#       first = True
-#       for reg in csr['registers']:
-#           if not first :
-#               file.write( " or\n")
-#           file.write(f"    {reg['name']}_rdata");
-#           
-#           first = False;
-#       file.write( ";\n")
 
         file.write(f"  sig_wbusy <= \n");
         for reg in csr['registers']:
