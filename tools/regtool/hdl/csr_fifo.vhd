@@ -17,6 +17,7 @@
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2025-03-13  1.0      mrosiere Created
+-- 2025-04-19  1.1      mrosiere Add Blocking Write / Read
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -62,13 +63,13 @@ begin  -- architecture rtl
   hw_rx_valid_o <= sw_we_i;
   hw_rx_data_o  <= sw_wd_i;
 
-  -- Unblocking read and unmasked
+  -- Unmasked Read
   hw_tx_ready_o <= sw_re_i;
   sw_rd_o       <= hw_tx_data_i;
 
   gen_blocking_write  : if BLOCKING_WRITE = true
   generate
-    sw_wbusy_o    <= (sw_we_i and not hw_rx_ready_i);
+    sw_wbusy_o    <= not hw_rx_ready_i;
   end generate gen_blocking_write;
 
   gen_blocking_write_b: if BLOCKING_WRITE = false
@@ -78,7 +79,7 @@ begin  -- architecture rtl
 
   gen_blocking_read  : if BLOCKING_READ = true
   generate
-    sw_rbusy_o    <= (sw_re_i and not hw_tx_valid_i);
+    sw_rbusy_o    <= not hw_tx_valid_i;
   end generate gen_blocking_read;
 
   gen_blocking_read_b: if BLOCKING_READ = false
@@ -86,5 +87,4 @@ begin  -- architecture rtl
     sw_rbusy_o    <= '0';
   end generate gen_blocking_read_b;
   
-
 end architecture rtl;
