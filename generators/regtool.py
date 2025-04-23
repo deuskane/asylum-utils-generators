@@ -50,6 +50,7 @@ class regtool(Generator):
         file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
         file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
         file_h        = os.path.join(dir_work,name+'_csr.h')    
+        file_md       = os.path.join(dir_work,name+'_csr.md')    
         copy          = self.config.get("copy",None)
         logical_name  = self.config.get("logical_name",None)
 
@@ -75,11 +76,12 @@ class regtool(Generator):
         print(f"[DEBUG  ] file_vhdl_pkg      : {file_vhdl_pkg}")
         print(f"[DEBUG  ] file_vhdl_csr      : {file_vhdl_csr}")
         print(f"[DEBUG  ] file_h             : {file_h}")
+        print(f"[DEBUG  ] file_md            : {file_md}")
         print(f"[DEBUG  ] Copy               : {copy}")
         print(f"[DEBUG  ] logical_name       : {logical_name}")
 
         
-        args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h]
+        args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h,"--doc_markdown",file_md]
         
         if (logical_name == None):
             args.extend(["--logical_name",'work'])
@@ -119,6 +121,7 @@ class regtool(Generator):
             shutil.copy(file_vhdl_pkg, dir_copy)
             shutil.copy(file_vhdl_csr, dir_copy)
             shutil.copy(file_h       , dir_copy)
+            shutil.copy(file_md      , dir_copy)
         
         print("[INFO   ]-------------------------------------------")
         print("[INFO   ] End Generator regtool")
