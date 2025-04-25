@@ -682,9 +682,11 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"  {reg['name']}_rdata   <= (\n");
                 x=0
                 for field in reg['fields']:
+                    y=0
                     for i in range(field['lsb'], field['msb']+1):
-                        file.write(f"    {i} => {reg['name']}_rdata_sw({x}),\n")
+                        file.write(f"    {i} => {reg['name']}_rdata_sw({x}), -- {field['name']}({y})\n")
                         x=x+1
+                        y=y+1
                 file.write(f"    others => '0');\n")
 
             else:
@@ -713,7 +715,7 @@ def generate_vhdl_module(csr, output_path):
                 lsb=0
                 for field in reg['fields']:
                     msb=lsb+field['width']-1
-                    file.write(f"  {reg['name']}_wdata_sw({msb} downto {lsb}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']});\n")
+                    file.write(f"  {reg['name']}_wdata_sw({msb} downto {lsb}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']}); -- {field['name']}\n")
                     lsb=msb+1
 
             else:
@@ -727,14 +729,14 @@ def generate_vhdl_module(csr, output_path):
                 lsb=0
                 for field in reg['fields']:
                     msb=lsb+field['width']-1
-                    file.write(f"  {reg['name']}_wdata_hw({msb} downto {lsb}) <= hw2sw_i.{reg['name']}.{field['name']};\n")
+                    file.write(f"  {reg['name']}_wdata_hw({msb} downto {lsb}) <= hw2sw_i.{reg['name']}.{field['name']}; -- {field['name']}\n")
                     lsb=msb+1
 
             if reg['sw2hw_data']:
                 lsb=0
                 for field in reg['fields']:
                     msb=lsb+field['width']-1
-                    file.write(f"  sw2hw_o.{reg['name']}.{field['name']} <= {reg['name']}_rdata_hw({msb} downto {lsb});\n")
+                    file.write(f"  sw2hw_o.{reg['name']}.{field['name']} <= {reg['name']}_rdata_hw({msb} downto {lsb}); -- {field['name']}\n")
                     lsb=msb+1
 
             file.write( "\n")
@@ -749,7 +751,7 @@ def generate_vhdl_module(csr, output_path):
                 for field in reg['fields']:
                     if not first :
                         file.write( "                       &")
-                    file.write(f"\"{parse_init_value(field['init'],field['width'])}\"\n")
+                    file.write(f"\"{parse_init_value(field['init'],field['width'])}\" -- {field['name']}\n")
                     first = False;
                 file.write(f"      ,MODEL         => \"{reg['swaccess']}\"\n")
             if reg['hwtype'] in ['fifo']:
