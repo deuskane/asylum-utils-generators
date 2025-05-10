@@ -1,0 +1,98 @@
+{
+  "type"                  : "object"
+  "required"              : ["name"]
+  "additionalProperties"  : false
+  "properties"            : {
+    "name"                : {
+      "type"              : "string",
+      "description"       : "Module Name"
+    }		          
+    "desc"                : {
+      "type"              : "string",
+      "description"       : "Module Description"
+    }		          
+    "width"               : {
+      "type"              : "integer",
+      "description"       : "Data Bus Width"
+      "default"           : 32
+    }		          
+    "interface"           : {
+      "type"              : "integer",
+      "description"       : "Interface Type"
+      "default"           : "reg"
+      "enum"              : ["reg","pbi"]
+    }# end of properties "top"
+
+    "registers"           : {
+
+      "type": "array",
+      "items": {
+        "type"            : "object",
+        "required"              : ["name"]
+        "additionalProperties"  : false
+        "properties"            : {
+          "name"                : {
+            "type"              : "string",
+            "description"       : "Module Name"
+          }		          
+          "desc"                : {
+            "type"              : "string",
+            "description"       : "Module Description"
+          }		          
+        }# end of properties "registers"
+      }#end of items "registers"
+    }#end of "registers"
+  }
+}
+
+#{
+#    "type": "object",
+#    "properties": {
+#        "name": {"type": "string"},
+#        "desc": {"type": "string"},
+#        "width": {"type": "integer"},
+#        "registers": {
+#            "type": "array",
+#            "items": {
+#                "type": "object",
+#                "properties": {
+#                    "name": {"type": "string"},
+#                    "address": {"type": "string"},
+#                    "desc": {"type": "string"},
+#                    "hwaccess": {"type": "string"},
+#                    "swaccess": {"type": "string"},
+#                    "hwtype": {"type": "string"},
+#                    "fields": {
+#                        "type": "array",
+#                        "items": {
+#                            "type": "object",
+#                            "properties": {
+#                                "name": {"type": "string"},
+#                                "bits": {"type": "string"},
+#                                "init": {"type": "string"},
+#                                "desc": {"type": "string"},
+#                                "enum": {
+#                                    "type": "array",
+#                                    "items": {
+#                                        "type": "object",
+#                                        "properties": {
+#                                            "value": {"type": "string"},
+#                                            "name": {"type": "string"},
+#                                            "desc": {"type": "string"}
+#                                        },
+#                                        "required": ["value", "name", "desc"]
+#                                    }
+#                                }
+#                            },
+#                            "required": ["name", "bits", "desc"]
+#                        }
+#                    }
+#                },
+#                "required": ["name", "address", "desc", "hwaccess", "swaccess", "fields"]
+#            }
+#        }
+#    },
+#    "required": ["name", "desc", "width", "registers"],
+#    "additionalProperties": False
+#}
+#
