@@ -1,23 +1,23 @@
 {
   "type"                  : "object"
-  "required"              : ["name"]
+  "required"              : ["name","registers"]
   "additionalProperties"  : false
   "properties"            : {
     "name"                : {
       "type"              : "string",
       "description"       : "Module Name"
-    }		          
+    }              
     "desc"                : {
       "type"              : "string",
       "description"       : "Module Description"
-    }		          
+    }              
     "width"               : {
       "type"              : "integer",
       "description"       : "Data Bus Width"
       "default"           : 32
-    }		          
+    }              
     "interface"           : {
-      "type"              : "integer",
+      "type"              : "string",
       "description"       : "Interface Type"
       "default"           : "reg"
       "enum"              : ["reg","pbi"]
@@ -25,74 +25,80 @@
 
     "registers"           : {
 
-      "type": "array",
-      "items": {
-        "type"            : "object",
-        "required"              : ["name"]
+      "type"              : "array",
+      "items"             : {
+        "type"                  : "object",
+        "required"              : ["name","fields"]
         "additionalProperties"  : false
         "properties"            : {
           "name"                : {
             "type"              : "string",
-            "description"       : "Module Name"
-          }		          
+            "description"       : "Register Name"
+          }
           "desc"                : {
             "type"              : "string",
-            "description"       : "Module Description"
-          }		          
+            "description"       : "Register Description"
+          }              
+          "address"             : {
+            "type"              : "string",
+            "description"       : "Register Address"
+          }              
+          "hwtype"              : {
+            "type"              : "string",
+            "description"       : "Register Hardware Type",
+            "enum"              : ["reg","ext","fifo"],
+            "default"           : "reg"
+          }              
+          "hwaccess"            : {
+            "type"              : "string",
+            "description"       : "Register Hardware Access",
+            "enum"              : ["rw","wo","ro","none"],
+            "default"           : "rw"
+          }              
+          "swaccess"            : {
+            "type"              : "string",
+            "description"       : "Register Software Access",
+            "enum"              : ["rw","wo","ro","rw1c", "rw0c", "rw1s", "rw0s"],
+            "default"           : "rw"
+          }              
+
+          "fields"           : {
+      
+            "type"              : "array",
+            "items"             : {
+              "type"                  : "object",
+              "required"              : ["name","bits"]
+              "additionalProperties"  : false
+              "properties"            : {
+                "name"                : {
+                  "type"              : "string",
+                  "description"       : "Field Name"
+                }
+                "desc"                : {
+                  "type"              : "string",
+                  "description"       : "Field Description"
+                }              
+                "init"                : {
+                  "type"              : "string",
+                  "description"       : "Field Initialization Value",
+                  "default"           : "0"
+                }
+                "bits"                : {
+                  "type"              : "string",
+                  "description"       : "Field Range in register",
+                }
+              }# end of properties "fields"
+            }#end of items "fields"
+          }#end of "fields"
+
+          "params"           : {
+      
+            "type"                  : "object",
+	    "additionalProperties"  : true
+          }#end of "params"
+
         }# end of properties "registers"
       }#end of items "registers"
     }#end of "registers"
   }
 }
-
-#{
-#    "type": "object",
-#    "properties": {
-#        "name": {"type": "string"},
-#        "desc": {"type": "string"},
-#        "width": {"type": "integer"},
-#        "registers": {
-#            "type": "array",
-#            "items": {
-#                "type": "object",
-#                "properties": {
-#                    "name": {"type": "string"},
-#                    "address": {"type": "string"},
-#                    "desc": {"type": "string"},
-#                    "hwaccess": {"type": "string"},
-#                    "swaccess": {"type": "string"},
-#                    "hwtype": {"type": "string"},
-#                    "fields": {
-#                        "type": "array",
-#                        "items": {
-#                            "type": "object",
-#                            "properties": {
-#                                "name": {"type": "string"},
-#                                "bits": {"type": "string"},
-#                                "init": {"type": "string"},
-#                                "desc": {"type": "string"},
-#                                "enum": {
-#                                    "type": "array",
-#                                    "items": {
-#                                        "type": "object",
-#                                        "properties": {
-#                                            "value": {"type": "string"},
-#                                            "name": {"type": "string"},
-#                                            "desc": {"type": "string"}
-#                                        },
-#                                        "required": ["value", "name", "desc"]
-#                                    }
-#                                }
-#                            },
-#                            "required": ["name", "bits", "desc"]
-#                        }
-#                    }
-#                },
-#                "required": ["name", "address", "desc", "hwaccess", "swaccess", "fields"]
-#            }
-#        }
-#    },
-#    "required": ["name", "desc", "width", "registers"],
-#    "additionalProperties": False
-#}
-#

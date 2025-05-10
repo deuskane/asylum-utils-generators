@@ -772,9 +772,10 @@ def generate_vhdl_module(csr, output_path):
                     first = False;
                 file.write(f"      ,MODEL         => \"{reg['swaccess']}\"\n")
             if reg['hwtype'] in ['fifo']:
-                params=reg['params']
-                for param in reg['params']:
-                    file.write(f"      ,{param} => {params[param]}\n")
+                if 'params' in reg:
+                    params=reg['params']
+                    for param in reg['params']:
+                        file.write(f"      ,{param} => {params[param]}\n")
                 
             file.write( "      )\n")
             file.write( "    port map\n")
