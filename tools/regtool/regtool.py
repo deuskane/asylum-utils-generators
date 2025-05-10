@@ -5,8 +5,11 @@ Ce module contient des outils pour manipuler les registres.
 
 import argparse
 import hjson
+import jsonschema
+from   jsonschema import validate
 import math
 from   addrmap import AddrMap
+import os
 
 #--------------------------------------------
 #--------------------------------------------
@@ -208,9 +211,23 @@ def parse_hjson(file_path):
     :param file_path: Path to the hjson file
     :return: Return an hjson structure
     """
-    with open(file_path, 'r') as file:
-        csr=hjson.load(file)
 
+    # Open hjson file
+    with open(file_path, 'r') as data_file:
+        csr=hjson.load(data_file)
+
+    # Open hjson schema
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'regtool_schema.hjson'), 'r') as schema_file:
+        schema = hjson.load(schema_file)
+
+    # Data validate
+    try:
+        validate(instance=csr, schema=schema)
+        print(f"The hjson file {file_path} is valide.")
+    except jsonschema.exceptions.ValidationError as err:
+        print(f"The hjson file {file_path} is invalide.")
+        print(f"  {err.message}")
+        
     addr_max=0
     addr    = 0
     addrmap = AddrMap()
