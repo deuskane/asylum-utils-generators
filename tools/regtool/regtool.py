@@ -204,6 +204,23 @@ def check_range(csr,field,regmap):
     
 #--------------------------------------------
 #--------------------------------------------
+def fill_defaults_recursive(schema, hjson):
+    """
+    Remplir les valeurs par défaut si elles sont absentes
+    """
+    if schema.get("type") == "object":
+        for key, value in schema.get("properties", {}).items():
+            if "default" in value and key not in hjson:
+                hjson[key] = value["default"]
+            if key in hjson:
+                fill_defaults_recursive(value, hjson[key])
+    elif schema.get("type") == "array":
+        for item in hjson:
+            fill_defaults_recursive(schema.get("items"), item)
+    return hjson
+
+#--------------------------------------------
+#--------------------------------------------
 def parse_hjson(file_path):
     """
     Read the file
@@ -227,31 +244,41 @@ def parse_hjson(file_path):
     except jsonschema.exceptions.ValidationError as err:
         print(f"The hjson file {file_path} is invalide.")
         print(f"  {err.message}")
-        
+        raise err
+
+   # Dumper le HJSON dans un fichier
+    with open(csr['name']+'_dump1.hjson', 'w') as f:
+        hjson.dump(csr, f, ensure_ascii=False)
+    
+    csr     = fill_defaults_recursive(schema, csr)
+
+    with open(csr['name']+'_dump2.hjson', 'w') as f:
+        hjson.dump(csr, f, ensure_ascii=False)
+
     addr_max=0
     addr    = 0
     addrmap = AddrMap()
 
     # Check Global variables
-    check_key      (csr,'name')
-    check_key      (csr,'desc',      False)
-    check_key      (csr,'width',     False,32)
-    check_key      (csr,'interface', False,"reg")
+    #check_key      (csr,'name')
+    #check_key      (csr,'desc',      False)
+    #check_key      (csr,'width',     False,32)
+    #check_key      (csr,'interface', False,"reg")
     check_reg_width(csr)
     check_interface(csr)
     
     for reg in csr['registers']:
         # Check Register variables
-        check_key      (reg,'name')
-        check_key      (reg,'desc',       False)
+        #check_key      (reg,'name')
+        #check_key      (reg,'desc',       False)
         check_key      (reg,'address',    False,str(addr))
         check_reg_addr (reg,addrmap,csr['addr_offset'])        
         addr += reg['address']+csr['addr_offset'];
         if addr_max < reg['address']:
             addr_max = reg['address']
-        check_key      (reg,'hwaccess',   False,"rw")
-        check_key      (reg,'swaccess',   False,"rw")
-        check_key      (reg,'hwtype',     False,"reg")
+        #check_key      (reg,'hwaccess',   False,"rw")
+        #check_key      (reg,'swaccess',   False,"rw")
+        #check_key      (reg,'hwtype',     False,"reg")
         check_key      (reg,'alias_write',False,None)
         check_alias    (csr,reg)
         check_access   (reg)
@@ -260,17 +287,20 @@ def parse_hjson(file_path):
         reg['width'] = 0;
         for field in reg['fields']:
             # Check Field variables
-            check_key      (field,'name')
-            check_key      (field,'desc',      False)
-            check_key      (field,'init',      False,"0")
+            #check_key      (field,'name')
+            #check_key      (field,'desc',      False)
+            #check_key      (field,'init',      False,"0")
             field['init'] = parse_value(field['init'])
-            check_key      (field,'bits')
+            #check_key      (field,'bits')
             
             check_range    (csr,field,regmap)
             reg['width'] += field['width'];
         
     csr['size_addr'] = int(math.ceil(math.log2(addr_max+1)))
     addrmap.display()
+
+    with open(csr['name']+'_dump3.hjson', 'w') as f:
+        hjson.dump(csr, f, ensure_ascii=False)
 
     return csr
 

@@ -1,0 +1,138 @@
+{
+  name: example1
+  desc: The example 1
+  width: 32
+  registers:
+  [
+    {
+      name: reg1
+      address: x0
+      desc: Register 1
+      hwaccess: rw
+      swaccess: rw1c
+      fields:
+      [
+        {
+          name: field1
+          bits: "0"
+          init: d0
+          desc: Field 1
+        }
+        {
+          name: field2
+          bits: "2"
+          init: b00
+          desc: Field 2
+        }
+      ]
+    }
+    {
+      name: reg2
+      address: 04
+      desc: Register 2
+      hwaccess: ro
+      swaccess: rw
+      fields:
+      [
+        {
+          name: field1
+          bits: 7:0
+          init: x00
+          desc: Field 1
+        }
+        {
+          name: field2
+          bits: 15:8
+          init: xFF
+          desc: Field 2
+        }
+      ]
+    }
+    {
+      name: reg3
+      address: 08
+      desc: Register 3
+      hwaccess: ro
+      swaccess: rw
+      hwtype: ext
+      fields:
+      [
+        {
+          name: field1
+          bits: 7:0
+          init: x00
+          desc: Field 1
+        }
+        {
+          name: field2
+          bits: 15:8
+          init: xFF
+          desc: Field 2
+        }
+      ]
+    }
+    {
+      name: fifo_sw2hw
+      address: x10
+      desc: Write Fifo
+      hwaccess: wo
+      swaccess: ro
+      hwtype: fifo
+      fields:
+      [
+        {
+          name: field1
+          bits: 3:0
+          desc: Field 1
+        }
+        {
+          name: field2
+          bits: 15:8
+          desc: Field 2
+        }
+      ]
+    }
+    {
+      name: fifo_hw2sw
+      address: x14
+      desc: Read Fifo
+      hwaccess: ro
+      swaccess: wo
+      hwtype: fifo
+      fields:
+      [
+        {
+          name: field1
+          bits: 3:0
+          desc: Field 1
+        }
+        {
+          name: field2
+          bits: 15:8
+          desc: Field 2
+        }
+      ]
+    }
+    {
+      name: fifo_bidir
+      address: x18
+      desc: Read/Write Fifo
+      hwaccess: rw
+      swaccess: rw
+      hwtype: fifo
+      fields:
+      [
+        {
+          name: field1
+          bits: 3:0
+          desc: Field 1
+        }
+        {
+          name: field2
+          bits: 15:8
+          desc: Field 2
+        }
+      ]
+    }
+  ]
+}
