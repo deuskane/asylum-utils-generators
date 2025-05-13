@@ -32,11 +32,11 @@
         }
       ]
       hwtype: reg
-      alias_write: null
       address_write:
       [
         0
       ]
+      alias_write: null
       sw2hw_re: true
       sw2hw_we: true
       hw2sw_re: false
@@ -79,11 +79,11 @@
         }
       ]
       hwtype: reg
-      alias_write: null
       address_write:
       [
         4
       ]
+      alias_write: null
       sw2hw_re: true
       sw2hw_we: true
       hw2sw_re: false
@@ -126,11 +126,11 @@
           width: 8
         }
       ]
-      alias_write: null
       address_write:
       [
         8
       ]
+      alias_write: null
       sw2hw_re: true
       sw2hw_we: true
       hw2sw_re: false
@@ -173,11 +173,11 @@
           width: 8
         }
       ]
-      alias_write: null
       address_write:
       [
         16
       ]
+      alias_write: null
       sw2hw_re: true
       sw2hw_we: false
       hw2sw_re: false
@@ -220,11 +220,11 @@
           width: 8
         }
       ]
-      alias_write: null
       address_write:
       [
         20
       ]
+      alias_write: null
       sw2hw_re: false
       sw2hw_we: true
       hw2sw_re: true
@@ -267,11 +267,11 @@
           width: 8
         }
       ]
-      alias_write: null
       address_write:
       [
         24
       ]
+      alias_write: null
       sw2hw_re: true
       sw2hw_we: true
       hw2sw_re: true

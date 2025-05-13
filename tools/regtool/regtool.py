@@ -152,7 +152,7 @@ def check_alias(csr,reg):
     """
 
     check_key(reg,'address_write',False,[])
-
+    check_key(reg,'alias_write'  ,False,None)
 
     if reg['alias_write'] == None :
         reg['address_write'].append(reg['address'])
@@ -260,26 +260,16 @@ def parse_hjson(file_path):
     addrmap = AddrMap()
 
     # Check Global variables
-    #check_key      (csr,'name')
-    #check_key      (csr,'desc',      False)
-    #check_key      (csr,'width',     False,32)
-    #check_key      (csr,'interface', False,"reg")
     check_reg_width(csr)
     check_interface(csr)
     
     for reg in csr['registers']:
         # Check Register variables
-        #check_key      (reg,'name')
-        #check_key      (reg,'desc',       False)
         check_key      (reg,'address',    False,str(addr))
         check_reg_addr (reg,addrmap,csr['addr_offset'])        
-        addr += reg['address']+csr['addr_offset'];
+        addr = reg['address']+csr['addr_offset'];
         if addr_max < reg['address']:
             addr_max = reg['address']
-        #check_key      (reg,'hwaccess',   False,"rw")
-        #check_key      (reg,'swaccess',   False,"rw")
-        #check_key      (reg,'hwtype',     False,"reg")
-        check_key      (reg,'alias_write',False,None)
         check_alias    (csr,reg)
         check_access   (reg)
 
@@ -287,11 +277,7 @@ def parse_hjson(file_path):
         reg['width'] = 0;
         for field in reg['fields']:
             # Check Field variables
-            #check_key      (field,'name')
-            #check_key      (field,'desc',      False)
-            #check_key      (field,'init',      False,"0")
             field['init'] = parse_value(field['init'])
-            #check_key      (field,'bits')
             
             check_range    (csr,field,regmap)
             reg['width'] += field['width'];
