@@ -255,7 +255,7 @@ def parse_hjson(file_path):
     with open(csr['name']+'_dump2.hjson', 'w') as f:
         hjson.dump(csr, f, ensure_ascii=False)
 
-    addr_max=0
+    addr_max= 0
     addr    = 0
     addrmap = AddrMap()
 

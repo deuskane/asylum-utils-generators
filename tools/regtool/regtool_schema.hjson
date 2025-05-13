@@ -23,7 +23,35 @@
       "enum"              : ["reg","pbi"]
     }# end of properties "top"
 
-    "registers"           : {
+   "parameters"           : {
+
+      "type"              : "array",
+      "items"             : {
+        "type"                  : "object",
+        "required"              : ["name","type","value"]
+        "additionalProperties"  : false
+        "properties"            : {
+          "name"                : {
+            "type"              : "string",
+            "description"       : "Parameter Name"
+	  }
+          "desc"                : {
+            "type"              : "string",
+            "description"       : "Parameter Description"
+          }              
+          "type"                : {
+            "type"              : "string",
+            "description"       : "Parameter Type"
+	  }
+          "value"                : {
+            "type"              : "string",
+            "description"       : "Parameter Value"
+	  }
+        }# end of properties "parameters"
+      }#end of items "parameters"
+    }#end of "parameters"
+
+   "registers"           : {
 
       "type"              : "array",
       "items"             : {
@@ -92,7 +120,6 @@
           }#end of "fields"
 
           "params"           : {
-      
             "type"                  : "object",
 	    "additionalProperties"  : true
           }#end of "params"

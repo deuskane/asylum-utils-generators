@@ -2,6 +2,14 @@
   name: example1
   desc: The example 1
   width: 32
+  parameters:
+  [
+    {
+      name: REG1_ENABLE
+      type: boolean
+      value: True
+    }
+  ]
   registers:
   [
     {
