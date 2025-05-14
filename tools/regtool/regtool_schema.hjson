@@ -1,0 +1,145 @@
+{
+  "type"                  : "object"
+  "required"              : ["name","registers"]
+  "additionalProperties"  : false
+  "properties"            : {
+    "name"                : {
+      "type"              : "string",
+      "description"       : "Module Name"
+    }              
+    "desc"                : {
+      "type"              : "string",
+      "description"       : "Module Description"
+      "default"           : ""
+    }              
+    "width"               : {
+      "type"              : "integer",
+      "description"       : "Data Bus Width"
+      "default"           : 32
+    }              
+    "interface"           : {
+      "type"              : "string",
+      "description"       : "Interface Type"
+      "default"           : "reg"
+      "enum"              : ["reg","pbi"]
+    }# end of properties "top"
+
+   "parameters"           : {
+
+      "type"              : "array",
+      "items"             : {
+        "type"                  : "object",
+        "required"              : ["name","type"]
+        "additionalProperties"  : false
+        "properties"            : {
+          "name"                : {
+            "type"              : "string",
+            "description"       : "Parameter Name"
+	  }
+          "desc"                : {
+            "type"              : "string",
+            "description"       : "Parameter Description"
+	    "default"           : ""
+          }              
+          "type"                : {
+            "type"              : "string",
+            "description"       : "Parameter Type"
+	  }
+        }# end of properties "parameters"
+      }#end of items "parameters"
+    }#end of "parameters"
+
+   "registers"           : {
+
+      "type"              : "array",
+      "items"             : {
+        "type"                  : "object",
+        "required"              : ["name","fields"]
+        "additionalProperties"  : false
+        "properties"            : {
+          "name"                : {
+            "type"              : "string",
+            "description"       : "Register Name"
+          }
+          "desc"                : {
+            "type"              : "string",
+            "description"       : "Register Description"
+            "default"           : ""
+          }              
+          "enable"              : {
+            "type"              : "string",
+            "description"       : "Register Enable"
+            "default"           : "True"
+          }              
+          "address"             : {
+            "type"              : "string",
+            "description"       : "Register Address"
+          }              
+          "alias_write"         : {
+            "type"              : "string",
+            "description"       : "Register Write Alias"
+          }              
+          "hwtype"              : {
+            "type"              : "string",
+            "description"       : "Register Hardware Type",
+            "enum"              : ["reg","ext","fifo"],
+            "default"           : "reg"
+          }              
+          "hwaccess"            : {
+            "type"              : "string",
+            "description"       : "Register Hardware Access",
+            "enum"              : ["rw","wo","ro","none"],
+            "default"           : "rw"
+          }              
+          "swaccess"            : {
+            "type"              : "string",
+            "description"       : "Register Software Access",
+            "enum"              : ["rw","wo","ro","rw1c", "rw0c", "rw1s", "rw0s"],
+            "default"           : "rw"
+          }              
+
+          "fields"           : {
+      
+            "type"              : "array",
+            "items"             : {
+              "type"                  : "object",
+              "required"              : ["name","bits"]
+              "additionalProperties"  : false
+              "properties"            : {
+                "name"                : {
+                  "type"              : "string",
+                  "description"       : "Field Name"
+                }
+                "desc"                : {
+                  "type"              : "string",
+                  "description"       : "Field Description"
+                  "default"           : ""
+                }              
+                "init"                : {
+                  "type"              : "string",
+                  "description"       : "Field Initialization Value",
+                  "default"           : "0"
+                }
+                "expr"                : {
+                  "type"              : "string",
+                  "description"       : "Field Initialization Expression",
+                  "default"           : ""
+                }
+                "bits"                : {
+                  "type"              : "string",
+                  "description"       : "Field Range in register",
+                }
+              }# end of properties "fields"
+            }#end of items "fields"
+          }#end of "fields"
+
+          "params"           : {
+            "type"                  : "object",
+	    "additionalProperties"  : true
+          }#end of "params"
+
+        }# end of properties "registers"
+      }#end of items "registers"
+    }#end of "registers"
+  }
+}

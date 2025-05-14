@@ -208,7 +208,7 @@ package example1_csr_pkg is
   end record example1_fifo_bidir_hw2sw_t;
 
   ------------------------------------
-  -- Structure {module}_t
+  -- Structure example1_t
   ------------------------------------
   type example1_sw2hw_t is record
     reg1 : example1_reg1_sw2hw_t;

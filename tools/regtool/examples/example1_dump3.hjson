@@ -1,0 +1,308 @@
+{
+  name: example1
+  desc: The example 1
+  width: 32
+  parameters:
+  [
+    {
+      name: REG1_ENABLE
+      type: boolean
+      value: True
+      desc: ""
+    }
+  ]
+  registers:
+  [
+    {
+      name: reg1
+      address: 0
+      desc: Register 1
+      hwaccess: rw
+      swaccess: rw1c
+      fields:
+      [
+        {
+          name: field1
+          bits: "0"
+          init: 0
+          desc: Field 1
+          msb: 0
+          lsb: 0
+          width: 1
+        }
+        {
+          name: field2
+          bits: "2"
+          init: 0
+          desc: Field 2
+          msb: 2
+          lsb: 2
+          width: 1
+        }
+      ]
+      enable: True
+      hwtype: reg
+      address_write:
+      [
+        0
+      ]
+      alias_write: null
+      sw2hw_re: true
+      sw2hw_we: true
+      hw2sw_re: false
+      hw2sw_we: true
+      hw2sw_data: true
+      sw2hw_data: true
+      sw2hw: true
+      hw2sw: true
+      sw2hw_name_re: re
+      sw2hw_name_we: we
+      hw2sw_name_re: re
+      hw2sw_name_we: we
+      width: 2
+    }
+    {
+      name: reg2
+      address: 4
+      desc: Register 2
+      hwaccess: ro
+      swaccess: rw
+      fields:
+      [
+        {
+          name: field1
+          bits: 7:0
+          init: 0
+          desc: Field 1
+          msb: 7
+          lsb: 0
+          width: 8
+        }
+        {
+          name: field2
+          bits: 15:8
+          init: 255
+          desc: Field 2
+          msb: 15
+          lsb: 8
+          width: 8
+        }
+      ]
+      enable: True
+      hwtype: reg
+      address_write:
+      [
+        4
+      ]
+      alias_write: null
+      sw2hw_re: true
+      sw2hw_we: true
+      hw2sw_re: false
+      hw2sw_we: false
+      hw2sw_data: false
+      sw2hw_data: true
+      sw2hw: true
+      hw2sw: false
+      sw2hw_name_re: re
+      sw2hw_name_we: we
+      hw2sw_name_re: re
+      hw2sw_name_we: we
+      width: 16
+    }
+    {
+      name: reg3
+      address: 8
+      desc: Register 3
+      hwaccess: ro
+      swaccess: rw
+      hwtype: ext
+      fields:
+      [
+        {
+          name: field1
+          bits: 7:0
+          init: 0
+          desc: Field 1
+          msb: 7
+          lsb: 0
+          width: 8
+        }
+        {
+          name: field2
+          bits: 15:8
+          init: 255
+          desc: Field 2
+          msb: 15
+          lsb: 8
+          width: 8
+        }
+      ]
+      enable: True
+      address_write:
+      [
+        8
+      ]
+      alias_write: null
+      sw2hw_re: true
+      sw2hw_we: true
+      hw2sw_re: false
+      hw2sw_we: false
+      hw2sw_data: false
+      sw2hw_data: true
+      sw2hw: true
+      hw2sw: false
+      sw2hw_name_re: re
+      sw2hw_name_we: we
+      hw2sw_name_re: re
+      hw2sw_name_we: we
+      width: 16
+    }
+    {
+      name: fifo_sw2hw
+      address: 16
+      desc: Write Fifo
+      hwaccess: wo
+      swaccess: ro
+      hwtype: fifo
+      fields:
+      [
+        {
+          name: field1
+          bits: 3:0
+          desc: Field 1
+          init: 0
+          msb: 3
+          lsb: 0
+          width: 4
+        }
+        {
+          name: field2
+          bits: 15:8
+          desc: Field 2
+          init: 0
+          msb: 15
+          lsb: 8
+          width: 8
+        }
+      ]
+      enable: True
+      address_write:
+      [
+        16
+      ]
+      alias_write: null
+      sw2hw_re: true
+      sw2hw_we: false
+      hw2sw_re: false
+      hw2sw_we: true
+      hw2sw_data: true
+      sw2hw_data: false
+      sw2hw: true
+      hw2sw: true
+      sw2hw_name_re: ready
+      sw2hw_name_we: valid
+      hw2sw_name_re: ready
+      hw2sw_name_we: valid
+      width: 12
+    }
+    {
+      name: fifo_hw2sw
+      address: 20
+      desc: Read Fifo
+      hwaccess: ro
+      swaccess: wo
+      hwtype: fifo
+      fields:
+      [
+        {
+          name: field1
+          bits: 3:0
+          desc: Field 1
+          init: 0
+          msb: 3
+          lsb: 0
+          width: 4
+        }
+        {
+          name: field2
+          bits: 15:8
+          desc: Field 2
+          init: 0
+          msb: 15
+          lsb: 8
+          width: 8
+        }
+      ]
+      enable: True
+      address_write:
+      [
+        20
+      ]
+      alias_write: null
+      sw2hw_re: false
+      sw2hw_we: true
+      hw2sw_re: true
+      hw2sw_we: false
+      hw2sw_data: false
+      sw2hw_data: true
+      sw2hw: true
+      hw2sw: true
+      sw2hw_name_re: ready
+      sw2hw_name_we: valid
+      hw2sw_name_re: ready
+      hw2sw_name_we: valid
+      width: 12
+    }
+    {
+      name: fifo_bidir
+      address: 24
+      desc: Read/Write Fifo
+      hwaccess: rw
+      swaccess: rw
+      hwtype: fifo
+      fields:
+      [
+        {
+          name: field1
+          bits: 3:0
+          desc: Field 1
+          init: 0
+          msb: 3
+          lsb: 0
+          width: 4
+        }
+        {
+          name: field2
+          bits: 15:8
+          desc: Field 2
+          init: 0
+          msb: 15
+          lsb: 8
+          width: 8
+        }
+      ]
+      enable: True
+      address_write:
+      [
+        24
+      ]
+      alias_write: null
+      sw2hw_re: true
+      sw2hw_we: true
+      hw2sw_re: true
+      hw2sw_we: true
+      hw2sw_data: true
+      sw2hw_data: true
+      sw2hw: true
+      hw2sw: true
+      sw2hw_name_re: ready
+      sw2hw_name_we: valid
+      hw2sw_name_re: ready
+      hw2sw_name_we: valid
+      width: 12
+    }
+  ]
+  interface: reg
+  addr_offset: 4
+  size_addr: 5
+}

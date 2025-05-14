@@ -5,8 +5,11 @@ Ce module contient des outils pour manipuler les registres.
 
 import argparse
 import hjson
+import jsonschema
+from   jsonschema import validate
 import math
 from   addrmap import AddrMap
+import os
 
 #--------------------------------------------
 #--------------------------------------------
@@ -140,6 +143,33 @@ def check_access(reg):
 
 #--------------------------------------------
 #--------------------------------------------
+def check_enable(params,reg):
+    """
+    Checks Enable Register
+
+    :param params: Dictionary of parameters
+    :param reg: Dictionary of register.
+    :raises ValueError: If enable is not boolean or not an parameter or not a parameter not boolean
+    """
+
+    enable            = reg['enable']
+    boolean           = ['True','False']
+
+    if enable in boolean:
+        return
+
+    find = False
+    for param in params:
+        if param['name'] == enable:
+            find = True
+            if param['type'] != "boolean":
+                raise KeyError(f"Register {reg['name']}.enable depend of {param['name']}, but type is {param['type']} insteand boolean.")
+
+    if find == False:
+        raise KeyError(f"Register {reg['name']}.enable = {enable} is not boolean and not parameter.")
+        
+#--------------------------------------------
+#--------------------------------------------
 def check_alias(csr,reg):
     """
     Checks if alias is valide
@@ -149,7 +179,7 @@ def check_alias(csr,reg):
     """
 
     check_key(reg,'address_write',False,[])
-
+    check_key(reg,'alias_write'  ,False,None)
 
     if reg['alias_write'] == None :
         reg['address_write'].append(reg['address'])
@@ -201,6 +231,23 @@ def check_range(csr,field,regmap):
     
 #--------------------------------------------
 #--------------------------------------------
+def fill_defaults_recursive(schema, hjson):
+    """
+    Remplir les valeurs par défaut si elles sont absentes
+    """
+    if schema.get("type") == "object":
+        for key, value in schema.get("properties", {}).items():
+            if "default" in value and key not in hjson:
+                hjson[key] = value["default"]
+            if key in hjson:
+                fill_defaults_recursive(value, hjson[key])
+    elif schema.get("type") == "array":
+        for item in hjson:
+            fill_defaults_recursive(schema.get("items"), item)
+    return hjson
+
+#--------------------------------------------
+#--------------------------------------------
 def parse_hjson(file_path):
     """
     Read the file
@@ -208,52 +255,69 @@ def parse_hjson(file_path):
     :param file_path: Path to the hjson file
     :return: Return an hjson structure
     """
-    with open(file_path, 'r') as file:
-        csr=hjson.load(file)
 
-    addr_max=0
+    # Open hjson file
+    with open(file_path, 'r') as data_file:
+        csr=hjson.load(data_file)
+
+    # Open hjson schema
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'regtool_schema.hjson'), 'r') as schema_file:
+        schema = hjson.load(schema_file)
+
+    # Data validate
+    try:
+        validate(instance=csr, schema=schema)
+        print(f"The hjson file {file_path} is valide.")
+    except jsonschema.exceptions.ValidationError as err:
+        print(f"The hjson file {file_path} is invalide.")
+        print(f"  {err.message}")
+        raise err
+
+   # Dumper le HJSON dans un fichier
+    with open(csr['name']+'_dump1.hjson', 'w') as f:
+        hjson.dump(csr, f, ensure_ascii=False)
+    
+    csr     = fill_defaults_recursive(schema, csr)
+
+    with open(csr['name']+'_dump2.hjson', 'w') as f:
+        hjson.dump(csr, f, ensure_ascii=False)
+
+    addr_max= 0
     addr    = 0
     addrmap = AddrMap()
 
     # Check Global variables
-    check_key      (csr,'name')
-    check_key      (csr,'desc',      False)
-    check_key      (csr,'width',     False,32)
-    check_key      (csr,'interface', False,"reg")
     check_reg_width(csr)
     check_interface(csr)
+    check_key      (csr,'parameters',False,[])
     
     for reg in csr['registers']:
         # Check Register variables
-        check_key      (reg,'name')
-        check_key      (reg,'desc',       False)
         check_key      (reg,'address',    False,str(addr))
         check_reg_addr (reg,addrmap,csr['addr_offset'])        
-        addr += reg['address']+csr['addr_offset'];
+        addr = reg['address']+csr['addr_offset'];
         if addr_max < reg['address']:
             addr_max = reg['address']
-        check_key      (reg,'hwaccess',   False,"rw")
-        check_key      (reg,'swaccess',   False,"rw")
-        check_key      (reg,'hwtype',     False,"reg")
-        check_key      (reg,'alias_write',False,None)
         check_alias    (csr,reg)
         check_access   (reg)
+        check_enable   (csr['parameters'],reg)
 
         regmap = AddrMap()
         reg['width'] = 0;
         for field in reg['fields']:
             # Check Field variables
-            check_key      (field,'name')
-            check_key      (field,'desc',      False)
-            check_key      (field,'init',      False,"0")
             field['init'] = parse_value(field['init'])
-            check_key      (field,'bits')
             
             check_range    (csr,field,regmap)
             reg['width'] += field['width'];
+            if field['expr'] == '':
+                field['expr'] = f"\"{parse_init_value(field['init'],field['width'])}\""
         
     csr['size_addr'] = int(math.ceil(math.log2(addr_max+1)))
     addrmap.display()
+
+    with open(csr['name']+'_dump3.hjson', 'w') as f:
+        hjson.dump(csr, f, ensure_ascii=False)
 
     return csr
 
@@ -276,7 +340,6 @@ def parse_value(value):
     elif value.startswith('d'):
         return int(value[1:])
     else:
-        # default : decimal
         return int(value)
 
 #--------------------------------------------
@@ -532,6 +595,20 @@ def generate_vhdl_module(csr, output_path):
         
         # Generate VHDL entity and architecture
         file.write(f"entity {module}_registers is\n")
+        if csr['parameters'] != []:
+            file.write( "  generic (\n")
+            first = True
+            for param in csr['parameters']:
+                if first == True:
+                    file.write( "    ")
+                else:
+                    file.write( "   ;")
+                file.write(f"{param['name']} : {param['type']} -- {param['desc']}\n")
+                first = False;
+                  
+            file.write( "  );\n")
+
+        
         file.write( "  port (\n")
         file.write( "    -- Clock and Reset\n")
         file.write( "    clk_i      : in  std_logic;\n")
@@ -619,6 +696,18 @@ def generate_vhdl_module(csr, output_path):
         
         # Declare register and field signals
         for reg in csr['registers']:
+            file.write(f"  constant INIT_{reg['name']} : std_logic_vector({reg['width']}-1 downto 0) :=\n")
+            first = True
+            for field in reg['fields']:
+                if not first :
+                    file.write( "           & ")
+                else:
+                    file.write( "             ")
+
+                file.write(f"{field['expr']} -- {field['name']}\n")
+                first = False;
+            file.write( "           ;\n")
+
             file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
             file.write(f"  signal   {reg['name']}_wdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
@@ -659,8 +748,12 @@ def generate_vhdl_module(csr, output_path):
         file.write(f"               '0';\n")
         file.write( "\n")
 
+        
         for reg in csr['registers']:
 
+            file.write(f"  gen_{reg['name']}: if ({reg['enable']})\n")
+            file.write(f"  generate\n")
+            
             print_vhdl_header_reg(reg,file)
 
             for field in reg['fields']:
@@ -670,154 +763,167 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
             if reg['sw2hw_re']:
-                file.write(f"  {reg['name']}_rcs     <= '1' when     (sig_raddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
-                file.write(f"  {reg['name']}_re      <= sig_rcs and sig_re and {reg['name']}_rcs;\n")
+                file.write(f"    {reg['name']}_rcs     <= '1' when     (sig_raddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
+                file.write(f"    {reg['name']}_re      <= sig_rcs and sig_re and {reg['name']}_rcs;\n")
 
                 #lsb=0
                 #for field in reg['fields']:
                 #    msb=lsb+field['width']-1
-                #    file.write(f"  {reg['name']}_{field['name']}_rdata({field['msb']} downto {field['lsb']}) <= {reg['name']}_rdata_sw({msb} downto {lsb});\n")
+                #    file.write(f"    {reg['name']}_{field['name']}_rdata({field['msb']} downto {field['lsb']}) <= {reg['name']}_rdata_sw({msb} downto {lsb});\n")
                 #    lsb=msb+1
 
-                file.write(f"  {reg['name']}_rdata   <= (\n");
+                file.write(f"    {reg['name']}_rdata   <= (\n");
                 x=0
                 for field in reg['fields']:
                     y=0
                     for i in range(field['lsb'], field['msb']+1):
-                        file.write(f"    {i} => {reg['name']}_rdata_sw({x}), -- {field['name']}({y})\n")
+                        file.write(f"      {i} => {reg['name']}_rdata_sw({x}), -- {field['name']}({y})\n")
                         x=x+1
                         y=y+1
-                file.write(f"    others => '0');\n")
+                file.write(f"      others => '0');\n")
 
             else:
-                file.write(f"  {reg['name']}_rcs     <= '0';\n")
-                file.write(f"  {reg['name']}_re      <= '0';\n")
-                file.write(f"  {reg['name']}_rbusy   <= '0';\n")
-                file.write(f"  {reg['name']}_rdata   <= (others=>'0');\n");
+                file.write(f"    {reg['name']}_rcs     <= '0';\n")
+                file.write(f"    {reg['name']}_re      <= '0';\n")
+                file.write(f"    {reg['name']}_rbusy   <= '0';\n")
+                file.write(f"    {reg['name']}_rdata   <= (others=>'0');\n");
 
             file.write( "\n")
 
             if reg['sw2hw_we']:
-                file.write(f"  {reg['name']}_wcs     <= '1' when ")
+                file.write(f"    {reg['name']}_wcs     <= '1' when ")
                 prefix="    "
                 for waddr in reg['address_write']:
-                    file.write(f"{prefix}(sig_waddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
+                    file.write(f"  {prefix}(sig_waddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
                     prefix=" or "
                 
-                file.write(f" else '0';\n")
-                file.write(f"  {reg['name']}_we      <= sig_wcs and sig_we and {reg['name']}_wcs;\n")
-                file.write(f"  {reg['name']}_wdata   <= sig_wdata;\n")
+                file.write(f"   else '0';\n")
+                file.write(f"    {reg['name']}_we      <= sig_wcs and sig_we and {reg['name']}_wcs;\n")
+                file.write(f"    {reg['name']}_wdata   <= sig_wdata;\n")
                 #lsb=0
                 #for field in reg['fields']:
                 #    msb=lsb+field['width']-1
-                #    file.write(f"  {reg['name']}_{field['name']}_wdata({field['msb']} downto {field['lsb']}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']});\n")
+                #    file.write(f"    {reg['name']}_{field['name']}_wdata({field['msb']} downto {field['lsb']}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']});\n")
                 #    lsb=msb+1
                 lsb=0
                 for field in reg['fields']:
                     msb=lsb+field['width']-1
-                    file.write(f"  {reg['name']}_wdata_sw({msb} downto {lsb}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']}); -- {field['name']}\n")
+                    file.write(f"    {reg['name']}_wdata_sw({msb} downto {lsb}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']}); -- {field['name']}\n")
                     lsb=msb+1
 
             else:
-                file.write(f"  {reg['name']}_wcs      <= '0';\n") 
-                file.write(f"  {reg['name']}_we       <= '0';\n")
-                file.write(f"  {reg['name']}_wbusy    <= '0';\n")
-                file.write(f"  {reg['name']}_wdata    <= (others=>'0');\n")
-                file.write(f"  {reg['name']}_wdata_sw <= (others=>'0');\n")
+                file.write(f"    {reg['name']}_wcs      <= '0';\n") 
+                file.write(f"    {reg['name']}_we       <= '0';\n")
+                file.write(f"    {reg['name']}_wbusy    <= '0';\n")
+                file.write(f"    {reg['name']}_wdata    <= (others=>'0');\n")
+                file.write(f"    {reg['name']}_wdata_sw <= (others=>'0');\n")
                 
             if reg['hw2sw_data']:
                 lsb=0
                 for field in reg['fields']:
                     msb=lsb+field['width']-1
-                    file.write(f"  {reg['name']}_wdata_hw({msb} downto {lsb}) <= hw2sw_i.{reg['name']}.{field['name']}; -- {field['name']}\n")
+                    file.write(f"    {reg['name']}_wdata_hw({msb} downto {lsb}) <= hw2sw_i.{reg['name']}.{field['name']}; -- {field['name']}\n")
                     lsb=msb+1
 
             if reg['sw2hw_data']:
                 lsb=0
                 for field in reg['fields']:
                     msb=lsb+field['width']-1
-                    file.write(f"  sw2hw_o.{reg['name']}.{field['name']} <= {reg['name']}_rdata_hw({msb} downto {lsb}); -- {field['name']}\n")
+                    file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= {reg['name']}_rdata_hw({msb} downto {lsb}); -- {field['name']}\n")
                     lsb=msb+1
 
             file.write( "\n")
 
-            file.write(f"  ins_{reg['name']} : entity work.csr_{reg['hwtype']}(rtl)\n")
-            file.write( "    generic map\n")
-            file.write(f"      (WIDTH         => {reg['width']}\n")
+            file.write(f"    ins_{reg['name']} : entity work.csr_{reg['hwtype']}(rtl)\n")
+            file.write( "      generic map\n")
+            file.write(f"        (WIDTH         => {reg['width']}\n")
             
             if reg['hwtype'] in ['reg']:
-                file.write(f"      ,INIT          => ")
-                first = True
-                for field in reg['fields']:
-                    if not first :
-                        file.write( "                       &")
-                    file.write(f"\"{parse_init_value(field['init'],field['width'])}\" -- {field['name']}\n")
-                    first = False;
-                file.write(f"      ,MODEL         => \"{reg['swaccess']}\"\n")
+                file.write(f"        ,INIT          => INIT_{reg['name']}\n")
+                file.write(f"        ,MODEL         => \"{reg['swaccess']}\"\n")
             if reg['hwtype'] in ['fifo']:
-                params=reg['params']
-                for param in reg['params']:
-                    file.write(f"      ,{param} => {params[param]}\n")
+                if 'params' in reg:
+                    params=reg['params']
+                    for param in reg['params']:
+                        file.write(f"        ,{param} => {params[param]}\n")
                 
-            file.write( "      )\n")
-            file.write( "    port map\n")
-            file.write( "      (clk_i         => clk_i\n")
-            file.write( "      ,arst_b_i      => arst_b_i\n")
-            file.write(f"      ,sw_wd_i       => {reg['name']}_wdata_sw\n")
-            file.write(f"      ,sw_rd_o       => {reg['name']}_rdata_sw\n")
-            file.write(f"      ,sw_we_i       => {reg['name']}_we\n")
-            file.write(f"      ,sw_re_i       => {reg['name']}_re\n")
-            file.write(f"      ,sw_rbusy_o    => {reg['name']}_rbusy\n")
-            file.write(f"      ,sw_wbusy_o    => {reg['name']}_wbusy\n")
+            file.write( "        )\n")
+            file.write( "      port map\n")
+            file.write( "        (clk_i         => clk_i\n")
+            file.write( "        ,arst_b_i      => arst_b_i\n")
+            file.write(f"        ,sw_wd_i       => {reg['name']}_wdata_sw\n")
+            file.write(f"        ,sw_rd_o       => {reg['name']}_rdata_sw\n")
+            file.write(f"        ,sw_we_i       => {reg['name']}_we\n")
+            file.write(f"        ,sw_re_i       => {reg['name']}_re\n")
+            file.write(f"        ,sw_rbusy_o    => {reg['name']}_rbusy\n")
+            file.write(f"        ,sw_wbusy_o    => {reg['name']}_wbusy\n")
 
             if reg['hwtype'] in ['reg','ext']:
                 if reg['hw2sw_data']:
-                    file.write(f"      ,hw_wd_i       => {reg['name']}_wdata_hw\n")
+                    file.write(f"        ,hw_wd_i       => {reg['name']}_wdata_hw\n")
                 else:
-                    file.write(f"      ,hw_wd_i       => (others => '0')\n")
+                    file.write(f"        ,hw_wd_i       => (others => '0')\n")
                 if reg['sw2hw_data']:
-                    file.write(f"      ,hw_rd_o       => {reg['name']}_rdata_hw\n")
+                    file.write(f"        ,hw_rd_o       => {reg['name']}_rdata_hw\n")
                 else:
-                    file.write(f"      ,hw_rd_o       => open\n")
+                    file.write(f"        ,hw_rd_o       => open\n")
                 if reg['hw2sw_we']:
-                    file.write(f"      ,hw_we_i       => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
+                    file.write(f"        ,hw_we_i       => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
                 else:
-                    file.write(f"      ,hw_we_i       => '0'\n")
+                    file.write(f"        ,hw_we_i       => '0'\n")
                 if reg['sw2hw_re']:
-                    file.write(f"      ,hw_sw_re_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
+                    file.write(f"        ,hw_sw_re_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
                 else:
-                    file.write(f"      ,hw_sw_re_o    => open\n")
+                    file.write(f"        ,hw_sw_re_o    => open\n")
                 if reg['sw2hw_we']:
-                    file.write(f"      ,hw_sw_we_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
+                    file.write(f"        ,hw_sw_we_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
                 else:
-                    file.write(f"      ,hw_sw_we_o      => open\n")
+                    file.write(f"        ,hw_sw_we_o      => open\n")
 
             if reg['hwtype'] in ['fifo']:
                 if reg['hw2sw_we']:
-                    file.write(f"      ,hw_tx_valid_i => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
+                    file.write(f"        ,hw_tx_valid_i => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
                 else:
-                    file.write(f"      ,hw_tx_valid_i => '0'\n")
+                    file.write(f"        ,hw_tx_valid_i => '0'\n")
                 if reg['sw2hw_re']:
-                    file.write(f"      ,hw_tx_ready_o => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
+                    file.write(f"        ,hw_tx_ready_o => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
                 else:
-                    file.write(f"      ,hw_tx_ready_o => open\n")
+                    file.write(f"        ,hw_tx_ready_o => open\n")
                 if reg['hw2sw_data']:
-                    file.write(f"      ,hw_tx_data_i  => {reg['name']}_wdata_hw\n")
+                    file.write(f"        ,hw_tx_data_i  => {reg['name']}_wdata_hw\n")
                 else:
-                    file.write(f"      ,hw_tx_data_i  => (others => '0')\n")
+                    file.write(f"        ,hw_tx_data_i  => (others => '0')\n")
                 if reg['sw2hw_we']:
-                    file.write(f"      ,hw_rx_valid_o => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
+                    file.write(f"        ,hw_rx_valid_o => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
                 else:
-                    file.write(f"      ,hw_rx_valid_o => open\n")
+                    file.write(f"        ,hw_rx_valid_o => open\n")
                 if reg['hw2sw_re']:
-                    file.write(f"      ,hw_rx_ready_i => hw2sw_i.{reg['name']}.{reg['hw2sw_name_re']}\n")
+                    file.write(f"        ,hw_rx_ready_i => hw2sw_i.{reg['name']}.{reg['hw2sw_name_re']}\n")
                 else:
-                    file.write(f"      ,hw_rx_ready_i => '1'\n")
+                    file.write(f"        ,hw_rx_ready_i => '1'\n")
                 if reg['sw2hw_data']:
-                    file.write(f"      ,hw_rx_data_o  => {reg['name']}_rdata_hw\n")
+                    file.write(f"        ,hw_rx_data_o  => {reg['name']}_rdata_hw\n")
                 else:
-                    file.write(f"      ,hw_rx_data_o  => open\n")
-            file.write( "      );\n")
+                    file.write(f"        ,hw_rx_data_o  => open\n")
+            file.write( "        );\n")
+            file.write( "\n")
+            file.write(f"  end generate gen_{reg['name']};\n")
+            file.write( "\n")
+            file.write(f"  gen_{reg['name']}_b: if not ({reg['enable']})\n")
+            file.write(f"  generate\n")
+            file.write(f"    {reg['name']}_rcs     <= '0';\n")
+            file.write(f"    {reg['name']}_rbusy   <= '0';\n")
+            file.write(f"    {reg['name']}_rdata   <= (others => '0');\n");
+            file.write(f"    {reg['name']}_wcs      <= '0';\n") 
+            file.write(f"    {reg['name']}_wbusy    <= '0';\n")
+            if reg['sw2hw_data']:
+                for field in reg['fields']:
+                    file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= {field['expr']};\n")
+            if reg['sw2hw_re']:
+                file.write(f"    sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']} <= '0';\n")
+            if reg['sw2hw_we']:
+                file.write(f"    sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']} <= '0';\n")
+            file.write(f"  end generate gen_{reg['name']}_b;\n")
             file.write( "\n")
 
         file.write(f"  sig_wbusy <= \n");
