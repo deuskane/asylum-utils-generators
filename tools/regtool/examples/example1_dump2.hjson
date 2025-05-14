@@ -8,6 +8,7 @@
       name: REG1_ENABLE
       type: boolean
       value: True
+      desc: ""
     }
   ]
   registers:
@@ -33,6 +34,7 @@
           desc: Field 2
         }
       ]
+      enable: True
       hwtype: reg
     }
     {
@@ -56,6 +58,7 @@
           desc: Field 2
         }
       ]
+      enable: True
       hwtype: reg
     }
     {
@@ -80,6 +83,7 @@
           desc: Field 2
         }
       ]
+      enable: True
     }
     {
       name: fifo_sw2hw
@@ -103,6 +107,7 @@
           init: "0"
         }
       ]
+      enable: True
     }
     {
       name: fifo_hw2sw
@@ -126,6 +131,7 @@
           init: "0"
         }
       ]
+      enable: True
     }
     {
       name: fifo_bidir
@@ -149,6 +155,7 @@
           init: "0"
         }
       ]
+      enable: True
     }
   ]
   interface: reg

@@ -14,6 +14,9 @@ use     work.example1_csr_pkg.ALL;
 -- Width       : 32
 --==================================
 entity example1_registers is
+  generic (
+    REG1_ENABLE : boolean := boolean -- 
+  );
   port (
     -- Clock and Reset
     clk_i      : in  std_logic;
@@ -150,6 +153,8 @@ begin  -- architecture rtl
                sig_rbusy when sig_re = '1' else
                '0';
 
+  gen_reg1: if True
+  generate
   --==================================
   -- Register    : reg1
   -- Description : Register 1
@@ -212,6 +217,10 @@ begin  -- architecture rtl
       ,hw_sw_we_o    => sw2hw_o.reg1.we
       );
 
+  end generate gen_reg1
+
+  gen_reg2: if True
+  generate
   --==================================
   -- Register    : reg2
   -- Description : Register 2
@@ -286,6 +295,10 @@ begin  -- architecture rtl
       ,hw_sw_we_o    => sw2hw_o.reg2.we
       );
 
+  end generate gen_reg2
+
+  gen_reg3: if True
+  generate
   --==================================
   -- Register    : reg3
   -- Description : Register 3
@@ -357,6 +370,10 @@ begin  -- architecture rtl
       ,hw_sw_we_o    => sw2hw_o.reg3.we
       );
 
+  end generate gen_reg3
+
+  gen_fifo_sw2hw: if True
+  generate
   --==================================
   -- Register    : fifo_sw2hw
   -- Description : Write Fifo
@@ -425,6 +442,10 @@ begin  -- architecture rtl
       ,hw_rx_data_o  => open
       );
 
+  end generate gen_fifo_sw2hw
+
+  gen_fifo_hw2sw: if True
+  generate
   --==================================
   -- Register    : fifo_hw2sw
   -- Description : Read Fifo
@@ -481,6 +502,10 @@ begin  -- architecture rtl
       ,hw_rx_data_o  => fifo_hw2sw_rdata_hw
       );
 
+  end generate gen_fifo_hw2sw
+
+  gen_fifo_bidir: if True
+  generate
   --==================================
   -- Register    : fifo_bidir
   -- Description : Read/Write Fifo
@@ -550,6 +575,8 @@ begin  -- architecture rtl
       ,hw_rx_ready_i => hw2sw_i.fifo_bidir.ready
       ,hw_rx_data_o  => fifo_bidir_rdata_hw
       );
+
+  end generate gen_fifo_bidir
 
   sig_wbusy <= 
     reg1_wbusy when reg1_wcs = '1' else

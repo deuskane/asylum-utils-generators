@@ -10,6 +10,7 @@
     "desc"                : {
       "type"              : "string",
       "description"       : "Module Description"
+      "default"           : ""
     }              
     "width"               : {
       "type"              : "integer",
@@ -38,6 +39,7 @@
           "desc"                : {
             "type"              : "string",
             "description"       : "Parameter Description"
+	    "default"           : ""
           }              
           "type"                : {
             "type"              : "string",
@@ -66,10 +68,20 @@
           "desc"                : {
             "type"              : "string",
             "description"       : "Register Description"
+            "default"           : ""
+          }              
+          "enable"              : {
+            "type"              : "string",
+            "description"       : "Register Enable"
+            "default"           : "True"
           }              
           "address"             : {
             "type"              : "string",
             "description"       : "Register Address"
+          }              
+          "alias_write"         : {
+            "type"              : "string",
+            "description"       : "Register Write Alias"
           }              
           "hwtype"              : {
             "type"              : "string",
@@ -105,6 +117,7 @@
                 "desc"                : {
                   "type"              : "string",
                   "description"       : "Field Description"
+                  "default"           : ""
                 }              
                 "init"                : {
                   "type"              : "string",
