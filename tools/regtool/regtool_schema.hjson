@@ -29,7 +29,7 @@
       "type"              : "array",
       "items"             : {
         "type"                  : "object",
-        "required"              : ["name","type","value"]
+        "required"              : ["name","type"]
         "additionalProperties"  : false
         "properties"            : {
           "name"                : {
@@ -44,10 +44,6 @@
           "type"                : {
             "type"              : "string",
             "description"       : "Parameter Type"
-	  }
-          "value"                : {
-            "type"              : "string",
-            "description"       : "Parameter Value"
 	  }
         }# end of properties "parameters"
       }#end of items "parameters"
@@ -123,6 +119,11 @@
                   "type"              : "string",
                   "description"       : "Field Initialization Value",
                   "default"           : "0"
+                }
+                "expr"                : {
+                  "type"              : "string",
+                  "description"       : "Field Initialization Expression",
+                  "default"           : ""
                 }
                 "bits"                : {
                   "type"              : "string",

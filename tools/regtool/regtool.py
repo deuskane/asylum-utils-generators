@@ -310,6 +310,8 @@ def parse_hjson(file_path):
             
             check_range    (csr,field,regmap)
             reg['width'] += field['width'];
+            if field['expr'] == '':
+                field['expr'] = f"\"{parse_init_value(field['init'],field['width'])}\""
         
     csr['size_addr'] = int(math.ceil(math.log2(addr_max+1)))
     addrmap.display()
@@ -338,7 +340,6 @@ def parse_value(value):
     elif value.startswith('d'):
         return int(value[1:])
     else:
-        # default : decimal
         return int(value)
 
 #--------------------------------------------
@@ -602,7 +603,7 @@ def generate_vhdl_module(csr, output_path):
                     file.write( "    ")
                 else:
                     file.write( "   ;")
-                file.write(f"{param['name']} : {param['type']} := {param['value']} -- {param['desc']}\n")
+                file.write(f"{param['name']} : {param['type']} -- {param['desc']}\n")
                 first = False;
                   
             file.write( "  );\n")
@@ -703,7 +704,7 @@ def generate_vhdl_module(csr, output_path):
                 else:
                     file.write( "             ")
 
-                file.write(f"\"{parse_init_value(field['init'],field['width'])}\" -- {field['name']}\n")
+                file.write(f"{field['expr']} -- {field['name']}\n")
                 first = False;
             file.write( "           ;\n")
 
@@ -917,7 +918,7 @@ def generate_vhdl_module(csr, output_path):
             file.write(f"    {reg['name']}_wbusy    <= '0';\n")
             if reg['sw2hw_data']:
                 for field in reg['fields']:
-                    file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= \"{parse_init_value(field['init'],field['width'])}\";\n")
+                    file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= {field['expr']};\n")
             if reg['sw2hw_re']:
                 file.write(f"    sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']} <= '0';\n")
             if reg['sw2hw_we']:
