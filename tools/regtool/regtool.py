@@ -785,7 +785,6 @@ def generate_vhdl_module(csr, output_path):
             else:
                 file.write(f"    {reg['name']}_rcs     <= '0';\n")
                 file.write(f"    {reg['name']}_re      <= '0';\n")
-                file.write(f"    {reg['name']}_rbusy   <= '0';\n")
                 file.write(f"    {reg['name']}_rdata   <= (others=>'0');\n");
 
             file.write( "\n")
