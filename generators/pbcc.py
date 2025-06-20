@@ -24,6 +24,21 @@ from glob                    import glob
 from pathlib                 import Path
 
 class pbcc(Generator):
+
+    def update_paths(self,options, files_root):
+        updated_options = []
+        for option in options:
+            print(option)
+            if option.startswith('-I'):
+                path = option[2:]
+                if not path.startswith('/'):
+                    updated_options.append(f'-I{files_root}/{path}')
+                else:
+                    updated_options.append(option)
+            else:
+                updated_options.append(option)
+        return updated_options
+
     def run(self):
 
         print("[INFO   ]-------------------------------------------")
@@ -38,9 +53,11 @@ class pbcc(Generator):
         file_vhd    = Path(file_in).stem + ".vhd"
         file_type   = self.config.get("type")
         cflags      = self.config.get("cflags")
-
+        
         if cflags is None:
             cflags = ""
+
+        cflags = self.update_paths(cflags.split(),self.files_root)
         
         if (not file_type in ["c","kcpsm3","pblazeide"]):
             raise RuntimeError("[ERROR  ] Unknown file type: {0}. Possible options are \"c\", \"kcpsm3\" or \"pblazeide\"".format(file_type))
@@ -84,7 +101,7 @@ class pbcc(Generator):
             
             print("[INFO   ] Translate C to PSM");
             print("[DEBUG  ] PBCC_HOME         : {0}".format(pbcc_home))
-            args =  cflags.split() + ["-I" + include_path, "-V", "-S", "--dialect=kcpsm3", file_c]
+            args =  cflags + ["-I" + include_path, "-V", "-S", "--dialect=kcpsm3", file_c]
 
             print(f"{args}")
             try:
