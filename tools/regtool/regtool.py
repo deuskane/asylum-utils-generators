@@ -904,6 +904,18 @@ def generate_vhdl_module(csr, output_path):
                     file.write(f"        ,hw_rx_data_o  => {reg['name']}_rdata_hw\n")
                 else:
                     file.write(f"        ,hw_rx_data_o  => open\n")
+
+                file.write(f"        ,hw_tx_empty_o        => open\n")
+                file.write(f"        ,hw_tx_full_o         => open\n")
+                #file.write(f"        ,hw_tx_nb_elt_empty_o => open\n")
+                #file.write(f"        ,hw_tx_nb_elt_full_o  => open\n")
+
+                file.write(f"        ,hw_rx_empty_o        => open\n")
+                file.write(f"        ,hw_rx_full_o         => open\n")
+                #file.write(f"        ,hw_rx_nb_elt_empty_o => open\n")
+                #file.write(f"        ,hw_rx_nb_elt_full_o  => open\n")
+
+                    
             file.write( "        );\n")
             file.write( "\n")
             file.write(f"  end generate gen_{reg['name']};\n")
