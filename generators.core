@@ -26,9 +26,10 @@ CAPI=2:
 # 2025-04-17  2.2.2    mrosiere regtool: Header C copy into workdir
 # 2025-06-16  2.3.0    mrosiere pbcc : support -I
 # 2025-07-09  2.4.0    mrosiere regtool: Add FIFO in csr_fifo
+# 2025-07-27  2.4.1    mrosire  regtool: Add flags
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.4.0
+name       : asylum:utils:generators:2.4.1
 description: A collection of useful generators
 
 #=========================================
