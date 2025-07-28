@@ -96,13 +96,6 @@ begin  -- architecture rtl
   
   gen_depth_sw2hw_ne_0  : if DEPTH_SW2HW /= 0
   generate
-    full                    <= not full_b ;
-                       
-    hw_rx_empty_o           <= full_b;
-    hw_rx_full_o            <= full  ;
-  --hw_rx_nb_elt_empty_o(0) <= full_b;
-  --hw_rx_nb_elt_full_o (0) <= full  ;
-
     ins_fifo_sw2hw : fifo_sync
       generic map
       (
@@ -117,10 +110,15 @@ begin  -- architecture rtl
        ,s_axis_tready_o        => full_b
        ,s_axis_tdata_i         => sw_wd_i
        ,s_axis_nb_elt_empty_o  => open
+       ,s_axis_full_o          => full
+       ,s_axis_empty_o         => open
+        
        ,m_axis_tvalid_o        => hw_rx_valid_o
        ,m_axis_tready_i        => hw_rx_ready_i
        ,m_axis_tdata_o         => hw_rx_data_o
        ,m_axis_nb_elt_full_o   => open
+       ,m_axis_full_o          => hw_rx_full_o 
+       ,m_axis_empty_o         => hw_rx_empty_o
        );
     
   end generate gen_depth_sw2hw_ne_0;
@@ -142,12 +140,6 @@ begin  -- architecture rtl
   
   gen_depth_hw2sw_ne_0  : if DEPTH_HW2SW /= 0
   generate
-    empty                   <= not empty_b;
-
-    hw_tx_empty_o           <= empty  ;
-    hw_tx_full_o            <= empty_b;
-  --hw_tx_nb_elt_empty_o(0) <= empty  ;
-  --hw_tx_nb_elt_full_o (0) <= empty_b;
 
     ins_fifo_hw2sw : fifo_sync
       generic map
@@ -163,10 +155,15 @@ begin  -- architecture rtl
        ,s_axis_tready_o        => hw_tx_ready_o 
        ,s_axis_tdata_i         => hw_tx_data_i  
        ,s_axis_nb_elt_empty_o  => open
+       ,s_axis_full_o          => hw_tx_full_o 
+       ,s_axis_empty_o         => hw_tx_empty_o
+
        ,m_axis_tvalid_o        => empty_b
        ,m_axis_tready_i        => sw_re_i
        ,m_axis_tdata_o         => sw_rd_o
        ,m_axis_nb_elt_full_o   => open
+       ,m_axis_full_o          => open
+       ,m_axis_empty_o         => empty
        );
     
   end generate gen_depth_hw2sw_ne_0;
