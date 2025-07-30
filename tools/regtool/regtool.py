@@ -533,12 +533,12 @@ def generate_vhdl_package(csr, output_path):
                         print_vhdl_header_field(field,file)
                         file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
                     if reg['hwtype'] in ['fifo']:
-                        file.write(f"    rx_empty : std_logic;\n")
-                        file.write(f"    rx_full  : std_logic;\n")
+                        file.write(f"    sw2hw_empty : std_logic;\n")
+                        file.write(f"    sw2hw_full  : std_logic;\n")
                 if reg['hw2sw_data']:
                     if reg['hwtype'] in ['fifo']:
-                        file.write(f"    tx_empty : std_logic;\n")
-                        file.write(f"    tx_full  : std_logic;\n")
+                        file.write(f"    hw2sw_empty : std_logic;\n")
+                        file.write(f"    hw2sw_full  : std_logic;\n")
                 file.write(f"  end record {module}_{reg['name']}_sw2hw_t;\n")
                 file.write( "\n")
 
@@ -900,8 +900,8 @@ def generate_vhdl_module(csr, output_path):
                     file.write(f"        ,hw_tx_ready_o        => open\n")
                 if reg['hw2sw_data']:
                     file.write(f"        ,hw_tx_data_i         => {reg['name']}_wdata_hw\n")
-                    file.write(f"        ,hw_tx_empty_o        => sw2hw_o.{reg['name']}.tx_empty\n")
-                    file.write(f"        ,hw_tx_full_o         => sw2hw_o.{reg['name']}.tx_full\n") 
+                    file.write(f"        ,hw_tx_empty_o        => sw2hw_o.{reg['name']}.hw2sw_empty\n")
+                    file.write(f"        ,hw_tx_full_o         => sw2hw_o.{reg['name']}.hw2sw_full\n") 
                    #file.write(f"        ,hw_tx_nb_elt_empty_o => open\n")
                    #file.write(f"        ,hw_tx_nb_elt_full_o  => open\n")
                 else:
@@ -921,8 +921,8 @@ def generate_vhdl_module(csr, output_path):
                     file.write(f"        ,hw_rx_ready_i        => '1'\n")
                 if reg['sw2hw_data']:
                     file.write(f"        ,hw_rx_data_o         => {reg['name']}_rdata_hw\n")
-                    file.write(f"        ,hw_rx_empty_o        => sw2hw_o.{reg['name']}.rx_empty\n")
-                    file.write(f"        ,hw_rx_full_o         => sw2hw_o.{reg['name']}.rx_full\n")
+                    file.write(f"        ,hw_rx_empty_o        => sw2hw_o.{reg['name']}.sw2hw_empty\n")
+                    file.write(f"        ,hw_rx_full_o         => sw2hw_o.{reg['name']}.sw2hw_full\n")
                    #file.write(f"        ,hw_rx_nb_elt_empty_o => open\n")
                    #file.write(f"        ,hw_rx_nb_elt_full_o  => open\n")
                 else:
