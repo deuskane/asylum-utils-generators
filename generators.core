@@ -26,10 +26,11 @@ CAPI=2:
 # 2025-04-17  2.2.2    mrosiere regtool: Header C copy into workdir
 # 2025-06-16  2.3.0    mrosiere pbcc : support -I
 # 2025-07-09  2.4.0    mrosiere regtool: Add FIFO in csr_fifo
-# 2025-07-27  2.4.1    mrosire  regtool: Add flags
+# 2025-07-27  2.4.1    mrosiere regtool: Add flags
+# 2025-08-12  2.4.2    mrosiere Use cache type
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.4.1
+name       : asylum:utils:generators:2.4.2
 description: A collection of useful generators
 
 #=========================================
@@ -42,6 +43,7 @@ generators:
     interpreter: python3
     command    : generators/pbcc.py
     description: ROM Generator
+    cache_type : input
     usage: |
       This generator translate a source file (C or Assembler) in ROM
 
@@ -76,6 +78,7 @@ generators:
     interpreter: python3
     command    : generators/regtool.py
     description: CSR Generator
+    cache_type : input
     usage: |
       This generator create module with register
 
