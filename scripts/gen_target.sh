@@ -40,11 +40,17 @@ function gen_target_add_target()
   gen_${target_name}:
     generator : pbcc_gen
     parameters:
-      file: ${file_name}
-      type: ${file_type}
-
+      file   : ${file_name}
+      type   : ${file_type}
 EOT
 
+    if test "${file_type}" = "c";
+    then
+    cat <<EOT >> /tmp/test_core_generate.txt
+      cflags : --verbose --all-callee-saves
+EOT
+    fi
+    
 	cat <<EOT >> /tmp/test_core_targets.txt
   sim_${target_name}:
     << : *sim
@@ -217,6 +223,8 @@ function gen_target_main()
     sed -i '/<TARGETS_BEGIN>/r  /tmp/test_core_targets.txt'                               ${file_core}
 
     # Generate Makefile
+    if false;
+    then
     echo "Generate Makefile"
 
     rm -f Makefile
@@ -325,7 +333,8 @@ clean :
 
 .PHONY : clean
 EOT
-
+    fi
+    
     echo "Done"
 
 }
