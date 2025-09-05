@@ -41,22 +41,23 @@ def create_vhdl_package(package_name, path):
     for filename in os.listdir(path):
         if filename.endswith(".vhd") and filename != f"{package_name}.vhd":
             with open(os.path.join(path, filename), 'r') as file:
+                print(f"  * {os.path.join(path, filename)}")
                 content = file.read()
 
                 
                 # Expression régulière pour trouver le contenu entre "entity" et "end entity"
-                pattern = re.compile(r'entity\s+.*?\s+is.*?end\s.*?;', re.DOTALL)
+                #pattern = re.compile(r'entity\s+.*?\s+is.*?end\s.*?;', re.DOTALL)
+                pattern = re.compile(r'entity\s+(\w+)\s+is(.*?)end\s+(entity\s+)?\1\s*;', re.DOTALL | re.IGNORECASE)
+
     
                 # Trouver toutes les correspondances dans le code VHDL
                 matches = pattern.findall(content)
 
-                print(f"{matches}")
+                for entity_name, entity_body, _ in matches:
+                    print(f"    * {entity_name}")
                 
-                for match in matches:
-                    
-                    package_content += match.replace("entity", "component")
+                    package_content += f"component {entity_name} is{entity_body}end component {entity_name};\n"
                     package_content += "\n"
-    
     
     print(f"* Delete previous content.")
     with open(package_file_path, 'r') as package_file:
@@ -69,7 +70,6 @@ def create_vhdl_package(package_name, path):
         existing_content,
         flags=re.DOTALL
     )
-    print (f"{existing_content}")
     
     # Insère le nouveau contenu auto-généré
     print(f"* Add new previous content.")
