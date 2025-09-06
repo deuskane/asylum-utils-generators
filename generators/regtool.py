@@ -44,7 +44,7 @@ class regtool(Generator):
         name          = self.config.get("name")
         script        = os.path.join(dir_script,"tools","regtool","regtool.py")
 
-        files_hdl     = ["csr_reg.vhd","csr_ext.vhd","csr_fifo.vhd"]
+        files_hdl     = ["csr_pkg.vhd","csr_reg.vhd","csr_ext.vhd","csr_fifo.vhd"]
         dir_hdl       = os.path.join(dir_script,"tools","regtool","hdl",)
 
         file_vhdl_pkg = os.path.join(dir_work,name+'_csr_pkg.vhd')
@@ -97,15 +97,13 @@ class regtool(Generator):
         # Add outfile in source files
         #-------------------------------------------------
         outfiles = []
-        if (logical_name == None):
-            for f in files_hdl:
-                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
+        for f in files_hdl:
+            outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
 
+        if (logical_name == None):
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource'}})
         else:
-            for f in files_hdl:
-                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
 

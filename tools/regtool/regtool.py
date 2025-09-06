@@ -512,6 +512,9 @@ def generate_vhdl_package(csr, output_path):
         file.write( "library IEEE;\n")
         file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
         file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
+        if csr["interface"] == "pbi":
+            file.write(f"library work;\n")
+            file.write(f"use     work.pbi_pkg.all;\n")
         
         print_vhdl_header_csr(csr,file)
         file.write( "\n")
@@ -578,11 +581,66 @@ def generate_vhdl_package(csr, output_path):
         file.write(f"  constant {module}_DATA_WIDTH : natural := {csr['width']};\n")
         file.write( "\n")
         
+        file.write( "  ------------------------------------\n")
+        file.write(f"  -- Component\n")
+        file.write( "  ------------------------------------\n")
+        generate_vhdl_entity(csr, file, "component")
+        file.write( "\n")
+
         file.write(f"end package {module}_csr_pkg;\n")
 
         #file.write(f"package body {module}_csr_pkg is\n")
         #file.write(f"end package body {module}_csr_pkg;\n")
 
+#--------------------------------------------
+#--------------------------------------------
+def generate_vhdl_entity(csr, file, entity_type):
+    module = csr['name']
+
+    # Generate VHDL entity and architecture
+    file.write(f"{entity_type} {module}_registers is\n")
+    if csr['parameters'] != []:
+        file.write( "  generic (\n")
+        first = True
+        for param in csr['parameters']:
+            if first == True:
+                file.write( "    ")
+            else:
+                file.write( "   ;")
+            file.write(f"{param['name']} : {param['type']} -- {param['desc']}\n")
+            first = False;
+              
+        file.write( "  );\n")
+    
+    file.write( "  port (\n")
+    file.write( "    -- Clock and Reset\n")
+    file.write( "    clk_i      : in  std_logic;\n")
+    file.write( "    arst_b_i   : in  std_logic;\n")
+    file.write( "    -- Bus\n")
+
+    # Generate Port for interface "reg"
+    if csr["interface"] == "reg":
+        
+        file.write(f"    cs_i       : in    std_logic;\n")
+        file.write(f"    re_i       : in    std_logic;\n")
+        file.write(f"    we_i       : in    std_logic;\n")
+        file.write(f"    addr_i     : in    std_logic_vector ({csr['size_addr']}-1 downto 0);\n")
+        file.write(f"    wdata_i    : in    std_logic_vector ({csr['width']}-1 downto 0);\n")
+        file.write(f"    rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0);\n")
+        file.write(f"    busy_o     : out   std_logic;\n")
+
+    # Generate Port for interface "pbi"
+    if csr["interface"] == "pbi":
+        
+        file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
+        file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
+
+    file.write( "    -- CSR\n")
+    file.write(f"    sw2hw_o    : out {module}_sw2hw_t;\n")
+    file.write(f"    hw2sw_i    : in  {module}_hw2sw_t\n")
+    file.write( "  );\n")
+    file.write(f"end {entity_type} {module}_registers;\n\n")
+        
 #--------------------------------------------
 #--------------------------------------------
 def generate_vhdl_module(csr, output_path):
@@ -596,6 +654,8 @@ def generate_vhdl_module(csr, output_path):
         file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
         file.write(f"library {csr['logical_name']};\n")
         file.write(f"use     {csr['logical_name']}.{module}_csr_pkg.ALL;\n")
+        file.write( "library work;\n")
+        file.write(f"use     work.csr_pkg.ALL;\n")
         if csr["interface"] == "pbi":
             file.write(f"library work;\n")
             file.write(f"use     work.pbi_pkg.all;\n")
@@ -604,26 +664,7 @@ def generate_vhdl_module(csr, output_path):
         print_vhdl_header_csr(csr,file)
         
         # Generate VHDL entity and architecture
-        file.write(f"entity {module}_registers is\n")
-        if csr['parameters'] != []:
-            file.write( "  generic (\n")
-            first = True
-            for param in csr['parameters']:
-                if first == True:
-                    file.write( "    ")
-                else:
-                    file.write( "   ;")
-                file.write(f"{param['name']} : {param['type']} -- {param['desc']}\n")
-                first = False;
-                  
-            file.write( "  );\n")
-
-        
-        file.write( "  port (\n")
-        file.write( "    -- Clock and Reset\n")
-        file.write( "    clk_i      : in  std_logic;\n")
-        file.write( "    arst_b_i   : in  std_logic;\n")
-        file.write( "    -- Bus\n")
+        generate_vhdl_entity(csr, file, "entity")
 
         sig_wcs   = ""
         sig_we    = ""
@@ -639,15 +680,6 @@ def generate_vhdl_module(csr, output_path):
 
         # Generate Port for interface "reg"
         if csr["interface"] == "reg":
-            
-            file.write(f"    cs_i       : in    std_logic;\n")
-            file.write(f"    re_i       : in    std_logic;\n")
-            file.write(f"    we_i       : in    std_logic;\n")
-            file.write(f"    addr_i     : in    std_logic_vector ({csr['size_addr']}-1 downto 0);\n")
-            file.write(f"    wdata_i    : in    std_logic_vector ({csr['width']}-1 downto 0);\n")
-            file.write(f"    rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0);\n")
-            file.write(f"    busy_o     : out   std_logic;\n")
-
             sig_wcs   = "cs_i"
             sig_we    = "we_i"
             sig_waddr = "addr_i"
@@ -662,9 +694,6 @@ def generate_vhdl_module(csr, output_path):
 
         # Generate Port for interface "pbi"
         if csr["interface"] == "pbi":
-            
-            file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
-            file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
 
             sig_wcs   = "pbi_ini_i.cs"
             sig_we    = "pbi_ini_i.we"
@@ -677,12 +706,6 @@ def generate_vhdl_module(csr, output_path):
             sig_rdata = "pbi_tgt_o.rdata"
 
             sig_busy  = "pbi_tgt_o.busy"
-
-        file.write( "    -- CSR\n")
-        file.write(f"    sw2hw_o    : out {module}_sw2hw_t;\n")
-        file.write(f"    hw2sw_i    : in  {module}_hw2sw_t\n")
-        file.write( "  );\n")
-        file.write(f"end entity {module}_registers;\n\n")
 
         # Architecture
         file.write(f"architecture rtl of {module}_registers is\n")
@@ -843,7 +866,7 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
 
-            file.write(f"    ins_{reg['name']} : entity work.csr_{reg['hwtype']}(rtl)\n")
+            file.write(f"    ins_{reg['name']} : csr_{reg['hwtype']}\n")
             file.write( "      generic map\n")
             file.write(f"        (WIDTH         => {reg['width']}\n")
             

@@ -28,9 +28,10 @@ CAPI=2:
 # 2025-07-09  2.4.0    mrosiere regtool: Add FIFO in csr_fifo
 # 2025-07-27  2.4.1    mrosiere regtool: Add flags
 # 2025-08-12  2.4.2    mrosiere Use cache type
+# 2025-09-06  2.4.3    mrosiere regtool: Add component for csr and in package
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.4.2
+name       : asylum:utils:generators:2.4.3
 description: A collection of useful generators
 
 #=========================================
