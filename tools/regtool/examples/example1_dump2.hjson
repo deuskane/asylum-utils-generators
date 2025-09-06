@@ -7,7 +7,6 @@
     {
       name: REG1_ENABLE
       type: boolean
-      value: True
       desc: ""
     }
   ]
@@ -26,12 +25,14 @@
           bits: "0"
           init: d0
           desc: Field 1
+          expr: ""
         }
         {
           name: field2
           bits: "2"
           init: b00
           desc: Field 2
+          expr: ""
         }
       ]
       enable: True
@@ -50,12 +51,14 @@
           bits: 7:0
           init: x00
           desc: Field 1
+          expr: ""
         }
         {
           name: field2
           bits: 15:8
           init: xFF
           desc: Field 2
+          expr: ""
         }
       ]
       enable: True
@@ -75,12 +78,14 @@
           bits: 7:0
           init: x00
           desc: Field 1
+          expr: ""
         }
         {
           name: field2
           bits: 15:8
           init: xFF
           desc: Field 2
+          expr: ""
         }
       ]
       enable: True
@@ -99,12 +104,14 @@
           bits: 3:0
           desc: Field 1
           init: "0"
+          expr: ""
         }
         {
           name: field2
           bits: 15:8
           desc: Field 2
           init: "0"
+          expr: ""
         }
       ]
       enable: True
@@ -123,12 +130,14 @@
           bits: 3:0
           desc: Field 1
           init: "0"
+          expr: ""
         }
         {
           name: field2
           bits: 15:8
           desc: Field 2
           init: "0"
+          expr: ""
         }
       ]
       enable: True
@@ -147,12 +156,14 @@
           bits: 3:0
           desc: Field 1
           init: "0"
+          expr: ""
         }
         {
           name: field2
           bits: 15:8
           desc: Field 2
           init: "0"
+          expr: ""
         }
       ]
       enable: True

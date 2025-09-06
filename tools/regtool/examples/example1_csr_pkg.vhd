@@ -117,6 +117,8 @@ package example1_csr_pkg is
   --==================================
   type example1_fifo_sw2hw_sw2hw_t is record
     ready : std_logic;
+    hw2sw_empty : std_logic;
+    hw2sw_full  : std_logic;
   end record example1_fifo_sw2hw_sw2hw_t;
 
   type example1_fifo_sw2hw_hw2sw_t is record
@@ -158,6 +160,8 @@ package example1_csr_pkg is
   -- Width       : 8
   --==================================
     field2 : std_logic_vector(8-1 downto 0);
+    sw2hw_empty : std_logic;
+    sw2hw_full  : std_logic;
   end record example1_fifo_hw2sw_sw2hw_t;
 
   type example1_fifo_hw2sw_hw2sw_t is record
@@ -188,6 +192,10 @@ package example1_csr_pkg is
   -- Width       : 8
   --==================================
     field2 : std_logic_vector(8-1 downto 0);
+    sw2hw_empty : std_logic;
+    sw2hw_full  : std_logic;
+    hw2sw_empty : std_logic;
+    hw2sw_full  : std_logic;
   end record example1_fifo_bidir_sw2hw_t;
 
   type example1_fifo_bidir_hw2sw_t is record
@@ -228,5 +236,31 @@ package example1_csr_pkg is
 
   constant example1_ADDR_WIDTH : natural := 5;
   constant example1_DATA_WIDTH : natural := 32;
+
+  ------------------------------------
+  -- Component
+  ------------------------------------
+component example1_registers is
+  generic (
+    REG1_ENABLE : boolean -- 
+  );
+  port (
+    -- Clock and Reset
+    clk_i      : in  std_logic;
+    arst_b_i   : in  std_logic;
+    -- Bus
+    cs_i       : in    std_logic;
+    re_i       : in    std_logic;
+    we_i       : in    std_logic;
+    addr_i     : in    std_logic_vector (5-1 downto 0);
+    wdata_i    : in    std_logic_vector (32-1 downto 0);
+    rdata_o    : out   std_logic_vector (32-1 downto 0);
+    busy_o     : out   std_logic;
+    -- CSR
+    sw2hw_o    : out example1_sw2hw_t;
+    hw2sw_i    : in  example1_hw2sw_t
+  );
+end component example1_registers;
+
 
 end package example1_csr_pkg;

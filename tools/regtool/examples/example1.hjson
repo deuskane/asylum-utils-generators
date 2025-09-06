@@ -7,7 +7,6 @@
     	{
 	    name       : "REG1_ENABLE",
 	    type       : "boolean",
-	    value      : "True"
 	}
     ]
     registers : [

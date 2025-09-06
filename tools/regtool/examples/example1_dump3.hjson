@@ -7,7 +7,6 @@
     {
       name: REG1_ENABLE
       type: boolean
-      value: True
       desc: ""
     }
   ]
@@ -26,6 +25,7 @@
           bits: "0"
           init: 0
           desc: Field 1
+          expr: '''"0"'''
           msb: 0
           lsb: 0
           width: 1
@@ -35,6 +35,7 @@
           bits: "2"
           init: 0
           desc: Field 2
+          expr: '''"0"'''
           msb: 2
           lsb: 2
           width: 1
@@ -74,6 +75,7 @@
           bits: 7:0
           init: 0
           desc: Field 1
+          expr: '''"00000000"'''
           msb: 7
           lsb: 0
           width: 8
@@ -83,6 +85,7 @@
           bits: 15:8
           init: 255
           desc: Field 2
+          expr: '''"11111111"'''
           msb: 15
           lsb: 8
           width: 8
@@ -123,6 +126,7 @@
           bits: 7:0
           init: 0
           desc: Field 1
+          expr: '''"00000000"'''
           msb: 7
           lsb: 0
           width: 8
@@ -132,6 +136,7 @@
           bits: 15:8
           init: 255
           desc: Field 2
+          expr: '''"11111111"'''
           msb: 15
           lsb: 8
           width: 8
@@ -171,6 +176,7 @@
           bits: 3:0
           desc: Field 1
           init: 0
+          expr: '''"0000"'''
           msb: 3
           lsb: 0
           width: 4
@@ -180,6 +186,7 @@
           bits: 15:8
           desc: Field 2
           init: 0
+          expr: '''"00000000"'''
           msb: 15
           lsb: 8
           width: 8
@@ -219,6 +226,7 @@
           bits: 3:0
           desc: Field 1
           init: 0
+          expr: '''"0000"'''
           msb: 3
           lsb: 0
           width: 4
@@ -228,6 +236,7 @@
           bits: 15:8
           desc: Field 2
           init: 0
+          expr: '''"00000000"'''
           msb: 15
           lsb: 8
           width: 8
@@ -267,6 +276,7 @@
           bits: 3:0
           desc: Field 1
           init: 0
+          expr: '''"0000"'''
           msb: 3
           lsb: 0
           width: 4
@@ -276,6 +286,7 @@
           bits: 15:8
           desc: Field 2
           init: 0
+          expr: '''"00000000"'''
           msb: 15
           lsb: 8
           width: 8
