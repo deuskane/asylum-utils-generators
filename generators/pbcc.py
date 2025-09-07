@@ -53,7 +53,8 @@ class pbcc(Generator):
         file_vhd    = Path(file_in).stem + ".vhd"
         file_type   = self.config.get("type")
         cflags      = self.config.get("cflags")
-        
+        logical_name= self.config.get("logical_name",None)
+
         if cflags is None:
             cflags = ""
 
@@ -131,7 +132,10 @@ class pbcc(Generator):
         # Add outfile in source files
         #-------------------------------------------------
         outfiles = []
-        outfiles.append({file_vhd : {'file_type' : 'vhdlSource'}})
+        if (logical_name == None):
+            outfiles.append({file_vhd : {'file_type' : 'vhdlSource'}})
+        else:
+            outfiles.append({file_vhd : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
 
         if outfiles:
             self.add_files(outfiles)

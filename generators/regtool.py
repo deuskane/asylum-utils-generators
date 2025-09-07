@@ -97,13 +97,15 @@ class regtool(Generator):
         # Add outfile in source files
         #-------------------------------------------------
         outfiles = []
-        for f in files_hdl:
-            outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
 
         if (logical_name == None):
+            for f in files_hdl:
+                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource'}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource'}})
         else:
+            for f in files_hdl:
+                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_pkg : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
             outfiles.append({file_vhdl_csr : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
 

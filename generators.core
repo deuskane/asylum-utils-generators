@@ -29,9 +29,10 @@ CAPI=2:
 # 2025-07-27  2.4.1    mrosiere regtool: Add flags
 # 2025-08-12  2.4.2    mrosiere Use cache type
 # 2025-09-06  2.4.3    mrosiere regtool: Add component for csr and in package
+# 2025-06-07  2.4.4    mrosiere pbcc : add logical name option
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.4.3
+name       : asylum:utils:generators:2.4.4
 description: A collection of useful generators
 
 #=========================================
@@ -50,28 +51,30 @@ generators:
 
       The generator requires the following parameters:
 
-        file   : (Mandatory)
-                 Source file
-       
-        type   : (Mandatory)
-                 Type of source file
-                 "c"         : c file
-                 "kcpsm3"    : assembler file with kcpsm3 syntax
-                 "pblazeide" : assembler file with kcpsm3 syntax
+        file         : (Mandatory)
+                       Source file
+            
+        type         : (Mandatory)
+                       Type of source file
+                       "c"         : c file
+                       "kcpsm3"    : assembler file with kcpsm3 syntax
+                       "pblazeide" : assembler file with kcpsm3 syntax
 
-        entity : (Optional)
-                 Entity Name
-                 Default     : OpenBlaze8_ROM
+        entity       : (Optional)
+                       Entity Name
+                       Default     : OpenBlaze8_ROM
 
-        model  : (Optional)
-                 ROM Model 
-                 "generic"   : Generic implementation
-                 "xilinx"    : Xilinx  implementation
-                 Default     : "generic"
+        model        : (Optional)
+                       ROM Model 
+                       "generic"   : Generic implementation
+                       "xilinx"    : Xilinx  implementation
+                       Default     : "generic"
 
-        cflags : (Optional)
-                 Compilation options for C file
+        cflags       : (Optional)
+                       Compilation options for C file
 
+        logical_name : (Optional)
+                       Default : work
 
   #---------------------------------------
   regtool:

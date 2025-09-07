@@ -513,8 +513,8 @@ def generate_vhdl_package(csr, output_path):
         file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
         file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
         if csr["interface"] == "pbi":
-            file.write(f"library work;\n")
-            file.write(f"use     work.pbi_pkg.all;\n")
+            file.write(f"library {csr['logical_name']};\n")
+            file.write(f"use     {csr['logical_name']}.pbi_pkg.all;\n")
         
         print_vhdl_header_csr(csr,file)
         file.write( "\n")
@@ -654,11 +654,11 @@ def generate_vhdl_module(csr, output_path):
         file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
         file.write(f"library {csr['logical_name']};\n")
         file.write(f"use     {csr['logical_name']}.{module}_csr_pkg.ALL;\n")
-        file.write( "library work;\n")
-        file.write(f"use     work.csr_pkg.ALL;\n")
+        file.write(f"library {csr['logical_name']};\n")
+        file.write(f"use     {csr['logical_name']}.csr_pkg.ALL;\n")
         if csr["interface"] == "pbi":
-            file.write(f"library work;\n")
-            file.write(f"use     work.pbi_pkg.all;\n")
+            file.write(f"library {csr['logical_name']};\n")
+            file.write(f"use     {csr['logical_name']}.pbi_pkg.all;\n")
         file.write( "\n")
 
         print_vhdl_header_csr(csr,file)
