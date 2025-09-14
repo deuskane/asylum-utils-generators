@@ -32,7 +32,7 @@ CAPI=2:
 # 2025-06-07  2.4.4    mrosiere pbcc : add logical name option
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.4.4
+name       : asylum:utils:generators:2.5.0
 description: A collection of useful generators
 
 #=========================================
@@ -43,9 +43,9 @@ generators:
   pbcc_gen:
   #---------------------------------------
     interpreter: python3
-    command    : generators/pbcc.py
+    command    : generators/pbcc/pbcc.py
     description: ROM Generator
-    cache_type : input
+    cache_type : generator
     usage: |
       This generator translate a source file (C or Assembler) in ROM
 
@@ -80,9 +80,9 @@ generators:
   regtool:
   #---------------------------------------
     interpreter: python3
-    command    : generators/regtool.py
+    command    : generators/regtool/regtool.py
     description: CSR Generator
-    cache_type : input
+    cache_type : generator
     usage: |
       This generator create module with register
 

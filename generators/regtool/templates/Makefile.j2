@@ -1,0 +1,32 @@
+REGTOOL       = {{ python }} {{ regtool }}
+REGTOOL_OPT   =  --logical_name {{ libname }}
+
+REGTOOL_FILES = $( find {{ dir_script }} -type f )
+
+FILE_IN       = {{ file_in }} 
+FILES_OUT     = {{ file_vhdl_pkg }}
+FILES_OUT    += {{ file_vhdl_csr }}
+FILES_OUT    += {{ file_md }}
+FILES_OUT    += {{ file_h }}
+
+all      : $(FILES_OUT)
+
+{{ file_vhdl_pkg }} : \
+  $(FILE_IN) $(REGTOOL_FILES)
+	echo $(REGTOOL_FILES)
+	$(REGTOOL) $(REGTOOL_OPT) $< --vhdl_package $@
+
+{{ file_vhdl_csr }} : \
+  $(FILE_IN) $(REGTOOL_FILES)
+	$(REGTOOL) $(REGTOOL_OPT) $< --vhdl_module  $@
+
+{{ file_md }} : \
+  $(FILE_IN) $(REGTOOL_FILES)
+	$(REGTOOL) $(REGTOOL_OPT) $< --doc_markdown $@
+
+{{ file_h }} : \
+  $(FILE_IN) $(REGTOOL_FILES)
+	$(REGTOOL) $(REGTOOL_OPT) $< --c_header     $@
+
+clean :
+	rm $(FILES_OUT)
