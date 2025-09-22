@@ -1,0 +1,35 @@
+PBCC_HOME     = {{ pbcc_home    }}
+PBCC          = {{ pbcc         }}
+PICOASM_HOME  = {{ picoasm_home }}
+PICOASM       = {{ picoasm      }}
+FILE_C        = {{ file_c       }}
+FILE_PSM      = {{ file_psm     }}
+FILE_VHD      = {{ file_vhd     }}
+FILE_TYPE     = {{ file_type    }}
+FILE_ROM      = {{ file_rom     }}
+ROM_ENTITY    = {{ rom_entity   }}
+CFLAGS        =
+{% for cflag in cflags %}
+CFLAGS       += {{ cflag       }}{% endfor %}
+CFLAGS       += -I {{ pbcc_incdir  }}
+CFLAGS       += -V
+CFLAGS       += -S
+CFLAGS       += --dialect=$(FILE_TYPE)
+
+FILE_IN       = {{ file_in }} 
+FILES_OUT     = $(FILE_VHD)
+
+all : $(FILES_OUT)
+
+$(FILE_VHD) : $(FILE_PSM)
+	$(PICOASM) -t $(FILE_ROM) -v -m $(ROM_ENTITY) -d . -i $< -a $(FILE_TYPE)
+
+ifneq ("$(FILE_C)","")
+
+$(FILE_PSM) : $(FILE_C)
+	$(PBCC)  $(CFLAGS) $<
+
+endif
+
+clean    :
+	rm $(FILES_OUT)
