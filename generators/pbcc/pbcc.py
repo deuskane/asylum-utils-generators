@@ -17,18 +17,19 @@
 import os
 
 import sys
-from fusesoc.capi2.generator import Generator
+from   fusesoc.capi2.generator import Generator
 import subprocess
-from fusesoc.utils           import Launcher
-from glob                    import glob
-from pathlib                 import Path
+from   fusesoc.utils           import Launcher
+from   glob                    import glob
+from   pathlib                 import Path
+from   jinja2                  import Environment, FileSystemLoader
 
 class pbcc(Generator):
 
     def update_paths(self,options, files_root):
         updated_options = []
         for option in options:
-            print(option)
+            #print(option)
             if option.startswith('-I'):
                 path = option[2:]
                 if not path.startswith('/'):
@@ -92,6 +93,9 @@ class pbcc(Generator):
         #-------------------------------------------------
         # Convert C to PSM (in kcpsm3 dialect)
         #-------------------------------------------------
+        pbcc_home    = ""
+        include_path = "";
+        
         if (file_c) :
             if "PBCC_HOME" in os.environ:
                 pbcc_home = os.environ["PBCC_HOME"]
@@ -102,13 +106,6 @@ class pbcc(Generator):
             
             print("[INFO   ] Translate C to PSM");
             print("[DEBUG  ] PBCC_HOME         : {0}".format(pbcc_home))
-            args =  cflags + ["-I" + include_path, "-V", "-S", "--dialect=kcpsm3", file_c]
-
-            print(f"{args}")
-            try:
-                Launcher(pbcc_home + "/bin/sdcc", args).run()
-            except subprocess.CalledProcessError as e:
-                raise RuntimeError("[ERROR  ] " + str(e))
 
             file_type = "kcpsm3"
 
@@ -122,12 +119,47 @@ class pbcc(Generator):
             
         print("[INFO   ] Translate PSM to VHD");
         print("[DEBUG  ] PICOASM_HOME      : {0}".format(picoasm_home))
-        args = ["-t" + picoasm_home + "/share/picoasm/"+rom_model+"/ROM_form.vhd","-v", "-m"+rom_entity, "-d.","-i"+file_psm,"-a"+file_type]
-        try:
-            Launcher(picoasm_home + "/bin/picoasm", args).run()
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError("[ERROR  ] " + str(e))
 
+        #-------------------------------------------------
+        # Call Jinja2
+        #-------------------------------------------------
+        # Configuration du projet
+        config = {
+            "pbcc_home"     : pbcc_home    ,
+            "pbcc"          : os.path.join(pbcc_home,"bin","sdcc") ,
+            "pbcc_incdir"   : include_path  ,
+            "picoasm_home"  : picoasm_home ,
+            "picoasm"       : os.path.join(picoasm_home,"bin","picoasm") ,
+            "file_c"        : file_c       ,
+            "file_psm"      : file_psm     ,
+            "file_vhd"      : file_vhd     ,
+            "file_type"     : file_type    ,
+            "file_rom"      : os.path.join(picoasm_home,"share","picoasm",rom_model,"ROM_form.vhd") ,
+            "rom_entity"    : rom_entity   ,
+            "rom_model"     : rom_model    ,
+            "cflags"        : cflags       ,
+            "file_in"       : file_in      
+        }
+        
+        # Chemin vers le dossier contenant les templates
+        template_dir     = os.path.join(os.path.dirname(__file__), "templates")
+        
+        # Chargement du template depuis le dossier 'templates'
+        env              = Environment(loader=FileSystemLoader(template_dir))
+        template         = env.get_template('Makefile.j2')
+        
+        # Rendu du Makefile
+        makefile_content = template.render(config)
+        
+        # Écriture dans un fichier Makefile
+        with open('Makefile', 'w') as f:
+            f.write(makefile_content)
+            
+        try:
+            Launcher("make").run()
+        except subprocess.CalledProcessError as e:
+             raise RuntimeError("[ERROR  ] " + str(e))
+        
         #-------------------------------------------------
         # Add outfile in source files
         #-------------------------------------------------
