@@ -23,8 +23,7 @@ from   fusesoc.utils           import Launcher
 from   glob                    import glob
 from   pathlib                 import Path
 import shutil
-from   jinja2 import Environment, FileSystemLoader
-import os
+from   jinja2                  import Environment, FileSystemLoader
 
 class regtool(Generator):
     def run(self):
@@ -105,11 +104,11 @@ class regtool(Generator):
        }
         
         # Chemin vers le dossier contenant les templates
-        template_dir = os.path.join(os.path.dirname(__file__), "templates")
+        template_dir     = os.path.join(os.path.dirname(__file__), "templates")
         
         # Chargement du template depuis le dossier 'templates'
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template('Makefile.j2')
+        env              = Environment(loader=FileSystemLoader(template_dir))
+        template         = env.get_template('Makefile.j2')
         
         # Rendu du Makefile
         makefile_content = template.render(config)
