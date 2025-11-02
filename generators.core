@@ -31,7 +31,7 @@ CAPI=2:
 # 2025-09-06  2.4.3    mrosiere regtool: Add component for csr and in package
 # 2025-06-07  2.4.4    mrosiere pbcc : add logical name option
 # 2025-09-22  2.5.0    mrosiere pbcc/regtool : use Makefile
-# 2025-11-02  2.5.1    mrosiere regtool : fix init version
+# 2025-11-02  2.5.1    mrosiere regtool : fix init value
 #-----------------------------------------------------------------------------
 
 name       : asylum:utils:generators:2.5.1
