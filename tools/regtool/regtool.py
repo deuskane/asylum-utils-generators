@@ -729,17 +729,20 @@ def generate_vhdl_module(csr, output_path):
         
         # Declare register and field signals
         for reg in csr['registers']:
-            file.write(f"  constant INIT_{reg['name']} : std_logic_vector({reg['width']}-1 downto 0) :=\n")
-            first = True
-            for field in reg['fields']:
-                if not first :
-                    file.write( "           & ")
-                else:
-                    file.write( "             ")
 
-                file.write(f"{field['expr']} -- {field['name']}\n")
-                first = False;
-            file.write( "           ;\n")
+
+            file.write(f"  function INIT_{reg['name']}\n")
+            file.write(f"    return std_logic_vector is\n")
+            file.write(f"    variable tmp : std_logic_vector({reg['width']}-1 downto 0);\n")
+            file.write(f"  begin  -- function INIT_{reg['name']}\n")
+            lsb=0
+            for field in reg['fields']:
+                msb=lsb+field['width']-1
+                file.write(f"    tmp({msb} downto {lsb}) := {field['expr']}; -- {field['name']}\n")
+                lsb=msb+1
+            file.write(f"    return tmp;\n")
+            file.write(f"  end function INIT_{reg['name']};\n")
+            file.write( "\n")
 
             file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
