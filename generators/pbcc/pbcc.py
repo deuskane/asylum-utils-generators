@@ -24,6 +24,14 @@ from   glob                    import glob
 from   pathlib                 import Path
 from   jinja2                  import Environment, FileSystemLoader
 
+import logging
+
+class AlignedFormatter(logging.Formatter):
+    def format(self, record):
+        # Align le levelname à 8 caractères (DEBUG, INFO, WARNING, etc.)
+        record.levelname = f"[{record.levelname:<8}]"  # left-align to 8 chars
+        return super().format(record)
+
 class pbcc(Generator):
 
     def update_paths(self,options, files_root):
@@ -42,10 +50,19 @@ class pbcc(Generator):
 
     def run(self):
 
-        print("[INFO   ]-------------------------------------------")
-        print("[INFO   ] Start Generator pbcc")
-        print("[INFO   ]-------------------------------------------")
-        print("[DEBUG  ] Work Directory    : {0}".format(os.getcwd()))
+        # Configuration du logger
+        handler   = logging.StreamHandler()
+        formatter = AlignedFormatter('%(levelname)s %(message)s')
+        handler.setFormatter(formatter)
+        
+        logger    = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        logger.handlers = [handler]
+        
+        logger.info("-------------------------------------------")
+        logger.info("Start Generator pbcc")
+        logger.info("-------------------------------------------")
+        logger.debug("Work Directory    : {0}".format(os.getcwd()))
 
         #-------------------------------------------------
         # Get parameters
@@ -62,7 +79,8 @@ class pbcc(Generator):
         cflags = self.update_paths(cflags.split(),self.files_root)
         
         if (not file_type in ["c","kcpsm3","pblazeide"]):
-            raise RuntimeError("[ERROR  ] Unknown file type: {0}. Possible options are \"c\", \"kcpsm3\" or \"pblazeide\"".format(file_type))
+            logger.error("Unknown file type: {0}. Possible options are \"c\", \"kcpsm3\" or \"pblazeide\"".format(file_type))
+            raise RuntimeError
 
         if (file_type in ["c"]):
             file_c      = file_in
@@ -76,19 +94,20 @@ class pbcc(Generator):
         rom_model   = self.config.get("model","generic")
 
         if (not rom_model in ["generic","xilinx"]):
-            raise RuntimeError("[ERROR  ] Unknown rom model: {0}. Possible options are \"generic\" (default), or \"xilinx\"".format(rom_model))
+            logger.error("Unknown rom model: {0}. Possible options are \"generic\" (default), or \"xilinx\"".format(rom_model))
+            raise RuntimeError
 
         
         #-------------------------------------------------
         # Summary of parameters
         #-------------------------------------------------
-        print("[DEBUG  ] File C            : {0}".format(file_c    ))
-        print("[DEBUG  ] File PSM          : {0}".format(file_psm  ))
-        print("[DEBUG  ] File VHD          : {0}".format(file_vhd  ))
-        print("[DEBUG  ] File Type         : {0}".format(file_type ))
-        print("[DEBUG  ] ROM entity        : {0}".format(rom_entity))
-        print("[DEBUG  ] ROM model         : {0}".format(rom_model ))
-        print("[DEBUG  ] CFLAGS            : {0}".format(cflags    ))
+        logger.debug("File C            : {0}".format(file_c    ))
+        logger.debug("File PSM          : {0}".format(file_psm  ))
+        logger.debug("File VHD          : {0}".format(file_vhd  ))
+        logger.debug("File Type         : {0}".format(file_type ))
+        logger.debug("ROM entity        : {0}".format(rom_entity))
+        logger.debug("ROM model         : {0}".format(rom_model ))
+        logger.debug("CFLAGS            : {0}".format(cflags    ))
         
         #-------------------------------------------------
         # Convert C to PSM (in kcpsm3 dialect)
@@ -100,12 +119,13 @@ class pbcc(Generator):
             if "PBCC_HOME" in os.environ:
                 pbcc_home = os.environ["PBCC_HOME"]
             else:
-                raise RuntimeError("[ERROR  ] PBCC_HOME environment variable is undefined")
+                logger.error("PBCC_HOME environment variable is undefined")
+                raise RuntimeError
 
             include_path = os.path.join(pbcc_home, "share", "sdcc", "include")
             
-            print("[INFO   ] Translate C to PSM");
-            print("[DEBUG  ] PBCC_HOME         : {0}".format(pbcc_home))
+            logger.info("Translate C to PSM");
+            logger.debug("PBCC_HOME         : {0}".format(pbcc_home))
 
             file_type = "kcpsm3"
 
@@ -115,10 +135,11 @@ class pbcc(Generator):
         if "PICOASM_HOME" in os.environ:
             picoasm_home = os.environ["PICOASM_HOME"]
         else:
-            raise RuntimeError("[ERROR  ] PICOASM_HOME environment variable is undefined")
+            logger.error("PICOASM_HOME environment variable is undefined")
+            raise RuntimeError
             
-        print("[INFO   ] Translate PSM to VHD");
-        print("[DEBUG  ] PICOASM_HOME      : {0}".format(picoasm_home))
+        logger.info ("Translate PSM to VHD");
+        logger.debug("PICOASM_HOME      : {0}".format(picoasm_home))
 
         #-------------------------------------------------
         # Call Jinja2
@@ -157,8 +178,9 @@ class pbcc(Generator):
             
         try:
             Launcher("make").run()
-        except subprocess.CalledProcessError as e:
-             raise RuntimeError("[ERROR  ] " + str(e))
+        except Exception as e:
+            logger.error(str(e))
+            raise RuntimeError
         
         #-------------------------------------------------
         # Add outfile in source files
@@ -172,10 +194,11 @@ class pbcc(Generator):
         if outfiles:
             self.add_files(outfiles)
         else:
-            raise RuntimeError("[ERROR  ] output files not found.")
-        print("[INFO   ]-------------------------------------------")
-        print("[INFO   ] End Generator pbcc")
-        print("[INFO   ]-------------------------------------------")
+            logger.error("output files not found.")
+            raise RuntimeError
+        logger.info("-------------------------------------------")
+        logger.info("End Generator pbcc")
+        logger.info("-------------------------------------------")
 
 if __name__ == '__main__':
     g = pbcc()

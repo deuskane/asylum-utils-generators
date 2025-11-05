@@ -25,13 +25,31 @@ from   pathlib                 import Path
 import shutil
 from   jinja2                  import Environment, FileSystemLoader
 
+import logging
+
+class AlignedFormatter(logging.Formatter):
+    def format(self, record):
+        # Align le levelname à 8 caractères (DEBUG, INFO, WARNING, etc.)
+        record.levelname = f"[{record.levelname:<8}]"  # left-align to 8 chars
+        return super().format(record)
+
 class regtool(Generator):
     def run(self):
 
-        print( "[INFO   ]-------------------------------------------")
-        print( "[INFO   ] Start Generator regtool")
-        print( "[INFO   ]-------------------------------------------")
-        print(f"[DEBUG  ] Work Directory     : {os.getcwd()}")
+        # Configuration du logger
+        handler   = logging.StreamHandler()
+        formatter = AlignedFormatter('%(levelname)s %(message)s')
+        handler.setFormatter(formatter)
+        
+        logger    = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        logger.handlers = [handler]
+
+        
+        logger.info("-------------------------------------------")
+        logger.info("Start Generator regtool")
+        logger.info("-------------------------------------------")
+        logger.debug("Work Directory     : {os.getcwd()}")
 
         #-------------------------------------------------
         # Get parameters
@@ -59,27 +77,28 @@ class regtool(Generator):
             dir_copy = os.path.join(dir_root,copy)
 
             if not os.path.isdir(dir_copy):
-                raise RuntimeError(f"[ERROR  ] Invalid directory \"{dir_copy}\"")
+                logger.error(f"Invalid directory \"{dir_copy}\"")
+                raise RuntimeError
         else:
             dir_copy = dir_work
             
         #-------------------------------------------------
         # Summary of parameters
         #-------------------------------------------------
-        print(f"[DEBUG  ] Name               : {name}")
-        print(f"[DEBUG  ] dir_script         : {dir_script}")
-        print(f"[DEBUG  ] dir_work           : {dir_work}")  
-        print(f"[DEBUG  ] dir_root           : {dir_root}")  
-        print(f"[DEBUG  ] dir_copy           : {dir_copy}")
-        print(f"[DEBUG  ] dir_hdl            : {dir_hdl}")
-        print(f"[DEBUG  ] Script             : {script}")
-        print(f"[DEBUG  ] File In            : {file_in}")
-        print(f"[DEBUG  ] file_vhdl_pkg      : {file_vhdl_pkg}")
-        print(f"[DEBUG  ] file_vhdl_csr      : {file_vhdl_csr}")
-        print(f"[DEBUG  ] file_h             : {file_h}")
-        print(f"[DEBUG  ] file_md            : {file_md}")
-        print(f"[DEBUG  ] Copy               : {copy}")
-        print(f"[DEBUG  ] logical_name       : {logical_name}")
+        logger.debug("Name               : {name}")
+        logger.debug("dir_script         : {dir_script}")
+        logger.debug("dir_work           : {dir_work}")  
+        logger.debug("dir_root           : {dir_root}")  
+        logger.debug("dir_copy           : {dir_copy}")
+        logger.debug("dir_hdl            : {dir_hdl}")
+        logger.debug("Script             : {script}")
+        logger.debug("File In            : {file_in}")
+        logger.debug("file_vhdl_pkg      : {file_vhdl_pkg}")
+        logger.debug("file_vhdl_csr      : {file_vhdl_csr}")
+        logger.debug("file_h             : {file_h}")
+        logger.debug("file_md            : {file_md}")
+        logger.debug("Copy               : {copy}")
+        logger.debug("logical_name       : {logical_name}")
         
         args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h,"--doc_markdown",file_md]
         
@@ -119,8 +138,9 @@ class regtool(Generator):
             
         try:
             Launcher("make").run()
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError("[ERROR  ] " + str(e))
+        except Exception as e:
+            logger.error(str(e))
+            raise RuntimeError
 
         #-------------------------------------------------
         # Add outfile in source files
@@ -143,18 +163,19 @@ class regtool(Generator):
         if outfiles:
             self.add_files(outfiles)
         else:
-            raise RuntimeError("[ERROR  ] output files not found.")
+            logger.error("output files not found.")
+            raise RuntimeError
 
         if copy != None:
-            print(f"[INFO   ] Copy generated files in {dir_copy}")
+            logger.info(f"Copy generated files in {dir_copy}")
             shutil.copy(file_vhdl_pkg, dir_copy)
             shutil.copy(file_vhdl_csr, dir_copy)
             shutil.copy(file_h       , dir_copy)
             shutil.copy(file_md      , dir_copy)
         
-        print("[INFO   ]-------------------------------------------")
-        print("[INFO   ] End Generator regtool")
-        print("[INFO   ]-------------------------------------------")
+        logger.info("-------------------------------------------")
+        logger.info("End Generator regtool")
+        logger.info("-------------------------------------------")
 
 if __name__ == '__main__':
     g = regtool()
