@@ -62,7 +62,7 @@ def check_interface(csr):
     :param csr: Dictionary of csr.
     :raises ValueError: If interface is not valid
     """
-    interface           = ['reg','pbi']
+    interface           = ['reg','pbi','sbi']
 
     if csr['interface'] not in interface:
         raise KeyError(f"interface '{csr['interface']}' must be in {interface}.")
@@ -515,6 +515,9 @@ def generate_vhdl_package(csr, output_path):
         if csr["interface"] == "pbi":
             file.write(f"library {csr['logical_name']};\n")
             file.write(f"use     {csr['logical_name']}.pbi_pkg.all;\n")
+        if csr["interface"] == "sbi":
+            file.write(f"library {csr['logical_name']};\n")
+            file.write(f"use     {csr['logical_name']}.sbi_pkg.all;\n")
         
         print_vhdl_header_csr(csr,file)
         file.write( "\n")
@@ -635,6 +638,12 @@ def generate_vhdl_entity(csr, file, entity_type):
         file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
         file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
 
+    # Generate Port for interface "sbi"
+    if csr["interface"] == "sbi":
+        
+        file.write( "    sbi_ini_i  : in  sbi_ini_t;\n")
+        file.write( "    sbi_tgt_o  : out sbi_tgt_t;\n")
+
     file.write( "    -- CSR\n")
     file.write(f"    sw2hw_o    : out {module}_sw2hw_t;\n")
     file.write(f"    hw2sw_i    : in  {module}_hw2sw_t\n")
@@ -659,6 +668,9 @@ def generate_vhdl_module(csr, output_path):
         if csr["interface"] == "pbi":
             file.write(f"library {csr['logical_name']};\n")
             file.write(f"use     {csr['logical_name']}.pbi_pkg.all;\n")
+        if csr["interface"] == "sbi":
+            file.write(f"library {csr['logical_name']};\n")
+            file.write(f"use     {csr['logical_name']}.sbi_pkg.all;\n")
         file.write( "\n")
 
         print_vhdl_header_csr(csr,file)
@@ -666,18 +678,19 @@ def generate_vhdl_module(csr, output_path):
         # Generate VHDL entity and architecture
         generate_vhdl_entity(csr, file, "entity")
 
-        sig_wcs   = ""
-        sig_we    = ""
-        sig_waddr = ""
-        sig_wdata = ""
+        sig_wcs     = ""
+        sig_we      = ""
+        sig_waddr   = ""
+        sig_wdata   = ""
+                    
+        sig_rcs     = ""
+        sig_re      = ""
+        sig_raddr   = ""
+        sig_rdata   = ""
+                    
+        sig_busy    = ""
+        sig_busy_op = ""
         
-        sig_rcs   = ""
-        sig_re    = ""
-        sig_raddr = ""
-        sig_rdata = ""
-
-        sig_busy  = ""
-
         # Generate Port for interface "reg"
         if csr["interface"] == "reg":
             sig_wcs   = "cs_i"
@@ -707,6 +720,21 @@ def generate_vhdl_module(csr, output_path):
 
             sig_busy  = "pbi_tgt_o.busy"
 
+        # Generate Port for interface "sbi"
+        if csr["interface"] == "sbi":
+
+            sig_wcs     = "sbi_ini_i.cs"
+            sig_we      = "sbi_ini_i.we"
+            sig_waddr   = "sbi_ini_i.addr"
+            sig_wdata   = "sbi_ini_i.wdata"
+                        
+            sig_rcs     = "sbi_ini_i.cs"
+            sig_re      = "sbi_ini_i.re"
+            sig_raddr   = "sbi_ini_i.addr"
+            sig_rdata   = "sbi_tgt_o.rdata"
+
+            sig_busy    = "sbi_tgt_o.ready"
+            sig_busy_op = "not "
         # Architecture
         file.write(f"architecture rtl of {module}_registers is\n")
         file.write( "\n")
@@ -777,7 +805,7 @@ def generate_vhdl_module(csr, output_path):
         file.write(f"  sig_re    <= {sig_re};\n")
         file.write(f"  sig_raddr <= {sig_raddr};\n")
         file.write(f"  {sig_rdata} <= sig_rdata;\n")
-        file.write(f"  {sig_busy} <= sig_busy;\n")
+        file.write(f"  {sig_busy} <= {sig_busy_op}sig_busy;\n")
         file.write( "\n")
         file.write(f"  sig_busy  <= sig_wbusy when sig_we = '1' else\n")
         file.write(f"               sig_rbusy when sig_re = '1' else\n")
