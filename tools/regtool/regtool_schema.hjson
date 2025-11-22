@@ -21,7 +21,7 @@
       "type"              : "string",
       "description"       : "Interface Type"
       "default"           : "reg"
-      "enum"              : ["reg","pbi"]
+      "enum"              : ["reg","pbi","sbi"]
     }# end of properties "top"
 
    "parameters"           : {
