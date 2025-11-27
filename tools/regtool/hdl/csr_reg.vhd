@@ -123,8 +123,8 @@ begin  -- architecture rtl
     end if;
   end process;
 
-  hw_sw_re_o <= q_sw_we_r;
-  hw_sw_we_o <= q_sw_re_r;
+  hw_sw_re_o <= q_sw_re_r;
+  hw_sw_we_o <= q_sw_we_r;
   hw_rd_o    <= q_r      ;
   sw_rd_o    <= q_r      ;
   sw_rbusy_o <= '0';
