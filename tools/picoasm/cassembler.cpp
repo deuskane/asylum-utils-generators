@@ -5,7 +5,7 @@
 #include <bitset>
 
 #define NO_LINE_NR 	0xFFFFFFFF
-#define MAX_ADDRESS     1024
+//#define MAX_ADDRESS     1024
 
 const char *instructions_kcpsm3[] = { 
 	"ADD", "ADDCY", "AND", "CALL", "COMPARE", "DISABLE", "ENABLE", "FETCH", "INPUT",

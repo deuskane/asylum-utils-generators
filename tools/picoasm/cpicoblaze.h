@@ -16,7 +16,7 @@ class CInstruction ;
 
 #define MAX_ADDRESS		0x400
 #define STACK_DEPTH		31
-#define SCRATCHPAD_SIZE	64
+#define SCRATCHPAD_SIZE 	64
 
 #define PortReadable 1
 #define PortWriteable 2

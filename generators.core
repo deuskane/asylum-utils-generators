@@ -35,9 +35,11 @@ CAPI=2:
 # 2025-11-05  2.5.2    mrosiere Generators : Use logger
 # 2025-11-22  2.5.3    mrosiere regtool : support sbi interface
 # 2025-11-27  2.5.3    mrosiere regtool : crs_reg fix connection sw2hw re/we
+# 2025-12-30  2.5.4    mrosiere picoasm : update for gcc 13.3
+#                               pbcc : update for gcc 13.3
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.5.3
+name       : asylum:utils:generators:2.5.4
 description: A collection of useful generators
 
 #=========================================

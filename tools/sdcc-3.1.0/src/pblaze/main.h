@@ -39,7 +39,7 @@ typedef struct {
     char *portKw;
 } pblaze_options_t;
 
-symbol *pblaze_interrupt;
+extern symbol *pblaze_interrupt;
 extern pblaze_options_t pblaze_options;
 
 #endif

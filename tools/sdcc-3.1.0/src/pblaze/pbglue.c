@@ -29,6 +29,7 @@
 -------------------------------------------------------------------------*/
 
 #include "pbglue.h"
+#include "SDCCglue.h"
 #include "main.h"
 #include "ralloc.h"
 
@@ -44,7 +45,7 @@
 #include <unistd.h>
 #endif
 
-symbol *interrupts[INTNO_MAX + 1];
+extern symbol *interrupts[INTNO_MAX + 1];
 
 void printIval(symbol *, sym_link *, initList *, struct dbuf_s *, bool check);
 set *pblaze_publics = NULL;	/* public variables */

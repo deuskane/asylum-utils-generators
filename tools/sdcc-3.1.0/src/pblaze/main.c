@@ -43,6 +43,7 @@ static char _defaultRules[] = {
 #define PORTKW_OPT           "--portkw="
 #define ACKNOWLEDGEMENT_OPT   "--acknowledgement"
 
+symbol *pblaze_interrupt;
 pblaze_options_t pblaze_options;
 
 OPTION pblaze_optionsTable[] = {

@@ -244,7 +244,7 @@ bool CCode::setInstruction( uint16_t address, uint32_t code, unsigned int source
 	}
 	
 	if ( address >= MAX_ADDRESS ) {
-	  cout << ">>>>Invalid address" << address << "<<<<" << endl ;
+	  cout << ">>>>Invalid address " << address << "/" << MAX_ADDRESS << "<<<<" << endl ;
 		delete instr ;
 		return FALSE ;
 	}
