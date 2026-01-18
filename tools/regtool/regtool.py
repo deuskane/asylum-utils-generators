@@ -1038,7 +1038,11 @@ def generate_vhdl_module(csr, output_path):
 #        file.write( "\n")
 #        file.write( "-- pragma translate_on  \n")
 #        file.write( "\n")
-        
+
+
+        if csr["interface"] == "sbi":
+            file.write(f"  sbi_tgt_o.info.name <= to_sbi_name(\"{csr['name']}\");\n")
+
         file.write( "end architecture rtl;\n")
 
 #--------------------------------------------
