@@ -36,11 +36,12 @@ CAPI=2:
 # 2025-11-22  2.5.3    mrosiere regtool : support sbi interface
 # 2025-11-27  2.5.3    mrosiere regtool : crs_reg fix connection sw2hw re/we
 # 2025-12-30  2.5.4    mrosiere picoasm : update for gcc 13.3
-#                               pbcc : update for gcc 13.3
+#                               pbcc    : update for gcc 13.3
 # 2026-01-18  2.5.5    mrosiere regtool : use info record for sbi
+# 2026-05-12  2.6.0    mrosiere rvcc    : Add tools
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.5.4
+name       : asylum:utils:generators:2.6.0
 description: A collection of useful generators
 
 #=========================================
@@ -71,6 +72,43 @@ generators:
         entity       : (Optional)
                        Entity Name
                        Default     : OpenBlaze8_ROM
+
+        model        : (Optional)
+                       ROM Model 
+                       "generic"   : Generic implementation
+                       "xilinx"    : Xilinx  implementation
+                       Default     : "generic"
+
+        cflags       : (Optional)
+                       Compilation options for C file
+
+        logical_name : (Optional)
+                       Default : work
+
+  #---------------------------------------
+  rvcc_gen:
+  #---------------------------------------
+    interpreter: python3
+    command    : generators/rvcc/rvcc.py
+    description: RISC-V ROM Generator
+    cache_type : generator
+    usage: |
+      This generator translate a source file (C, Assembler or ELF) in ROM
+
+      The generator requires the following parameters:
+
+        file         : (Mandatory)
+                       Source file
+            
+        type         : (Mandatory)
+                       Type of source file
+                       "c"         : c file
+                       "s"         : assembler file
+                       "elf"       : elf file
+
+        entity       : (Optional)
+                       Entity Name
+                       Default     : WardRV_ROM
 
         model        : (Optional)
                        ROM Model 
