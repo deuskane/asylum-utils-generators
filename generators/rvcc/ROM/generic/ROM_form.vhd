@@ -6,6 +6,7 @@
 -- Date        : {timestamp}
 -- Description : Single Port ROM
 -------------------------------------------------------------------
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
@@ -19,7 +20,10 @@ entity {name} is
     instruction_o   : out std_logic_vector({data_width}-1 downto 0)
     );
 end {name};
---
+
+-------------------------------------------------------------------
+-- Architecture rtl
+-------------------------------------------------------------------
 architecture rtl of {name} is
 
 begin
@@ -39,4 +43,35 @@ begin
   end process;
   
 end rtl;
+
+-------------------------------------------------------------------
+-- Architecture rom
+-------------------------------------------------------------------
+
+architecture rom of {name} is
+  constant DEPTH : integer := 2**{addr_width};
+
+  type mem_t is array (0 to DEPTH-1) of std_logic_vector({data_width}-1 downto 0);
+
+  signal rom : mem_t :=
+    (
+{ROM_BODY-4}
+    others => (others => '0')
+   );
+  
+begin
+
+  process (clk_i) is
+  begin  -- process
+    if rising_edge(clk_i)
+    then
+      if (cke_i = '1')
+      then
+        instruction_o <= rom(conv_integer(address_i));
+      end if;
+    end if;
+  end process;
+  
+end rom;
+
 {end template}

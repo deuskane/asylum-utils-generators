@@ -110,6 +110,20 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
         replacement = "\n".join(case_lines)
         content = content.replace(tag, replacement)
 
+    # Handle ROM_BODY tag: {ROM_BODY-X}
+    rom_pattern = r"\{ROM_BODY-(\d+)\}"
+    rom_matches = re.findall(rom_pattern, content)
+
+    for indent_size in rom_matches:
+        tag = f"{{ROM_BODY-{indent_size}}}"
+        indent = " " * int(indent_size)
+        rom_lines = []
+        for i, val in enumerate(hex_lines):
+            rom_lines.append(f"{indent}{i} => x\"{val}\",")
+        
+        replacement = "\n".join(rom_lines)
+        content = content.replace(tag, replacement)
+
     # 4. Write result
     with open(output_file, 'w') as f:
         f.write(content)
