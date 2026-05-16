@@ -111,11 +111,18 @@ class rvcc(Generator):
             hex2vhd_home = Path(os.environ["HEX2VHD_HOME"]).resolve()
         else:
             hex2vhd_home = Path(__file__).parent.resolve()
-        hex2vhd_tool = hex2vhd_home / "bin" / "hex2vhd"
-        #if not hex2vhd_tool.exists():
-        #    logger.error(f"hex2vhd tool not found at {hex2vhd_tool}. Check HEX2VHD_HOME.")
-        #    raise FileNotFoundError(f"hex2vhd tool not found at {hex2vhd_tool}.")
-        
+        hex2vhd_tool = hex2vhd_home.joinpath("gen_rom.py")
+
+        if not hex2vhd_tool.exists():
+            logger.error(f"hex2vhd tool not found at {hex2vhd_tool}. Check HEX2VHD_HOME.")
+            raise FileNotFoundError(f"hex2vhd tool not found at {hex2vhd_tool}.")
+
+        rom_model_vhd = hex2vhd_home.joinpath("ROM", rom_model, "ROM_form.vhd")
+
+        if not rom_model_vhd.exists():
+            logger.error(f"ROM template not found at {rom_model_vhd}.")
+            raise FileNotFoundError(f"ROM template not found at {rom_model_vhd}.")
+
         #-------------------------------------------------
         # Call Jinja2
         #-------------------------------------------------
@@ -129,7 +136,7 @@ class rvcc(Generator):
             "output_vhd_file" : output_vhd_file, # Name of the final VHD file
             "file_type"       : file_type,
             "rom_entity"      : rom_entity,
-            "rom_model"       : rom_model,
+            "rom_model_vhd"   : rom_model_vhd,
             "cflags"          : " ".join(cflags_list),
             "start_s_file"    : "start.S", # Name of the copied start.S
             "link_ld_file"    : "link.ld"  # Name of the copied link.ld
