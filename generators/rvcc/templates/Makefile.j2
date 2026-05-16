@@ -53,7 +53,7 @@ HEX              = $(BUILD_DIR)/$(OUTPUT_BASENAME).hex
 LST              = $(BUILD_DIR)/$(OUTPUT_BASENAME).lst
 SIZE             = $(BUILD_DIR)/$(OUTPUT_BASENAME).size
 ASM              = $(BUILD_DIR)/$(notdir $(INPUT_FILE)).s
-VHD              = $(BUILD_DIR)/$(OUTPUT_BASENAME).vhd
+VHD              = {{ output_vhd_file}}
 
 FILE_TYPE        = {{ file_type }}
 
