@@ -105,10 +105,8 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
         indent = " " * int(indent_size)
         case_lines = []
         for i, val in enumerate(hex_lines):
-            case_lines.append(f"{indent}when \"{i:0{addr_width}b}\" => {var_name} <= x\"{val}\"; -- {i} (0x{i:x})")
-        if not hex_lines:
-             case_lines.append(f"{indent}when others => {var_name} <= (others => '0');")
-
+            case_lines.append(f"{indent}when {i} => {var_name} <= x\"{val}\";")
+        
         replacement = "\n".join(case_lines)
         content = content.replace(tag, replacement)
 
