@@ -4,17 +4,17 @@ _start:
     # Initialize stack pointer
     la sp, _estack
 
-    # Initialize BSS section to zero
-    la t0, _bss_start
-    la t1, _bss_size
-    li t2, 0
-    beqz t1, _bss_done
-_bss_loop:
-    sw t2, 0(t0)
-    addi t0, t0, 4
-    addi t1, t1, -4
-    bnez t1, _bss_loop
-_bss_done:
+//    # Initialize BSS section to zero
+//    la t0, _bss_start
+//    la t1, _bss_size
+//    li t2, 0
+//    blez t1, _bss_done
+//_bss_loop:
+//    sw t2, 0(t0)
+//    addi t0, t0, 4
+//    addi t1, t1, -4
+//    bgtz t1, _bss_loop
+//_bss_done:
 
 //    # Initialize Data section (copy from ROM to RAM)
 //    la t0, _etext
