@@ -49,11 +49,14 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
     logger.info(f"Generating ROM '{output_name}' from '{hex_file}'")
     # 1. Load HEX data
     try:
-        with open(hex_file, 'r') as f:
-            hex_lines = [line.strip() for line in f if line.strip()]
+        if hex_file:
+            with open(hex_file, 'r') as f:
+                hex_lines = [line.strip() for line in f if line.strip()]
+        else:
+            hex_lines = []
 
         num_entries = 2**addr_width
-        if len(hex_lines) > num_entries:
+        if hex_file and len(hex_lines) > num_entries:
             logger.error(f"The hex file ({len(hex_lines)} lines) is too large for the ROM size ({num_entries} words).")
             return
     except Exception as e:
@@ -132,10 +135,10 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate VHDL ROM from HEX file.")
-    parser.add_argument("hex_file", help="Input HEX file")
     parser.add_argument("template", help="VHDL template file")
     parser.add_argument("entity", help="Output entity name")
     parser.add_argument("output_file", help="Output VHDL file")
+    parser.add_argument("--hex_file", help="Input HEX file (optional)", default=None)
     parser.add_argument("--data-width", type=int, default=32, help="Data width in bits (default: 32)")
     parser.add_argument("--addr-width", type=int, default=10, help="Address width in bits (default: 10)")
 
