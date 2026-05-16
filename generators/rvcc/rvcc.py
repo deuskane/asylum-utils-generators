@@ -68,15 +68,16 @@ class rvcc(Generator):
             logger.error(f"Input file not found: {input_file_path}")
             raise FileNotFoundError(f"Input file not found: {input_file_path}")
 
-        if not file_type in ["c", "s", "elf"]:
-            logger.error(f"Unknown file type: {file_type}. Possible options are 'c', 's' or 'elf'")
+        if not file_type in ["c", "s", "elf", "hex"]:
+            logger.error(f"Unknown file type: {file_type}. Possible options are 'c', 's', 'elf' or 'hex'")
             raise RuntimeError("Unknown file type")
 
-        # Determine the base name for output files (e.g., .o, .elf, .vhd)
+        # Determine the base name for output files (e.g., .o, .elf, .hex, .vhd)
         output_base_name = input_file_path.stem
 
         # Paths for generated files in the current working directory
         output_elf_file = Path(f"{output_base_name}.elf")
+        output_hex_file = Path(f"{output_base_name}.hex")
         output_vhd_file = Path(f"{output_base_name}.vhd")
         
         # Paths for template files
@@ -106,31 +107,32 @@ class rvcc(Generator):
         #-------------------------------------------------
         riscv_prefix = os.environ.get("RISCV_PREFIX", "riscv32-unknown-elf-")
 
-        if "ELF2VHD_HOME" in os.environ:
-            elf2vhd_home = Path(os.environ["ELF2VHD_HOME"]).resolve()
+        if "HEX2VHD_HOME" in os.environ:
+            hex2vhd_home = Path(os.environ["HEX2VHD_HOME"]).resolve()
         else:
-            elf2vhd_home = Path(__file__).parent.resolve()
-        elf2vhd_tool = elf2vhd_home / "bin" / "elf2vhd"
-        #if not elf2vhd_tool.exists():
-        #    logger.error(f"elf2vhd tool not found at {elf2vhd_tool}. Check ELF2VHD_HOME.")
-        #    raise FileNotFoundError(f"elf2vhd tool not found at {elf2vhd_tool}.")
+            hex2vhd_home = Path(__file__).parent.resolve()
+        hex2vhd_tool = hex2vhd_home / "bin" / "hex2vhd"
+        #if not hex2vhd_tool.exists():
+        #    logger.error(f"hex2vhd tool not found at {hex2vhd_tool}. Check HEX2VHD_HOME.")
+        #    raise FileNotFoundError(f"hex2vhd tool not found at {hex2vhd_tool}.")
         
         #-------------------------------------------------
         # Call Jinja2
         #-------------------------------------------------
         config = {
-            "riscv_prefix"  : riscv_prefix,
-            "elf2vhd_tool"  : elf2vhd_tool,
-            "input_file_path": input_file_path, # Absolute path to original input file
+            "riscv_prefix"    : riscv_prefix,
+            "hex2vhd_tool"    : hex2vhd_tool,
+            "input_file_path" : input_file_path, # Absolute path to original input file
             "output_base_name": output_base_name, # Base name for generated files
-            "output_elf_file": output_elf_file, # Name of the final ELF file
-            "output_vhd_file": output_vhd_file, # Name of the final VHD file
-            "file_type"     : file_type,
-            "rom_entity"    : rom_entity,
-            "rom_model"     : rom_model,
-            "cflags"        : " ".join(cflags_list),
-            "start_s_file"  : "start.S", # Name of the copied start.S
-            "link_ld_file"  : "link.ld"  # Name of the copied link.ld
+            "output_elf_file" : output_elf_file, # Name of the final ELF file
+            "output_hex_file" : output_hex_file, # Name of the final HEX file
+            "output_vhd_file" : output_vhd_file, # Name of the final VHD file
+            "file_type"       : file_type,
+            "rom_entity"      : rom_entity,
+            "rom_model"       : rom_model,
+            "cflags"          : " ".join(cflags_list),
+            "start_s_file"    : "start.S", # Name of the copied start.S
+            "link_ld_file"    : "link.ld"  # Name of the copied link.ld
         }
         
         env              = Environment(loader=FileSystemLoader(template_dir))

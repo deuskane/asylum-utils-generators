@@ -49,10 +49,12 @@ SECTIONS
   .bss :
   {
     . = ALIGN(4);
+    _bss_start = .;
     *(.bss)
     *(.bss.*)
     . = ALIGN(4);
     _ebss = .;
+    _bss_size = _ebss - _bss_start;
   } > RAM
 
   /* Stack area for function calls */
