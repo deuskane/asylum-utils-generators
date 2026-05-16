@@ -93,11 +93,11 @@ $(ASM): $(INPUT_FILE) | $(BUILD_DIR)
 
 # ROM Generation
 $(VHD): $(HEX) $(ROM_MODEL) | $(BUILD_DIR)
-	$(HEX2VHD_TOOL) $< $(ROM_MODEL) $(ROM_ENTITY) $@
+	$(HEX2VHD_TOOL) $(ROM_MODEL) $(ROM_ENTITY) $@ --hex $< 
 
 # ROM Package Generation
-$(VHD_PKG): $(HEX) $(ROM_PKG) | $(BUILD_DIR)
-	$(HEX2VHD_TOOL) $< $(ROM_PKG) $(ROM_ENTITY) $@
+$(VHD_PKG): $(ROM_PKG) | $(BUILD_DIR)
+	$(HEX2VHD_TOOL) $(ROM_PKG) $(ROM_ENTITY) $@
 
 $(BUILD_DIR) :
 	mkdir -p $@

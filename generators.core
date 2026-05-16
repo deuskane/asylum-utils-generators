@@ -39,9 +39,10 @@ CAPI=2:
 #                               pbcc    : update for gcc 13.3
 # 2026-01-18  2.5.5    mrosiere regtool : use info record for sbi
 # 2026-05-12  2.6.0    mrosiere rvcc    : Add tools
+# 2026-05-17  2.6.1    mrosiere pbcc/rvcc : Generate ROM package
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.6.0
+name       : asylum:utils:generators:2.6.1
 description: A collection of useful generators
 
 #=========================================

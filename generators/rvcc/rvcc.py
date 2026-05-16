@@ -111,7 +111,8 @@ class rvcc(Generator):
         if "HEX2VHD_HOME" in os.environ:
             hex2vhd_home = Path(os.environ["HEX2VHD_HOME"]).resolve()
         else:
-            hex2vhd_home = Path(__file__).parent.resolve()
+            hex2vhd_home = Path(__file__).parent.parent / "gen_rom"
+
         hex2vhd_tool = hex2vhd_home.joinpath("gen_rom.py")
 
         if not hex2vhd_tool.exists():

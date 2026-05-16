@@ -12,6 +12,7 @@
 # Revisions  :
 # Date        Version  Author   Description
 # 2021-11-03  1.0      mrosiere Created
+# 2026-05-17  1.1      mrosiere ROM Package generation
 #-----------------------------------------------------------------------------
 
 import os
@@ -181,15 +182,41 @@ class pbcc(Generator):
         except Exception as e:
             logger.error(str(e))
             raise RuntimeError
-        
+
+        #-------------------------------------------------
+        # Package Generation
+        #-------------------------------------------------
+        rvcc_home = Path(__file__).parent.parent / "gen_rom"
+        hex2vhd_tool = rvcc_home / "gen_rom.py"
+        rom_pkg_vhd  = rvcc_home / "ROM" / "pkg" / "ROM_pkg.vhd"
+        file_vhd_pkg = Path(file_vhd).stem + "_pkg.vhd"
+
+        logger.info("Generate VHDL Package")
+        cmd = [
+            sys.executable,
+            str(hex2vhd_tool),
+            str(rom_pkg_vhd),
+            rom_entity,
+            str(file_vhd_pkg),
+            "--data-width", "18"
+            
+        ]
+        try:
+            subprocess.check_call(cmd)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to generate package: {e}")
+            raise RuntimeError
+
         #-------------------------------------------------
         # Add outfile in source files
         #-------------------------------------------------
         outfiles = []
         if (logical_name == None):
             outfiles.append({file_vhd : {'file_type' : 'vhdlSource'}})
+            outfiles.append({str(file_vhd_pkg) : {'file_type' : 'vhdlSource'}})
         else:
             outfiles.append({file_vhd : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({str(file_vhd_pkg) : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
 
         if outfiles:
             self.add_files(outfiles)
