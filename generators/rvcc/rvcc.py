@@ -76,9 +76,10 @@ class rvcc(Generator):
         output_base_name = input_file_path.stem
 
         # Paths for generated files in the current working directory
-        output_elf_file = Path(f"{output_base_name}.elf")
-        output_hex_file = Path(f"{output_base_name}.hex")
-        output_vhd_file = Path(f"{output_base_name}.vhd")
+        output_elf_file     = Path(f"{output_base_name}.elf")
+        output_hex_file     = Path(f"{output_base_name}.hex")
+        output_vhd_file     = Path(f"{output_base_name}.vhd")
+        output_vhd_pkg_file = Path(f"{output_base_name}_pkg.vhd")
         
         # Paths for template files
         template_dir = Path(__file__).parent / "templates"
@@ -123,23 +124,27 @@ class rvcc(Generator):
             logger.error(f"ROM template not found at {rom_model_vhd}.")
             raise FileNotFoundError(f"ROM template not found at {rom_model_vhd}.")
 
+        rom_pkg_vhd = hex2vhd_home.joinpath("ROM", "pkg", "ROM_pkg.vhd")
+
         #-------------------------------------------------
         # Call Jinja2
         #-------------------------------------------------
         config = {
-            "riscv_prefix"    : riscv_prefix,
-            "hex2vhd_tool"    : hex2vhd_tool,
-            "input_file_path" : input_file_path, # Absolute path to original input file
-            "output_base_name": output_base_name, # Base name for generated files
-            "output_elf_file" : output_elf_file, # Name of the final ELF file
-            "output_hex_file" : output_hex_file, # Name of the final HEX file
-            "output_vhd_file" : output_vhd_file, # Name of the final VHD file
-            "file_type"       : file_type,
-            "rom_entity"      : rom_entity,
-            "rom_model_vhd"   : rom_model_vhd,
-            "cflags"          : " ".join(cflags_list),
-            "start_s_file"    : "start.S", # Name of the copied start.S
-            "link_ld_file"    : "link.ld"  # Name of the copied link.ld
+            "riscv_prefix"        : riscv_prefix,
+            "hex2vhd_tool"        : hex2vhd_tool,
+            "input_file_path"     : input_file_path, # Absolute path to original input file
+            "output_base_name"    : output_base_name, # Base name for generated files
+            "output_elf_file"     : output_elf_file, # Name of the final ELF file
+            "output_hex_file"     : output_hex_file, # Name of the final HEX file
+            "output_vhd_file"     : output_vhd_file, # Name of the final VHD file
+            "output_vhd_pkg_file" : output_vhd_pkg_file, # Name of the final VHD package file
+            "file_type"           : file_type,
+            "rom_entity"          : rom_entity,
+            "rom_model_vhd"       : rom_model_vhd,
+            "rom_pkg_vhd"         : rom_pkg_vhd,
+            "cflags"              : " ".join(cflags_list),
+            "start_s_file"        : "start.S", # Name of the copied start.S
+            "link_ld_file"        : "link.ld"  # Name of the copied link.ld
         }
         
         env              = Environment(loader=FileSystemLoader(template_dir))
@@ -164,9 +169,11 @@ class rvcc(Generator):
         #-------------------------------------------------
         outfiles = []
         if logical_name is None:
-            outfiles.append({str(output_vhd_file) : {'file_type' : 'vhdlSource'}})
+            outfiles.append({str(output_vhd_file)     : {'file_type' : 'vhdlSource'}})
+            outfiles.append({str(output_vhd_pkg_file) : {'file_type' : 'vhdlSource'}})
         else:
-            outfiles.append({str(output_vhd_file) : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({str(output_vhd_file)     : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
+            outfiles.append({str(output_vhd_pkg_file) : {'file_type' : 'vhdlSource', 'logical_name' : logical_name}})
 
         if outfiles:
             self.add_files(outfiles)

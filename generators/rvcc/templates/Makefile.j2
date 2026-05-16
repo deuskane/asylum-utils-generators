@@ -14,6 +14,7 @@ READELF          = $(RISCV_PREFIX)readelf
 
 HEX2VHD_TOOL     = {{ hex2vhd_tool }}
 ROM_MODEL        = {{ rom_model_vhd }}
+ROM_PKG          = {{ rom_pkg_vhd }}
 ROM_ENTITY       = {{ rom_entity }}
 
 # -----------------------------------------------------------------------------
@@ -54,6 +55,7 @@ LST              = $(BUILD_DIR)/$(OUTPUT_BASENAME).lst
 SIZE             = $(BUILD_DIR)/$(OUTPUT_BASENAME).size
 ASM              = $(BUILD_DIR)/$(notdir $(INPUT_FILE)).s
 VHD              = {{ output_vhd_file}}
+VHD_PKG          = {{ output_vhd_pkg_file}}
 
 FILE_TYPE        = {{ file_type }}
 
@@ -62,7 +64,7 @@ LINK_LD_FILE     = {{ link_ld_file }}
 # -----------------------------------------------------------------------------
 # RULES
 # -----------------------------------------------------------------------------
-all: $(HEX) $(LST) $(ASM) $(SIZE) $(VHD)
+all: $(HEX) $(LST) $(ASM) $(SIZE) $(VHD) $(VHD_PKG)
 
 # Compilation and Linking
 $(ELF): $(SRC) $(LINK_LD_FILE) | $(BUILD_DIR)
@@ -92,6 +94,10 @@ $(ASM): $(INPUT_FILE) | $(BUILD_DIR)
 # ROM Generation
 $(VHD): $(HEX) $(ROM_MODEL) | $(BUILD_DIR)
 	$(HEX2VHD_TOOL) $< $(ROM_MODEL) $(ROM_ENTITY) $@
+
+# ROM Package Generation
+$(VHD_PKG): $(HEX) $(ROM_PKG) | $(BUILD_DIR)
+	$(HEX2VHD_TOOL) $< $(ROM_PKG) $(ROM_ENTITY) $@
 
 $(BUILD_DIR) :
 	mkdir -p $@
