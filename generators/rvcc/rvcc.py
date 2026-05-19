@@ -144,6 +144,7 @@ class rvcc(Generator):
             "rom_model_vhd"       : rom_model_vhd,
             "rom_pkg_vhd"         : rom_pkg_vhd,
             "cflags"              : " ".join(cflags_list),
+            "stack_size"          : self.config.get("stack_size", 128), # Default stack size is 128byte
             "start_s_file"        : "start.S", # Name of the copied start.S
             "link_ld_file"        : "link.ld"  # Name of the copied link.ld
         }
