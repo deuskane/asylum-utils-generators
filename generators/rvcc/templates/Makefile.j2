@@ -48,6 +48,7 @@ LINK_LD_FILE     = {{ link_ld_file }}
 # -----------------------------------------------------------------------------
 CFLAGS           = -march=rv32i_zicsr              # RISC-V 32-bit integer base architecture
 CFLAGS          += -mabi=ilp32                     # Standard 32-bit ABI (int, long, pointers are 32-bit)
+CFLAGS          += -g                              # Generate debug information for source interleaving in .lst
 CFLAGS          += -Os                             # Optimize for size
 CFLAGS          += -ffreestanding                  # OS-less environment (no full standard library)
 CFLAGS          += -nostartfiles                   # Do not use standard startup files (crt0...)
@@ -63,6 +64,7 @@ CFLAGS          += -fverbose-asm                   # Add explanatory comments in
 CFLAGS          += -Wall                           # Enable all basic warnings
 CFLAGS          += -Wextra                         # Enable extra warnings
 CFLAGS          += -Werror                         # Treat warnings as errors
+CFLAGS          += -Wno-array-bounds               # Disable array bounds warnings
 CFLAGS          += -Wno-error=array-bounds         # Ignore array-bounds errors
 CFLAGS          += -fno-delete-null-pointer-checks # Disable null pointer checks
 CFLAGS          += -static                         # Statically link libraries
@@ -91,7 +93,7 @@ $(HEX): $(BIN) | $(BUILD_DIR)
 
 # Disassembly with source (Listing)
 $(LST): $(ELF) | $(BUILD_DIR)
-	$(OBJDUMP) -d -S $< > $@
+	$(OBJDUMP) -d -S -C -l $< > $@
 
 # Section size and content information
 $(SIZE): $(ELF) | $(BUILD_DIR)
