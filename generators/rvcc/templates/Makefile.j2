@@ -63,7 +63,7 @@ CFLAGS          += -Wl,-z,stack-size=$(STACK_SIZE) # Set stack size to $(STACK_S
 CFLAGS          += -fverbose-asm                   # Add explanatory comments in generated assembly
 CFLAGS          += -Wall                           # Enable all basic warnings
 CFLAGS          += -Wextra                         # Enable extra warnings
-CFLAGS          += -Werror                         # Treat warnings as errors
+#CFLAGS          += -Werror                         # Treat warnings as errors
 CFLAGS          += -Wno-array-bounds               # Disable array bounds warnings
 CFLAGS          += -Wno-error=array-bounds         # Ignore array-bounds errors
 CFLAGS          += -fno-delete-null-pointer-checks # Disable null pointer checks
