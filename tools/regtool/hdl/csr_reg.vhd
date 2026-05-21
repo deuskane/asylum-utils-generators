@@ -28,7 +28,7 @@ entity csr_reg is
   generic (
     WIDTH : positive := 1;                              -- Register Width
     INIT  : std_logic_vector;                           -- Reset
-    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s"
+    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c"
                               
     ); 
 
@@ -110,7 +110,17 @@ begin  -- architecture rtl
     q_r_next <= d_hw or d_sw;
   end generate gen_rw0s;
 
-  process (clk_i, arst_b_i) is
+  gen_rsw1c: if MODEL="rsw1c" generate
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
+                (others => '1') when sw_re_i = '1' else
+                q_r;
+    d_sw     <= not sw_wd_i     when sw_we_i = '1' else
+                (others => '1');
+    
+    q_r_next <= d_hw and d_sw;
+  end generate gen_rsw1c;
+
+process (clk_i, arst_b_i) is
   begin  -- process
     if arst_b_i = '0' then              -- asynchronous reset (active low)
       q_r       <= INIT;
