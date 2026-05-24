@@ -9,6 +9,7 @@ A collection of useful generators and tools for the Asylum project. This reposit
 - [Generators](#generators)
 - [HDL Modules](#hdl-modules)
 - [Register Map](#register-map)
+- [Scripts & Utilities](#scripts--utilities)
 - [Component Verification](#component-verification)
 
 ---
@@ -21,7 +22,10 @@ The Asylum Utils Generators project is a comprehensive toolkit designed to strea
 
 2. **Regtool Generator**: Generates hardware configuration and status registers (CSR) from HJSON specifications, producing RTL modules, header files, and documentation.
 
+3. **Component Generator**: Automates the creation of VHDL packages containing component declarations by scanning entity definitions in source files.
+
 This project integrates mature tools like SDCC (Small Device C Compiler) and custom utilities to provide a complete build flow from high-level specifications to synthesizable RTL.
+This includes support for various soft-core processors such as the Xilinx PicoBlaze-3 and the WardRV RISC-V processor.
 
 ---
 
@@ -29,19 +33,19 @@ This project integrates mature tools like SDCC (Small Device C Compiler) and cus
 
 ### SDCC (Small Device C Compiler)
 
-A complete C compiler toolchain targeting the Xilinx PicoBlaze architecture.
+A complete C compiler toolchain targeting various microcontroller architectures, including Xilinx PicoBlaze.
 
 - **Version**: 3.1.0
-- **Purpose**: Compiles C code into optimized assembly for PicoBlaze microcontrollers
+- **Purpose**: Compiles C code into optimized assembly for supported microcontrollers.
 - **Reference**: [SDCC Official Project](https://sdcc.sourceforge.net/)
 - **Original Integration**: [PBCC Portage](https://www.fit.vutbr.cz/~meduna/work/doku.php?id=projects:vlam:pbcc:pbcc)
 
 ### PicoASM
 
-An assembler for the Xilinx PicoBlaze-3 soft-core processor with extensive output format support.
+An assembler primarily for the Xilinx PicoBlaze-3 soft-core processor with extensive output format support.
 
-- **Purpose**: Assembles KCPSM3 and PBlaze-IDE compatible assembly files
-- **Outputs**: VHDL, Verilog, and other formats
+- **Purpose**: Assembles KCPSM3 and PBlaze-IDE compatible assembly files, and potentially other assembly formats for supported processors.
+- **Outputs**: VHDL, Verilog, and other formats.
 - **Reference**: [PicoASM Original Project](https://marksix.home.xs4all.nl/picoasm.html)
 
 ### RegTool
@@ -59,10 +63,9 @@ Register generation and documentation tool for hardware/software interfaces.
 ### PBCC Generator
 
 **Command**: `generators/pbcc/pbcc.py`
+Invokes SDCC, PicoASM, and other toolchains (e.g., for RISC-V) to compile C files and assembly, generating ROM content. It also automatically generates a VHDL package (`_pkg.vhd`) facilitating the instantiation of the produced ROM.
 
-Invokes SDCC and PicoASM to compile C files and generate ROM content for PicoBlaze processors.
-
-**Parameters**:
+**FuseSoC Parameters**:
 
 | Parameter | Required | Type | Description |
 |-----------|----------|------|-------------|
@@ -76,8 +79,7 @@ Invokes SDCC and PicoASM to compile C files and generate ROM content for PicoBla
 ### RegTool Generator
 
 **Command**: `generators/regtool/regtool.py`
-
-Generates CSR (Configuration and Status Registers) modules, C header files, and markdown documentation from HJSON register specifications.
+Generates CSR (Configuration and Status Registers) modules, C header files, and markdown documentation from HJSON register specifications. The generator now uses a `Jinja2`-based flow and a `Makefile` to orchestrate file production.
 
 **Parameters**:
 
@@ -250,6 +252,18 @@ When depth is 0, FIFO acts as a direct bypass with handshake control.
 **File**: `tools/regtool/hdl/csr_pkg.vhd`
 
 VHDL package containing component declarations for all CSR modules, enabling their instantiation in register maps.
+
+---
+
+## Scripts & Utilities
+
+### Component Generator
+
+**Location**: `/home/kane/Work/Repo/ip/asylum-utils-generators/scripts/component.py`
+
+This tool simplifies hardware integration by scanning VHDL files in a directory to extract entities and generate (or update) a VHDL package containing the corresponding `component` declarations.
+
+It uses tags like `-- [COMPONENT_INSERT][BEGIN]` to allow incremental updates without overwriting the rest of the package.
 
 ---
 
