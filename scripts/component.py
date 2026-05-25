@@ -4,17 +4,17 @@ import sys
 import argparse
 
 def create_vhdl_package(package_name, path):
-    # Crée le dossier s'il n'existe pas
+    # Create the directory if it doesn't exist
 
     if not os.path.exists(path):
         raise FileNotFoundError(f"Path '{path}' don't exist.")
 
     print(f"Generate package '{package_name}' with path '{path}'.")
 
-    # Crée le fichier de package VHDL
+    # Create the VHDL package file
     package_file_path = os.path.join(path, f"{package_name}.vhd")
-    
-    # Initialise le contenu du package
+
+    # Initialize package content
     package_begin    =  "-- [COMPONENT_INSERT][BEGIN]\n"
     package_end      =  "-- [COMPONENT_INSERT][END]\n"
     package_content  =  "library IEEE;\n"
@@ -22,21 +22,21 @@ def create_vhdl_package(package_name, path):
     package_content +=  "use     IEEE.NUMERIC_STD.ALL;\n\n"
     package_content += f"package {package_name} is\n"
     package_content += package_begin
-    # Ferme la déclaration du package
+    # Close the package declaration
     package_content += package_end
     package_content += f"\nend {package_name};\n"
 
-    # Vérifie si le fichier existe déjà
+    # Check if the file already exists
     if not os.path.exists(package_file_path):
         print(f"* Package '{package_name}' don't exist, create empty package.")
 
-        # Écrit le contenu du package dans le fichier
+        # Write the package content to the file
         with open(package_file_path, 'w') as package_file:
             package_file.write(package_content)
 
     package_content = ""
-    
-    # Parcourt tous les fichiers VHDL dans le dossier
+
+    # Iterate through all VHDL files in the directory
     print(f"* Scan all file in \"{path}\".")
     for filename in sorted(os.listdir(path)):
         if filename.endswith(".vhd") and filename != f"{package_name}.vhd":
@@ -44,13 +44,12 @@ def create_vhdl_package(package_name, path):
                 print(f"  * {os.path.join(path, filename)}")
                 content = file.read()
 
-                
-                # Expression régulière pour trouver le contenu entre "entity" et "end entity"
+                # Regular expression to find content between "entity" and "end entity"
                 #pattern = re.compile(r'entity\s+.*?\s+is.*?end\s.*?;', re.DOTALL)
                 pattern = re.compile(r'entity\s+(\w+)\s+is(.*?)end\s+(entity\s+)?\1\s*;', re.DOTALL | re.IGNORECASE)
 
-    
-                # Trouver toutes les correspondances dans le code VHDL
+
+                # Find all matches in the VHDL code
                 matches = pattern.findall(content)
 
                 for entity_name, entity_body, _ in matches:
@@ -58,20 +57,20 @@ def create_vhdl_package(package_name, path):
                 
                     package_content += f"component {entity_name} is{entity_body}end component {entity_name};\n"
                     package_content += "\n"
-    
+
     print(f"* Delete previous content.")
     with open(package_file_path, 'r') as package_file:
         existing_content = package_file.read()
-    
-    # Supprime l'ancien contenu auto-généré
+
+    # Remove old auto-generated content
     existing_content = re.sub(
         re.escape(package_begin) + r'.*?' + re.escape(package_end),
         f"{package_begin}{package_end}",
         existing_content,
         flags=re.DOTALL
     )
-    
-    # Insère le nouveau contenu auto-généré
+
+    # Insert new auto-generated content
     print(f"* Add new previous content.")
     new_content = existing_content.replace(f"{package_begin}", f"{package_begin}{package_content}")
     
