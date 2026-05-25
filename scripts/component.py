@@ -38,7 +38,7 @@ def create_vhdl_package(package_name, path):
     
     # Parcourt tous les fichiers VHDL dans le dossier
     print(f"* Scan all file in \"{path}\".")
-    for filename in os.listdir(path):
+    for filename in sorted(os.listdir(path)):
         if filename.endswith(".vhd") and filename != f"{package_name}.vhd":
             with open(os.path.join(path, filename), 'r') as file:
                 print(f"  * {os.path.join(path, filename)}")
