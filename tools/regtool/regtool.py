@@ -568,17 +568,23 @@ def generate_vhdl_package(csr, output_path):
         file.write( "  ------------------------------------\n")
         file.write(f"  -- Structure {module}_t\n")
         file.write( "  ------------------------------------\n")
-        file.write(f"  type {module}_sw2hw_t is record\n")
-        for reg in csr['registers']:
-            if (reg['sw2hw']):
+        
+        sw2hw_regs = [reg for reg in csr['registers'] if reg['sw2hw']]
+        if sw2hw_regs:
+            file.write(f"  type {module}_sw2hw_t is record\n")
+            for reg in sw2hw_regs:
                 file.write(f"    {reg['name']} : {module}_{reg['name']}_sw2hw_t;\n")
-        file.write(f"  end record {module}_sw2hw_t;\n")
-        file.write( "\n")
-        file.write(f"  type {module}_hw2sw_t is record\n")
-        for reg in csr['registers']:
-            if (reg['hw2sw']):
+            file.write(f"  end record {module}_sw2hw_t;\n")
+            file.write( "\n")
+
+        hw2sw_regs = [reg for reg in csr['registers'] if reg['hw2sw']]
+        if hw2sw_regs:
+            file.write(f"  type {module}_hw2sw_t is record\n")
+            for reg in hw2sw_regs:
                 file.write(f"    {reg['name']} : {module}_{reg['name']}_hw2sw_t;\n")
-        file.write(f"  end record {module}_hw2sw_t;\n")
+            file.write(f"  end record {module}_hw2sw_t;\n")
+            file.write( "\n")
+
         file.write( "\n")
         file.write(f"  constant {module}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
         file.write(f"  constant {module}_DATA_WIDTH : natural := {csr['width']};\n")
@@ -617,36 +623,40 @@ def generate_vhdl_entity(csr, file, entity_type):
     
     file.write( "  port (\n")
     file.write( "    -- Clock and Reset\n")
-    file.write( "    clk_i      : in  std_logic;\n")
-    file.write( "    arst_b_i   : in  std_logic;\n")
+    file.write( "    clk_i      : in  std_logic\n")
+    file.write( "   ;arst_b_i   : in  std_logic\n")
     file.write( "    -- Bus\n")
 
     # Generate Port for interface "reg"
     if csr["interface"] == "reg":
         
-        file.write(f"    cs_i       : in    std_logic;\n")
-        file.write(f"    re_i       : in    std_logic;\n")
-        file.write(f"    we_i       : in    std_logic;\n")
-        file.write(f"    addr_i     : in    std_logic_vector ({csr['size_addr']}-1 downto 0);\n")
-        file.write(f"    wdata_i    : in    std_logic_vector ({csr['width']}-1 downto 0);\n")
-        file.write(f"    rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0);\n")
-        file.write(f"    busy_o     : out   std_logic;\n")
+        file.write(f"   ;cs_i       : in    std_logic\n")
+        file.write(f"   ;re_i       : in    std_logic\n")
+        file.write(f"   ;we_i       : in    std_logic\n")
+        file.write(f"   ;addr_i     : in    std_logic_vector ({csr['size_addr']}-1 downto 0)\n")
+        file.write(f"   ;wdata_i    : in    std_logic_vector ({csr['width']}-1 downto 0)\n")
+        file.write(f"   ;rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0)\n")
+        file.write(f"   ;busy_o     : out   std_logic\n")
 
     # Generate Port for interface "pbi"
     if csr["interface"] == "pbi":
         
-        file.write( "    pbi_ini_i  : in  pbi_ini_t;\n")
-        file.write( "    pbi_tgt_o  : out pbi_tgt_t;\n")
+        file.write( "   ;pbi_ini_i  : in  pbi_ini_t\n")
+        file.write( "   ;pbi_tgt_o  : out pbi_tgt_t\n")
 
     # Generate Port for interface "sbi"
     if csr["interface"] == "sbi":
         
-        file.write( "    sbi_ini_i  : in  sbi_ini_t;\n")
-        file.write( "    sbi_tgt_o  : out sbi_tgt_t;\n")
+        file.write( "   ;sbi_ini_i  : in  sbi_ini_t\n")
+        file.write( "   ;sbi_tgt_o  : out sbi_tgt_t\n")
 
     file.write( "    -- CSR\n")
-    file.write(f"    sw2hw_o    : out {module}_sw2hw_t;\n")
-    file.write(f"    hw2sw_i    : in  {module}_hw2sw_t\n")
+    sw2hw_regs = [reg for reg in csr['registers'] if reg['sw2hw']]
+    if sw2hw_regs:
+        file.write(f"   ;sw2hw_o    : out {module}_sw2hw_t\n")
+    hw2sw_regs = [reg for reg in csr['registers'] if reg['hw2sw']]
+    if hw2sw_regs:
+        file.write(f"   ;hw2sw_i    : in  {module}_hw2sw_t\n")
     file.write( "  );\n")
     file.write(f"end {entity_type} {module}_registers;\n\n")
         
