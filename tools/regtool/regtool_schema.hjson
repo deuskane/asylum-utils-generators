@@ -94,7 +94,7 @@
           "swaccess"            : {
             "type"              : "string",
             "description"       : "Register Software Access",
-            "enum"              : ["rw","wo","ro","rw1c", "rw0c", "rw1s", "rw0s","rsw1c","rcw1s", "rsw1c"],
+            "enum"              : ["rw","wo","ro","rw1c", "rw0c", "rw1s", "rw0s","rsw1c","rcw1s", "rsw0c"],
             "default"           : "rw"
           }              
 
