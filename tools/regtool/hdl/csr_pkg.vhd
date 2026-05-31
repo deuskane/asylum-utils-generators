@@ -77,7 +77,7 @@ component csr_reg is
   generic (
     WIDTH : positive := 1;                              -- Register Width
     INIT  : std_logic_vector;                           -- Reset
-    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s"
+    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
                               
     ); 
 

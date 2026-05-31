@@ -96,7 +96,7 @@ def check_access(reg):
     :param reg: Dictionary of register.
     :raises ValueError: If swaccess is not valid or if hwaccess is not valid
     """
-    swaccess           = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s', 'rsw1c']
+    swaccess           = ['rw','wo','ro','rw1c', 'rw0c', 'rw1s', 'rw0s', 'rsw1c', 'rcw1s', 'rsw0c']
 
     if reg['swaccess'] not in swaccess:
         raise KeyError(f"swaccess '{reg['swaccess']}' must be in {swaccess}.")
@@ -111,8 +111,8 @@ def check_access(reg):
     if reg['hwtype'] not in hwtype:
         raise KeyError(f"hwtype '{reg['hwtype']}' must be in {hwtype}.")
     
-    list_sw_re         = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s','rsw1c']
-    list_sw_we         = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s','rsw1c']
+    list_sw_re         = ['rw', 'ro','rw1c', 'rw0c', 'rw1s', 'rw0s','rsw1c', 'rcw1s', 'rsw0c']
+    list_sw_we         = ['rw', 'wo','rw1c', 'rw0c', 'rw1s', 'rw0s','rsw1c', 'rcw1s', 'rsw0c'] 
     
     list_hw_re         = ['rw', 'ro']
     list_hw_we         = ['rw', 'wo']

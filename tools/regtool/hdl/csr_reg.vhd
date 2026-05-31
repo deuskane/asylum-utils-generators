@@ -28,7 +28,7 @@ entity csr_reg is
   generic (
     WIDTH : positive := 1;                              -- Register Width
     INIT  : std_logic_vector;                           -- Reset
-    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c"
+    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
                               
     ); 
 
@@ -63,54 +63,67 @@ architecture rtl of csr_reg is
   
 begin  -- architecture rtl
 
-  gen_ro: if MODEL="ro" generate
-    q_r_next <= hw_wd_i when hw_we_i = '1' else
+  gen_ro: if MODEL="ro" 
+  generate
+    q_r_next <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
   end generate gen_ro;
 
-  gen_rw: if MODEL="rw" generate
-    q_r_next <= sw_wd_i when sw_we_i = '1' else
-                hw_wd_i when hw_we_i = '1' else
+  gen_rw: if MODEL="rw" 
+  generate
+    q_r_next <= sw_wd_i         when sw_we_i = '1' else
+                hw_wd_i         when hw_we_i = '1' else
                 q_r;
   end generate gen_rw;
 
-  gen_rw1c: if MODEL="rw1c" generate
-    d_hw     <= hw_wd_i when hw_we_i = '1' else
+  gen_rw1c: if MODEL="rw1c" 
+  generate
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= not sw_wd_i when sw_we_i = '1' else
+    d_sw     <= not sw_wd_i     when sw_we_i = '1' else
                 (others => '1');
     
     q_r_next <= d_hw and d_sw;
   end generate gen_rw1c;
 
-  gen_rw0c: if MODEL="rw0c" generate
-    d_hw     <= hw_wd_i when hw_we_i = '1' else
+  gen_rw0c: if MODEL="rw0c" 
+  generate
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= sw_wd_i when sw_we_i = '1' else
+    d_sw     <= sw_wd_i         when sw_we_i = '1' else
                 (others => '1');
     
     q_r_next <= d_hw and d_sw;
   end generate gen_rw0c;
 
-  gen_rw1s: if MODEL="rw1s" generate
-    d_hw     <= hw_wd_i when hw_we_i = '1' else
+  gen_rw1s: if MODEL="rw1s" 
+  generate
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= sw_wd_i when sw_we_i = '1' else
+    d_sw     <= sw_wd_i         when sw_we_i = '1' else
                 (others => '0');
     
     q_r_next <= d_hw or d_sw;
   end generate gen_rw1s;
 
-  gen_rw0s: if MODEL="rw0s" generate
-    d_hw     <= hw_wd_i when hw_we_i = '1' else
+  gen_rw0s: if MODEL="rw0s" 
+  generate
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= not sw_wd_i when sw_we_i = '1' else
+    d_sw     <= not sw_wd_i     when sw_we_i = '1' else
                 (others => '0');
     
     q_r_next <= d_hw or d_sw;
   end generate gen_rw0s;
 
-  gen_rsw1c: if MODEL="rsw1c" generate
+  gen_rsw1c: if MODEL="rsw1c" 
+  generate
+    -- Priority: 
+    -- 1. Hardware Write
+    --    Software Write (clear)
+    -- 2. Software Read  (set)
+    -- 3. Previous Value
+
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 (others => '1') when sw_re_i = '1' else
                 q_r;
@@ -119,6 +132,38 @@ begin  -- architecture rtl
     
     q_r_next <= d_hw and d_sw;
   end generate gen_rsw1c;
+
+  gen_rcw1s: if MODEL="rcw1s" 
+  generate
+    -- Priority: 
+    -- 1. Hardware Write
+    --    Software Write (set)
+    -- 2. Software Read  (clear)
+    -- 3. Previous Value
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
+                (others => '0') when sw_re_i = '1' else
+                q_r;
+    d_sw     <= sw_wd_i         when sw_we_i = '1' else
+                (others => '0');
+    
+    q_r_next <= d_hw or d_sw;
+  end generate gen_rcw1s;
+
+  gen_rsw0c: if MODEL="rsw0c" 
+  generate
+    -- Priority: 
+    -- 1. Hardware Write
+    --    Software Write (clear)
+    -- 2. Software Read  (set)
+    -- 3. Previous Value
+    d_hw     <= hw_wd_i         when hw_we_i = '1' else
+                (others => '1') when sw_re_i = '1' else
+                q_r;
+    d_sw     <= sw_wd_i         when sw_we_i = '1' else
+                (others => '1');
+    
+    q_r_next <= d_hw and d_sw;
+  end generate gen_rsw0c;
 
 process (clk_i, arst_b_i) is
   begin  -- process
