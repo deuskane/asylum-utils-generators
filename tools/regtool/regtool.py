@@ -608,18 +608,14 @@ def generate_vhdl_entity(csr, file, entity_type):
 
     # Generate VHDL entity and architecture
     file.write(f"{entity_type} {module}_registers is\n")
+    file.write( "  generic (\n")
+    file.write(f"    MODULE_NAME :  string := \"\" -- Name of the module\n")
     if csr['parameters'] != []:
-        file.write( "  generic (\n")
         first = True
         for param in csr['parameters']:
-            if first == True:
-                file.write( "    ")
-            else:
-                file.write( "   ;")
-            file.write(f"{param['name']} : {param['type']} -- {param['desc']}\n")
-            first = False;
+            file.write(f"   ;{param['name']} : {param['type']} -- {param['desc']}\n")
               
-        file.write( "  );\n")
+    file.write( "  );\n")
     
     file.write( "  port (\n")
     file.write( "    -- Clock and Reset\n")
@@ -1051,7 +1047,14 @@ def generate_vhdl_module(csr, output_path):
 
 
         if csr["interface"] == "sbi":
-            file.write(f"  sbi_tgt_o.info.name <= to_sbi_name(\"{csr['name']}\");\n")
+            file.write( "\n")
+
+            file.write(f"  gen_tgt_info_name : if MODULE_NAME = \"\"\n")
+            file.write( "  generate\n")
+            file.write(f"    sbi_tgt_o.info.name <= to_sbi_name(\"{csr['name']}\");\n")
+            file.write(f"  else generate\n")
+            file.write(f"    sbi_tgt_o.info.name <= to_sbi_name(MODULE_NAME);\n")
+            file.write(f"  end generate;\n")
 
         file.write( "end architecture rtl;\n")
 
