@@ -3,8 +3,9 @@ ENTRY(_start)
 
 MEMORY
 {
-  ROM (rx)  : ORIGIN = 0x00000000, LENGTH = 32K
-  RAM (rw)  : ORIGIN = 0x80000000, LENGTH = 128
+  ROM (rx)      : ORIGIN = 0x00000000, LENGTH = 32K
+  RAM_GLB (rw)  : ORIGIN = 0x80000040, LENGTH = 64
+  RAM_LOC (rw)  : ORIGIN = 0x80000080, LENGTH = 128
 }
 
 SECTIONS
@@ -43,7 +44,7 @@ SECTIONS
     
     ASSERT(SIZEOF(.data) == 0 , "Error: .data section is not empty");
     
-  } > RAM
+  } > RAM_LOC
 
   /* Uninitialized data (zeroed at startup) */
   .bss :
@@ -55,12 +56,12 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;
     _bss_size = _ebss - _bss_start;
-  } > RAM
+  } > RAM_LOC
 
   /* Stack area for function calls */
   .stack :
   {
     . = ALIGN(16);
     _estack = .; /* Top of stack (used by start.S to initialize sp) */
-  } > RAM
+  } > RAM_LOC
 }
