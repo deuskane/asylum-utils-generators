@@ -43,6 +43,7 @@ MAP              = $(BUILD_DIR)/$(OUTPUT_BASENAME).map
 FILE_TYPE        = {{ file_type }}
 
 LINK_LD_FILE     = {{ link_ld_file }}
+
 # -----------------------------------------------------------------------------
 # Flags
 # -----------------------------------------------------------------------------
@@ -70,7 +71,7 @@ CFLAGS          += -fno-delete-null-pointer-checks # Disable null pointer checks
 CFLAGS          += -static                         # Statically link libraries
 CFLAGS          += -mcmodel=medany                 # Code model to address anywhere within a 2 GB range
 CFLAGS          += -fstack-usage                   # Generate stack usage information
-CFLAGS          += $(INCLUDES)
+CFLAGS          += $(addprefix -I,$(wildcard ../*-gen_csr_*)) # Add all generators called "gen_csr"
 CFLAGS          += {{ cflags }}
 
 # -----------------------------------------------------------------------------

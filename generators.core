@@ -42,9 +42,10 @@ CAPI=2:
 # 2026-05-17  2.6.1    mrosiere pbcc/rvcc : Generate ROM package
 # 2026-05-27  2.6.2    mrosiere regtool : Manage empty record and add rsw1c register
 # 2026-06-06  2.6.3    mrosiere regtool : Add Name
+# 2026-06-25  2.6.4    mrosiere rvcc    : Add *gen_csr* in include path
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.6.3
+name       : asylum:utils:generators:2.6.4
 description: A collection of useful generators
 
 #=========================================
