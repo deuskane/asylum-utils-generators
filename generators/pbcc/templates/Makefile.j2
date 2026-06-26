@@ -12,6 +12,7 @@ CFLAGS        =
 {% for cflag in cflags %}
 CFLAGS       += {{ cflag       }}{% endfor %}
 CFLAGS       += -I {{ pbcc_incdir  }}
+CFLAGS       += $(addprefix -I,$(wildcard ../*-gen_csr_*)) # Add all generators called "gen_csr"
 CFLAGS       += -V
 CFLAGS       += -S
 CFLAGS       += --dialect=$(FILE_TYPE)

@@ -419,7 +419,7 @@ def generate_c_header(csr, output_path):
                 
             
         file.write( "//----------------------------------\n")
-        file.write( "// Structure {module}_t\n")
+        file.write(f"// Structure {module}_t\n")
         file.write( "//----------------------------------\n")
 
         # Last address covered
@@ -430,7 +430,7 @@ def generate_c_header(csr, output_path):
 
         for addr in sorted(regmap.keys()):
             for i in range(curaddr, addr, csr['addr_offset']):
-                file.write(f"  uint{csr['width']}_t __dummy_0x{i:X}__\n")
+                file.write(f"  uint{csr['width']}_t __dummy_0x{i:X}__;\n")
             curaddr = addr+csr['addr_offset']
             file.write(f"  uint{csr['width']}_t {regmap[addr]}; // 0x{addr:X}\n")
         file.write(f"}} {module}_t;\n")

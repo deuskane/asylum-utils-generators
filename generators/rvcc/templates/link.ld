@@ -61,7 +61,8 @@ SECTIONS
   /* Stack area for function calls */
   .stack :
   {
-    . = ALIGN(16);
+    . = ORIGIN(RAM_LOC) + LENGTH(RAM_LOC);
+    . = . & ~0xF;
     _estack = .; /* Top of stack (used by start.S to initialize sp) */
   } > RAM_LOC
 }
