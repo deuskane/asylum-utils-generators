@@ -1,9 +1,24 @@
 import os
 import re
 import sys
+import fnmatch
 import argparse
 
-def create_vhdl_package(package_name, path):
+
+def matches_file_filter(filename, file_filter):
+    if not file_filter:
+        return True
+
+    if any(char in file_filter for char in "*?[]"):
+        return fnmatch.fnmatch(filename, file_filter)
+
+    try:
+        return re.fullmatch(file_filter, filename) is not None
+    except re.error:
+        return filename == file_filter
+
+
+def create_vhdl_package(package_name, path, file_filter=None):
     # Create the directory if it doesn't exist
 
     if not os.path.exists(path):
@@ -37,26 +52,34 @@ def create_vhdl_package(package_name, path):
     package_content = ""
 
     # Iterate through all VHDL files in the directory
-    print(f"* Scan all file in \"{path}\".")
+    if file_filter:
+        print(f"* Scan files in \"{path}\" matching filter '{file_filter}'.")
+    else:
+        print(f"* Scan all file in \"{path}\".")
+
     for filename in sorted(os.listdir(path)):
-        if filename.endswith(".vhd") and filename != f"{package_name}.vhd":
-            with open(os.path.join(path, filename), 'r') as file:
-                print(f"  * {os.path.join(path, filename)}")
-                content = file.read()
+        if not filename.endswith(".vhd") or filename == f"{package_name}.vhd":
+            continue
 
-                # Regular expression to find content between "entity" and "end entity"
-                #pattern = re.compile(r'entity\s+.*?\s+is.*?end\s.*?;', re.DOTALL)
-                pattern = re.compile(r'entity\s+(\w+)\s+is(.*?)end\s+(entity\s+)?\1\s*;', re.DOTALL | re.IGNORECASE)
+        if not matches_file_filter(filename, file_filter):
+            continue
 
+        with open(os.path.join(path, filename), 'r') as file:
+            print(f"  * {os.path.join(path, filename)}")
+            content = file.read()
 
-                # Find all matches in the VHDL code
-                matches = pattern.findall(content)
+            # Regular expression to find content between "entity" and "end entity"
+            #pattern = re.compile(r'entity\s+.*?\s+is.*?end\s.*?;', re.DOTALL)
+            pattern = re.compile(r'entity\s+(\w+)\s+is(.*?)end\s+(entity\s+)?\1\s*;', re.DOTALL | re.IGNORECASE)
 
-                for entity_name, entity_body, _ in matches:
-                    print(f"    * {entity_name}")
-                
-                    package_content += f"component {entity_name} is{entity_body}end component {entity_name};\n"
-                    package_content += "\n"
+            # Find all matches in the VHDL code
+            matches = pattern.findall(content)
+
+            for entity_name, entity_body, _ in matches:
+                print(f"    * {entity_name}")
+
+                package_content += f"component {entity_name} is{entity_body}end component {entity_name};\n"
+                package_content += "\n"
 
     print(f"* Delete previous content.")
     with open(package_file_path, 'r') as package_file:
@@ -81,7 +104,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate VHDL Package with component.")
     parser.add_argument("package_name", type=str, help="Package Name.")
     parser.add_argument("path",         type=str, help="Path to VHDL Files.")
+    parser.add_argument(
+        "--file-filter",
+        type=str,
+        default=None,
+        help="Optional filename, glob pattern, or regex used to select VHDL files."
+    )
     
     args = parser.parse_args()
     
-    create_vhdl_package(args.package_name, args.path)
+    create_vhdl_package(args.package_name, args.path, args.file_filter)

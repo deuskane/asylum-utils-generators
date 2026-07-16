@@ -44,9 +44,10 @@ CAPI=2:
 # 2026-06-06  2.6.3    mrosiere regtool      : Add Name
 # 2026-06-25  2.6.4    mrosiere pbcc/rvcc    : Add *gen_csr* in include path
 #                               rvcc         : fix stack in linker script
+# 2026-07-16  2.6.5    mrosiere component.py : add file filter
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.6.4
+name       : asylum:utils:generators:2.6.5
 description: A collection of useful generators
 
 #=========================================
