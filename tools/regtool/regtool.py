@@ -183,7 +183,7 @@ def check_alias(csr,reg):
     check_key(reg,'alias_write'  ,False,None)
 
     if reg['alias_write'] == None :
-        reg['address_write'].append(reg['address'])
+        reg['address_write'].append(reg['name'])
     
     if reg['alias_write'] != None :
         if reg['alias_write'] == reg['name']:
@@ -196,7 +196,7 @@ def check_alias(csr,reg):
 
         check_key(reg_alias,'address_write',False,[])
 
-        reg_alias['address_write'].append(reg['address'])
+        reg_alias['address_write'].append(reg['name'])
     
 #--------------------------------------------
 #--------------------------------------------
@@ -523,10 +523,21 @@ def generate_vhdl_package(csr, output_path):
         file.write( "\n")
         file.write(f"package {module}_csr_pkg is\n\n")
 
+        file.write( "  ------------------------------------\n")
+        file.write(f"  -- Global Constants\n")
+        file.write( "  ------------------------------------\n")
+        file.write( "\n")
+        file.write(f"  constant {module}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
+        file.write(f"  constant {module}_DATA_WIDTH : natural := {csr['width']};\n")
+        file.write( "\n")
+
         # Generate structs for each register
         for reg in csr['registers']:
             print_vhdl_header_reg(reg,file)
-
+            
+            file.write(f"  constant {module}_{reg['name'].upper()} : unsigned({module}_ADDR_WIDTH-1 downto 0) := to_unsigned({reg['address']}, {module}_ADDR_WIDTH);\n")
+            file.write( "\n")
+        
             if (reg['sw2hw']):
                 file.write(f"  type {module}_{reg['name']}_sw2hw_t is record\n")
 
@@ -559,10 +570,8 @@ def generate_vhdl_package(csr, output_path):
                         print_vhdl_header_field(field,file)
                         file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
                         
-
                 file.write(f"  end record {module}_{reg['name']}_hw2sw_t;\n")
                 file.write( "\n")
-
             
         # Generate global struct containing all registers
         file.write( "  ------------------------------------\n")
@@ -584,11 +593,6 @@ def generate_vhdl_package(csr, output_path):
                 file.write(f"    {reg['name']} : {module}_{reg['name']}_hw2sw_t;\n")
             file.write(f"  end record {module}_hw2sw_t;\n")
             file.write( "\n")
-
-        file.write( "\n")
-        file.write(f"  constant {module}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
-        file.write(f"  constant {module}_DATA_WIDTH : natural := {csr['width']};\n")
-        file.write( "\n")
         
         file.write( "  ------------------------------------\n")
         file.write(f"  -- Component\n")
@@ -748,13 +752,13 @@ def generate_vhdl_module(csr, output_path):
         # Declare tmp signal (easier for debug)
         file.write( "  signal   sig_wcs   : std_logic;\n")
         file.write( "  signal   sig_we    : std_logic;\n")
-        file.write(f"  signal   sig_waddr : std_logic_vector({sig_waddr}'length-1 downto 0);\n")
+        file.write(f"  signal   sig_waddr : unsigned({module}_ADDR_WIDTH-1 downto 0);\n")
         file.write(f"  signal   sig_wdata : std_logic_vector({sig_wdata}'length-1 downto 0);\n")
         file.write( "  signal   sig_wbusy : std_logic;\n")
         file.write( "\n")
         file.write( "  signal   sig_rcs   : std_logic;\n")
         file.write( "  signal   sig_re    : std_logic;\n")
-        file.write(f"  signal   sig_raddr : std_logic_vector({sig_raddr}'length-1 downto 0);\n")
+        file.write(f"  signal   sig_raddr : unsigned({module}_ADDR_WIDTH-1 downto 0);\n")
         file.write(f"  signal   sig_rdata : std_logic_vector({sig_rdata}'length-1 downto 0);\n")
         file.write( "  signal   sig_rbusy : std_logic;\n")
         file.write( "\n")
@@ -804,12 +808,12 @@ def generate_vhdl_module(csr, output_path):
         file.write( "  -- Interface \n")
         file.write(f"  sig_wcs   <= {sig_wcs};\n")
         file.write(f"  sig_we    <= {sig_we};\n")
-        file.write(f"  sig_waddr <= {sig_waddr};\n")
+        file.write(f"  sig_waddr <= unsigned({sig_waddr}({module}_ADDR_WIDTH-1 downto 0));\n")
         file.write(f"  sig_wdata <= {sig_wdata};\n")
         file.write( "\n")
         file.write(f"  sig_rcs   <= {sig_rcs};\n")
         file.write(f"  sig_re    <= {sig_re};\n")
-        file.write(f"  sig_raddr <= {sig_raddr};\n")
+        file.write(f"  sig_raddr <= unsigned({sig_raddr}({module}_ADDR_WIDTH-1 downto 0));\n")
         file.write(f"  {sig_rdata} <= sig_rdata;\n")
         file.write(f"  {sig_busy} <= {sig_busy_op}sig_busy;\n")
         file.write( "\n")
@@ -833,7 +837,7 @@ def generate_vhdl_module(csr, output_path):
 
             file.write( "\n")
             if reg['sw2hw_re']:
-                file.write(f"    {reg['name']}_rcs     <= '1' when     (sig_raddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({reg['address']},{module}_ADDR_WIDTH))) else '0';\n")
+                file.write(f"    {reg['name']}_rcs     <= '1' when (sig_raddr = {module}_{reg['name'].upper()}) else '0';\n")
                 file.write(f"    {reg['name']}_re      <= sig_rcs and sig_re and {reg['name']}_rcs;\n")
 
                 #lsb=0
@@ -863,8 +867,8 @@ def generate_vhdl_module(csr, output_path):
                 file.write(f"    {reg['name']}_wcs     <= '1' when ")
                 prefix="    "
                 for waddr in reg['address_write']:
-                    file.write(f"  {prefix}(sig_waddr({module}_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned({waddr},{module}_ADDR_WIDTH)))")
-                    prefix=" or "
+                    file.write(f"  {prefix}(sig_waddr = {module}_{waddr.upper()})")
+                    prefix=" or"
                 
                 file.write(f"   else '0';\n")
                 file.write(f"    {reg['name']}_we      <= sig_wcs and sig_we and {reg['name']}_wcs;\n")
