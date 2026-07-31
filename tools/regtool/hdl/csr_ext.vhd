@@ -57,7 +57,7 @@ begin  -- architecture rtl
   sw_wbusy_o <= '0';
   sw_rd_o    <= hw_wd_i;
   hw_rd_o    <= sw_wd_i;
-  hw_sw_re_o <= sw_we_i; 
-  hw_sw_we_o <= sw_re_i;
+  hw_sw_re_o <= sw_re_i; 
+  hw_sw_we_o <= sw_we_i;
   
 end architecture rtl;
