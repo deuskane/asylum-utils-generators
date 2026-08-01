@@ -527,15 +527,15 @@ def generate_vhdl_package(csr, output_path):
         file.write(f"  -- Global Constants\n")
         file.write( "  ------------------------------------\n")
         file.write( "\n")
-        file.write(f"  constant {module}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
-        file.write(f"  constant {module}_DATA_WIDTH : natural := {csr['width']};\n")
+        file.write(f"  constant {module.upper()}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
+        file.write(f"  constant {module.upper()}_DATA_WIDTH : natural := {csr['width']};\n")
         file.write( "\n")
 
         # Generate structs for each register
         for reg in csr['registers']:
             print_vhdl_header_reg(reg,file)
             
-            file.write(f"  constant {module}_{reg['name'].upper()} : unsigned({module}_ADDR_WIDTH-1 downto 0) := to_unsigned({reg['address']}, {module}_ADDR_WIDTH);\n")
+            file.write(f"  constant {module.upper()}_{reg['name'].upper()} : unsigned({module.upper()}_ADDR_WIDTH-1 downto 0) := to_unsigned({reg['address']}, {module.upper()}_ADDR_WIDTH);\n")
             file.write( "\n")
         
             if (reg['sw2hw']):
