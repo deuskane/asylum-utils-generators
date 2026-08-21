@@ -583,6 +583,7 @@ def generate_vhdl_package(csr, output_path):
                     file.write(f"-- Enum        : {reg['name']}.{field['name']}.{enum['name']}\n")
                     file.write(f"-- Description : {enum['desc']}\n")
                     file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     : std_logic_vector({field['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value']),field['width'])}\";\n")
+                    file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW : std_logic_vector({reg['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value'])<<field['lsb'],reg['width'])}\";\n")
                     file.write( "\n")
 
 
