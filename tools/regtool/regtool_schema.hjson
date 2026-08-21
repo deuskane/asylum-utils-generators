@@ -35,16 +35,16 @@
           "name"                : {
             "type"              : "string",
             "description"       : "Parameter Name"
-	  }
+          }
           "desc"                : {
             "type"              : "string",
             "description"       : "Parameter Description"
-	    "default"           : ""
+	        "default"           : ""
           }              
           "type"                : {
             "type"              : "string",
             "description"       : "Parameter Type"
-	  }
+	        }
         }# end of properties "parameters"
       }#end of items "parameters"
     }#end of "parameters"
@@ -129,13 +129,37 @@
                   "type"              : "string",
                   "description"       : "Field Range in register",
                 }
+
+                "enum"                : {
+                  "type"              : "array",
+                  "items"             : {
+                    "type"                  : "object",
+                    "required"              : ["name","value"]
+                    "additionalProperties"  : false
+                    "properties"            : {
+                      "name"                : {
+                        "type"              : "string",
+                        "description"       : "Enum Name"
+                      }
+                      "desc"                : {
+                        "type"              : "string",
+                        "description"       : "Enum Description"
+                        "default"           : ""
+                      }
+                      "value"               : {
+                        "type"              : "string",
+                        "description"       : "Enum Value"
+                      }
+                    }# end of properties "enum"
+                  }#end of items "enum"
+                }#end of "enum"
               }# end of properties "fields"
             }#end of items "fields"
           }#end of "fields"
 
           "params"           : {
             "type"                  : "object",
-	    "additionalProperties"  : true
+            "additionalProperties"  : true
           }#end of "params"
 
         }# end of properties "registers"

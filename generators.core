@@ -47,9 +47,10 @@ CAPI=2:
 # 2026-07-16  2.6.5    mrosiere component.py : add file filter
 # 2026-07-30  2.6.6    mrosiere regtool      : add address in csr pkg and use it in csr module
 # 2026-08-02  2.6.7    mrosiere Add default target for deps
+# 2026-08-21  2.6.8    mrosiere regtool      : Add enum
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.6.7
+name       : asylum:utils:generators:2.6.8
 description: A collection of useful generators
 
 #=========================================

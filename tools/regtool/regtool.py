@@ -417,7 +417,13 @@ def generate_c_header(csr, output_path):
 
                 file.write( "\n")
                 
-            
+                for enum in field.get('enum', []):
+                    file.write(f"// Enum        : {reg['name']}.{field['name']}.{enum['name']}\n")
+                    file.write(f"// Description : {enum['desc']}\n")
+                    file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     {enum['value']}\n")
+                    file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW ({enum['value']}<<{field['lsb']})\n")
+                    file.write( "\n")
+
         file.write( "//----------------------------------\n")
         file.write(f"// Structure {module}_t\n")
         file.write( "//----------------------------------\n")
@@ -572,7 +578,14 @@ def generate_vhdl_package(csr, output_path):
                         
                 file.write(f"  end record {module}_{reg['name']}_hw2sw_t;\n")
                 file.write( "\n")
-            
+            for field in reg['fields']:
+                for enum in field.get('enum', []):
+                    file.write(f"-- Enum        : {reg['name']}.{field['name']}.{enum['name']}\n")
+                    file.write(f"-- Description : {enum['desc']}\n")
+                    file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     : std_logic_vector({field['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value']),field['width'])}\";\n")
+                    file.write( "\n")
+
+
         # Generate global struct containing all registers
         file.write( "  ------------------------------------\n")
         file.write(f"  -- Structure {module}_t\n")
