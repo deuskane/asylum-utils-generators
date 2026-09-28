@@ -106,8 +106,8 @@ class rvcc(Generator):
         #-------------------------------------------------
         # Environment setup
         #-------------------------------------------------
-        riscv_prefix = "riscv32-unknown-elf-"
-
+        riscv_prefix = os.environ.get("RISCV_PREFIX", "riscv32-unknown-elf-")
+        
         if "HEX2VHD_HOME" in os.environ:
             hex2vhd_home = Path(os.environ["HEX2VHD_HOME"]).resolve()
         else:
@@ -160,6 +160,8 @@ class rvcc(Generator):
             
         try:
             Launcher("make").run()
+            #subprocess.check_call(["make"], env=os.environ.copy())
+
             logger.info(f"ROM file generated: {output_vhd_file}")
         except Exception as e:
             logger.error(str(e))
