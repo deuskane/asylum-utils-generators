@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 # Tools
 # -----------------------------------------------------------------------------
-RISCV_PREFIX     = {{ riscv_prefix }}
+RISCV_PREFIX    ?= {{ riscv_prefix }}
 CC               = $(RISCV_PREFIX)gcc
 AS               = $(RISCV_PREFIX)as
 LD               = $(RISCV_PREFIX)ld
@@ -48,7 +48,7 @@ LINK_LD_FILE     = {{ link_ld_file }}
 # Flags
 # -----------------------------------------------------------------------------
 
-HAS_ZICSR       := $(shell $(CC) -march=rv32i_zicsr -E - < /dev/null > /dev/null 2>&1 && echo yes || echo no)
+HAS_ZICSR := $(shell echo 'void foo(void) { __asm__ volatile("csrw mtvec, x0"); }' | $(CC) -march=rv32i_zicsr -mabi=ilp32 -x c -c - -o /dev/null >/dev/null 2>&1 && echo yes || echo no)
 
 ifeq ($(HAS_ZICSR),yes)
 ARCH_FLAGS      := -march=rv32i_zicsr

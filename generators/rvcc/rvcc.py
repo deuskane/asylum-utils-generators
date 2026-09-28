@@ -106,7 +106,7 @@ class rvcc(Generator):
         #-------------------------------------------------
         # Environment setup
         #-------------------------------------------------
-        riscv_prefix = os.environ.get("RISCV_PREFIX", "riscv32-unknown-elf-")
+        riscv_prefix = "riscv32-unknown-elf-"
 
         if "HEX2VHD_HOME" in os.environ:
             hex2vhd_home = Path(os.environ["HEX2VHD_HOME"]).resolve()
