@@ -26,6 +26,17 @@ class AlignedFormatter(logging.Formatter):
         record.levelname = f"[{record.levelname:<8}]"
         return super().format(record)
 
+
+def copy_if_needed(src: Path, dst: Path):
+    """Copy a file only when the destination does not exist or differs."""
+    if dst.exists() and src.exists() and src.read_bytes() == dst.read_bytes():
+        return False
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    return True
+
+
 class rvcc(Generator):
 
     def update_paths(self, options, files_root):
@@ -89,9 +100,12 @@ class rvcc(Generator):
         # Copy start.S and link.ld to the current working directory
         # These files are always needed for C/S compilation
         try:
-            shutil.copy(start_s_template, Path.cwd() / "start.S")
-            shutil.copy(link_ld_template, Path.cwd() / "link.ld")
-            logger.info(f"Copied {start_s_template.name} and {link_ld_template.name} to current directory.")
+            start_s_copied = copy_if_needed(start_s_template, Path.cwd() / "start.S")
+            link_ld_copied = copy_if_needed(link_ld_template, Path.cwd() / "link.ld")
+            if start_s_copied or link_ld_copied:
+                logger.info(f"Copied {start_s_template.name} and {link_ld_template.name} to current directory.")
+            else:
+                logger.info(f"Template files already up to date in current directory.")
         except FileNotFoundError as e:
             logger.error(f"Missing template file: {e}")
             raise RuntimeError(f"Missing template file: {e}")
