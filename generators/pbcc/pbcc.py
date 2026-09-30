@@ -17,9 +17,7 @@
 
 import os
 
-import sys
 from   fusesoc.capi2.generator import Generator
-import subprocess
 from   fusesoc.utils           import Launcher
 from   glob                    import glob
 from   pathlib                 import Path
@@ -146,6 +144,9 @@ class pbcc(Generator):
         # Call Jinja2
         #-------------------------------------------------
         # Configuration du projet
+        file_vhd_pkg = Path(file_vhd).stem + "_pkg.vhd"
+        gen_rom_home = Path(__file__).parent.parent / "gen_rom"
+
         config = {
             "pbcc_home"     : pbcc_home    ,
             "pbcc"          : os.path.join(pbcc_home,"bin","sdcc") ,
@@ -155,10 +156,13 @@ class pbcc(Generator):
             "file_c"        : file_c       ,
             "file_psm"      : file_psm     ,
             "file_vhd"      : file_vhd     ,
+            "file_vhd_pkg"  : file_vhd_pkg ,
             "file_type"     : file_type    ,
             "file_rom"      : os.path.join(picoasm_home,"share","picoasm",rom_model,"ROM_form.vhd") ,
             "rom_entity"    : rom_entity   ,
             "rom_model"     : rom_model    ,
+            "rom_pkg_vhd"   : gen_rom_home / "ROM" / "pkg" / "ROM_pkg.vhd",
+            "hex2vhd_tool"  : gen_rom_home / "gen_rom.py",
             "cflags"        : cflags       ,
             "file_in"       : file_in      
         }
@@ -181,30 +185,6 @@ class pbcc(Generator):
             Launcher("make").run()
         except Exception as e:
             logger.error(str(e))
-            raise RuntimeError
-
-        #-------------------------------------------------
-        # Package Generation
-        #-------------------------------------------------
-        rvcc_home = Path(__file__).parent.parent / "gen_rom"
-        hex2vhd_tool = rvcc_home / "gen_rom.py"
-        rom_pkg_vhd  = rvcc_home / "ROM" / "pkg" / "ROM_pkg.vhd"
-        file_vhd_pkg = Path(file_vhd).stem + "_pkg.vhd"
-
-        logger.info("Generate VHDL Package")
-        cmd = [
-            sys.executable,
-            str(hex2vhd_tool),
-            str(rom_pkg_vhd),
-            rom_entity,
-            str(file_vhd_pkg),
-            "--data-width", "18"
-            
-        ]
-        try:
-            subprocess.check_call(cmd)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to generate package: {e}")
             raise RuntimeError
 
         #-------------------------------------------------

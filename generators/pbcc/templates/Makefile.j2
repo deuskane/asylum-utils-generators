@@ -2,9 +2,12 @@ PBCC_HOME     = {{ pbcc_home    }}
 PBCC          = {{ pbcc         }}
 PICOASM_HOME  = {{ picoasm_home }}
 PICOASM       = {{ picoasm      }}
+HEX2VHD_TOOL  = {{ hex2vhd_tool }}
+ROM_PKG       = {{ rom_pkg_vhd }}
 FILE_C        = {{ file_c       }}
 FILE_PSM      = {{ file_psm     }}
 FILE_VHD      = {{ file_vhd     }}
+FILE_VHD_PKG  = {{ file_vhd_pkg }}
 FILE_TYPE     = {{ file_type    }}
 FILE_ROM      = {{ file_rom     }}
 ROM_ENTITY    = {{ rom_entity   }}
@@ -18,12 +21,15 @@ CFLAGS       += -S
 CFLAGS       += --dialect=$(FILE_TYPE)
 
 FILE_IN       = {{ file_in }} 
-FILES_OUT     = $(FILE_VHD)
+FILES_OUT     = $(FILE_VHD) $(FILE_VHD_PKG)
 
 all : $(FILES_OUT)
 
 $(FILE_VHD) : $(FILE_PSM)
 	$(PICOASM) -t $(FILE_ROM) -v -m $(ROM_ENTITY) -d . -i $< -a $(FILE_TYPE)
+
+$(FILE_VHD_PKG) : $(ROM_PKG)
+	$(HEX2VHD_TOOL) $(ROM_PKG) $(ROM_ENTITY) $@ --data-width 18
 
 ifneq ("$(FILE_C)","")
 
@@ -33,4 +39,4 @@ $(FILE_PSM) : $(FILE_C)
 endif
 
 clean    :
-	rm $(FILES_OUT)
+	rm -f $(FILES_OUT)
