@@ -22,7 +22,6 @@ import subprocess
 from   fusesoc.utils           import Launcher
 from   glob                    import glob
 from   pathlib                 import Path
-import shutil
 from   jinja2                  import Environment, FileSystemLoader
 
 import logging
@@ -119,7 +118,8 @@ class regtool(Generator):
             "file_vhdl_csr": file_vhdl_csr,
             "file_md"      : file_md,
             "file_h"       : file_h,
-            "dir_script"   : dir_script
+            "dir_script"   : dir_script,
+            "copy_dir"     : dir_copy if copy is not None else None,
        }
         
         # Chemin vers le dossier contenant les templates
@@ -166,13 +166,6 @@ class regtool(Generator):
             logger.error("output files not found.")
             raise RuntimeError
 
-        if copy != None:
-            logger.info(f"Copy generated files in {dir_copy}")
-            shutil.copy(file_vhdl_pkg, dir_copy)
-            shutil.copy(file_vhdl_csr, dir_copy)
-            shutil.copy(file_h       , dir_copy)
-            shutil.copy(file_md      , dir_copy)
-        
         logger.info("-------------------------------------------")
         logger.info("End Generator regtool")
         logger.info("-------------------------------------------")

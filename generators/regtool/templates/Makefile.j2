@@ -9,7 +9,21 @@ FILES_OUT    += {{ file_vhdl_csr }}
 FILES_OUT    += {{ file_md }}
 FILES_OUT    += {{ file_h }}
 
+{% if copy_dir %}
+COPY_DIR      = {{ copy_dir }}
+all      : copy
+
+copy     : $(FILES_OUT)
+	mkdir -p "$(COPY_DIR)"
+	cp -f "{{ file_vhdl_pkg }}" "$(COPY_DIR)/"
+	cp -f "{{ file_vhdl_csr }}" "$(COPY_DIR)/"
+	cp -f "{{ file_md }}"       "$(COPY_DIR)/"
+	cp -f "{{ file_h }}"        "$(COPY_DIR)/"
+
+{% else %}
 all      : $(FILES_OUT)
+
+{% endif %}
 
 {{ file_vhdl_pkg }} : \
   $(FILE_IN) $(REGTOOL_FILES)
@@ -29,4 +43,4 @@ all      : $(FILES_OUT)
 	$(REGTOOL) $(REGTOOL_OPT) $< --c_header     $@
 
 clean :
-	rm $(FILES_OUT)
+	rm -f $(FILES_OUT)
