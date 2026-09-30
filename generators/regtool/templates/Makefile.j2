@@ -11,14 +11,25 @@ FILES_OUT    += {{ file_h }}
 
 {% if copy_dir %}
 COPY_DIR      = {{ copy_dir }}
-all      : copy
+all      :  $(COPY_DIR)/$(notdir {{ file_vhdl_pkg }}) \
+			$(COPY_DIR)/$(notdir {{ file_vhdl_csr }}) \
+			$(COPY_DIR)/$(notdir {{ file_md }}) \
+			$(COPY_DIR)/$(notdir {{ file_h }})
 
-copy     : $(FILES_OUT)
-	mkdir -p "$(COPY_DIR)"
-	cp -f "{{ file_vhdl_pkg }}" "$(COPY_DIR)/"
-	cp -f "{{ file_vhdl_csr }}" "$(COPY_DIR)/"
-	cp -f "{{ file_md }}"       "$(COPY_DIR)/"
-	cp -f "{{ file_h }}"        "$(COPY_DIR)/"
+$(COPY_DIR) :
+	mkdir -p "$@"
+
+$(COPY_DIR)/$(notdir {{ file_vhdl_pkg }}) : {{ file_vhdl_pkg }} | $(COPY_DIR)
+	cp $< $@
+
+$(COPY_DIR)/$(notdir {{ file_vhdl_csr }}) : {{ file_vhdl_csr }} | $(COPY_DIR)
+	cp $< $@
+
+$(COPY_DIR)/$(notdir {{ file_md }}) : {{ file_md }} | $(COPY_DIR)
+	cp $< $@
+
+$(COPY_DIR)/$(notdir {{ file_h }}) : {{ file_h }} | $(COPY_DIR)
+	cp $< $@
 
 {% else %}
 all      : $(FILES_OUT)
