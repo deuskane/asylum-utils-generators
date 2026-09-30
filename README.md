@@ -1,5 +1,3 @@
-[![CI](https://github.com/deuskane/asylum-utils-generators/actions/workflows/ci.yml/badge.svg)](https://github.com/deuskane/asylum-utils-generators/actions/workflows/ci.yml)
-
 # Asylum Utils Generators
 
 A collection of useful generators and tools for the Asylum project. This repository provides tools for embedded firmware compilation and hardware register generation, enabling seamless integration between software and hardware components.
