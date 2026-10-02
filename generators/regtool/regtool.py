@@ -23,8 +23,8 @@ from   fusesoc.utils           import Launcher
 from   glob                    import glob
 from   pathlib                 import Path
 from   jinja2                  import Environment, FileSystemLoader
-
 import logging
+from   threading               import Lock
 
 class AlignedFormatter(logging.Formatter):
     def format(self, record):
@@ -33,7 +33,19 @@ class AlignedFormatter(logging.Formatter):
         return super().format(record)
 
 class regtool(Generator):
+
+    lock_write = Lock()
+    lock_run   = Lock()
+
+    def write(self):
+        with self.__class__.lock_write:
+            return super().write()
+            
     def run(self):
+        with self.__class__.lock_run:
+            return self._run()
+
+    def _run(self):
 
         # Configuration du logger
         handler   = logging.StreamHandler()

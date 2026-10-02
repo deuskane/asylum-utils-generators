@@ -51,9 +51,10 @@ CAPI=2:
 # 2026-09-28  2.6.9    mrosiere rvcc         : Update check condition for zicsr
 #                               regtool      : Move copy in Makefile
 #                               pbcc         : Move rom generation in Makefile
+# 2026-10-02 2.7.0     mrosiere rvcc/pbcc/regtool : Use lock for run and write
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.6.9
+name       : asylum:utils:generators:2.7.0
 description: A collection of useful generators
 
 #=========================================

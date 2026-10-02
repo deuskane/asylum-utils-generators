@@ -22,8 +22,8 @@ from   fusesoc.utils           import Launcher
 from   glob                    import glob
 from   pathlib                 import Path
 from   jinja2                  import Environment, FileSystemLoader
-
 import logging
+from   threading               import Lock
 
 class AlignedFormatter(logging.Formatter):
     def format(self, record):
@@ -33,6 +33,17 @@ class AlignedFormatter(logging.Formatter):
 
 class pbcc(Generator):
 
+    lock_write = Lock()
+    lock_run   = Lock()
+
+    def write(self):
+        with self.__class__.lock_write:
+            return super().write()
+            
+    def run(self):
+        with self.__class__.lock_run:
+            return self._run()
+            
     def update_paths(self,options, files_root):
         updated_options = []
         for option in options:
@@ -47,7 +58,7 @@ class pbcc(Generator):
                 updated_options.append(option)
         return updated_options
 
-    def run(self):
+    def _run(self):
 
         # Configuration du logger
         handler   = logging.StreamHandler()
