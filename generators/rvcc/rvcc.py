@@ -12,6 +12,7 @@
 
 import os
 import sys
+import fcntl
 from   fusesoc.capi2.generator import Generator
 import subprocess
 from   fusesoc.utils           import Launcher
@@ -20,7 +21,7 @@ from   pathlib                 import Path
 import shutil
 from   jinja2                  import Environment, FileSystemLoader
 import logging
-from   threading               import Lock
+from   contextlib              import contextmanager
 
 class AlignedFormatter(logging.Formatter):
     def format(self, record):
@@ -40,15 +41,23 @@ def copy_if_needed(src: Path, dst: Path):
 
 class rvcc(Generator):
 
-    lock_write = Lock()
-    lock_run   = Lock()
+    @classmethod
+    @contextmanager
+    def process_lock(cls):
+        lock_path = Path.cwd() / ".rvcc.lock"
+        with lock_path.open("a+") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def write(self):
-        with self.__class__.lock_write:
+        with self.__class__.process_lock():
             return super().write()
-            
+
     def run(self):
-        with self.__class__.lock_run:
+        with self.__class__.process_lock():
             return self._run()
 
     def update_paths(self, options, files_root):

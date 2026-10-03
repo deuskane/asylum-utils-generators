@@ -15,6 +15,7 @@
 #-----------------------------------------------------------------------------
 
 import os
+import fcntl
 
 import sys
 from   fusesoc.capi2.generator import Generator
@@ -24,7 +25,7 @@ from   glob                    import glob
 from   pathlib                 import Path
 from   jinja2                  import Environment, FileSystemLoader
 import logging
-from   threading               import Lock
+from   contextlib              import contextmanager
 
 class AlignedFormatter(logging.Formatter):
     def format(self, record):
@@ -34,15 +35,23 @@ class AlignedFormatter(logging.Formatter):
 
 class regtool(Generator):
 
-    lock_write = Lock()
-    lock_run   = Lock()
+    @classmethod
+    @contextmanager
+    def process_lock(cls):
+        lock_path = Path.cwd() / ".regtool.lock"
+        with lock_path.open("a+") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
     def write(self):
-        with self.__class__.lock_write:
+        with self.__class__.process_lock():
             return super().write()
-            
+
     def run(self):
-        with self.__class__.lock_run:
+        with self.__class__.process_lock():
             return self._run()
 
     def _run(self):
