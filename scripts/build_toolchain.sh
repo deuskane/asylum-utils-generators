@@ -121,8 +121,8 @@ function build_toolchain_main()
     dir_tools=`/bin/pwd`/tools
     dir_picoasm=${dir_tools}/picoasm
 #   dir_sdcc=${dir_tools}/pbccv2-src-20110901/sdcc3
-#   dir_sdcc=${dir_tools}/pbccv2-src-20111024/sdcc3
-    dir_sdcc=${dir_tools}/sdcc-3.1.0
+    dir_sdcc=${dir_tools}/pbccv2-src-20111024/sdcc3
+#   dir_sdcc=${dir_tools}/sdcc-3.1.0
 #   dir_sdcc=${dir_tools}/sdcc-3.3.0
     dir_install=${dir_tools}/install
     
