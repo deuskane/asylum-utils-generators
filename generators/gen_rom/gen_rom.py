@@ -6,6 +6,11 @@
 # File       : gen_rom.py
 # Description: Generates a VHDL ROM from a HEX file using a template.
 #-----------------------------------------------------------------------------
+# Revisions  :
+# Date        Version  Author   Description
+# 2026-10-05  2.7.1    mrosiere Exit with status 1 on error (hex file too
+#                               large for the ROM, missing file)
+#-----------------------------------------------------------------------------
 
 import sys
 import argparse
@@ -58,10 +63,10 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
         num_entries = 2**addr_width
         if hex_file and len(hex_lines) > num_entries:
             logger.error(f"The hex file ({len(hex_lines)} lines) is too large for the ROM size ({num_entries} words).")
-            return
+            return False
     except Exception as e:
         logger.error(f"Error reading hex file: {e}")
-        return
+        return False
 
     # 2. Load template
     try:
@@ -74,7 +79,7 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
                 content = content.split("{begin template}")[1]
     except Exception as e:
         logger.error(f"Error reading template: {e}")
-        return
+        return False
 
     # 3. Prepare replacements
     timestamp = datetime.datetime.now().strftime("%d %b %Y %H:%M:%S")
@@ -132,6 +137,7 @@ def generate_rom(hex_file: str, output_file: str, template_file: str, output_nam
         f.write(content)
 
     logger.info(f"Successfully generated: {output_file}")
+    return True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate VHDL ROM from HEX file.")
@@ -144,4 +150,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    generate_rom(args.hex_file, args.output_file, args.template, args.entity, args.data_width, args.addr_width)
+    # Exit with an error status so that the calling Makefile stops on failure
+    if not generate_rom(args.hex_file, args.output_file, args.template, args.entity, args.data_width, args.addr_width):
+        sys.exit(1)
