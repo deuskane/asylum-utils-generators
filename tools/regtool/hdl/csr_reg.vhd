@@ -17,6 +17,8 @@
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2025-02-09  1.0      mrosiere Created
+-- 2026-10-05  1.1      mrosiere Add "wo" model (same storage as "rw",
+--                               software read data masked by regtool)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -28,7 +30,7 @@ entity csr_reg is
   generic (
     WIDTH : positive := 1;                              -- Register Width
     INIT  : std_logic_vector;                           -- Reset
-    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
+    MODEL : string                                      -- "ro", "rw", "wo", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
                               
     ); 
 
@@ -75,6 +77,15 @@ begin  -- architecture rtl
                 hw_wd_i         when hw_we_i = '1' else
                 q_r;
   end generate gen_rw;
+
+  -- Write only : the register stores the software writes like "rw";
+  -- regtool does not connect sw_rd_o to the read data bus (reads return 0)
+  gen_wo: if MODEL="wo" 
+  generate
+    q_r_next <= sw_wd_i         when sw_we_i = '1' else
+                hw_wd_i         when hw_we_i = '1' else
+                q_r;
+  end generate gen_wo;
 
   gen_rw1c: if MODEL="rw1c" 
   generate
