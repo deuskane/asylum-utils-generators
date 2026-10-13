@@ -783,24 +783,26 @@ def generate_vhdl_module(csr, output_path):
         for reg in csr['registers']:
 
 
-            file.write(f"  function INIT_{reg['name']}\n")
-            file.write(f"    return std_logic_vector is\n")
-            file.write(f"    variable tmp : std_logic_vector({reg['width']}-1 downto 0);\n")
-            file.write(f"  begin  -- function INIT_{reg['name']}\n")
-            lsb=0
-            for field in reg['fields']:
-                msb=lsb+field['width']-1
-                file.write(f"    tmp({msb} downto {lsb}) := {field['expr']}; -- {field['name']}\n")
-                lsb=msb+1
-            file.write(f"    return tmp;\n")
-            file.write(f"  end function INIT_{reg['name']};\n")
-            file.write( "\n")
+            if reg['hwtype'] in ['reg']:
+                file.write(f"  function INIT_{reg['name']}\n")
+                file.write(f"    return std_logic_vector is\n")
+                file.write(f"    variable tmp : std_logic_vector({reg['width']}-1 downto 0);\n")
+                file.write(f"  begin  -- function INIT_{reg['name']}\n")
+                lsb=0
+                for field in reg['fields']:
+                    msb=lsb+field['width']-1
+                    file.write(f"    tmp({msb} downto {lsb}) := {field['expr']}; -- {field['name']}\n")
+                    lsb=msb+1
+                file.write(f"    return tmp;\n")
+                file.write(f"  end function INIT_{reg['name']};\n")
+                file.write( "\n")
 
             file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
             file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
             file.write(f"  signal   {reg['name']}_wdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
             file.write(f"  signal   {reg['name']}_wdata_sw  : std_logic_vector({reg['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_wdata_hw  : std_logic_vector({reg['width']}-1 downto 0);\n");
+            if reg['hw2sw_data']:
+                file.write(f"  signal   {reg['name']}_wdata_hw  : std_logic_vector({reg['width']}-1 downto 0);\n");
             file.write(f"  signal   {reg['name']}_wbusy     : std_logic;\n");
             #for field in reg['fields']:
             #    file.write(f"  signal   {reg['name']}_{field['name']}_wdata : std_logic_vector({field['msb']} downto {field['lsb']});\n");
@@ -862,13 +864,18 @@ def generate_vhdl_module(csr, output_path):
 
                 file.write(f"    {reg['name']}_rdata   <= (\n");
                 x=0
+                assigned_width = 0
                 for field in reg['fields']:
+                    assigned_width += field['width']
                     y=0
                     for i in range(field['lsb'], field['msb']+1):
-                        file.write(f"      {i} => {reg['name']}_rdata_sw({x}), -- {field['name']}({y})\n")
+                        prefix = " " if x == 0 else ","
+                        file.write(f"      {prefix}{i} => {reg['name']}_rdata_sw({x}) -- {field['name']}({y})\n")
                         x=x+1
                         y=y+1
-                file.write(f"      others => '0');\n")
+                if assigned_width < csr['width']:
+                    file.write(f"      ,others => '0'\n")
+                file.write(f"      );\n")
 
             else:
                 file.write(f"    {reg['name']}_rcs     <= '0';\n")
