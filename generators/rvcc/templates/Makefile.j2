@@ -16,6 +16,8 @@ HEX2VHD_TOOL     = {{ hex2vhd_tool }}
 ROM_MODEL        = {{ rom_model_vhd }}
 ROM_PKG          = {{ rom_pkg_vhd }}
 ROM_ENTITY       = {{ rom_entity }}
+ROM_ADDR_WIDTH   = {{ rom_addr_width }}
+ROM_SIZE         = {{ rom_size }}
 
 STACK_SIZE       = {{ stack_size }}
 
@@ -80,6 +82,7 @@ CFLAGS          += -fno-delete-null-pointer-checks # Disable null pointer checks
 CFLAGS          += -static                         # Statically link libraries
 CFLAGS          += -mcmodel=medany                 # Code model to address anywhere within a 2 GB range
 CFLAGS          += -fstack-usage                   # Generate stack usage information
+CFLAGS          += -Wl,--defsym=_rom_size=$(ROM_SIZE) # ROM size in link.ld
 CFLAGS          += $(addprefix -I,$(wildcard ../*-gen_csr_*)) # Add all generators called "gen_csr"
 CFLAGS          += {{ cflags }}
 
@@ -118,12 +121,12 @@ $(ASM): $(INPUT_FILE) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -S $(INPUT_FILE) -o $@
 
 # ROM Generation
-$(VHD): $(HEX) $(ROM_MODEL) | $(BUILD_DIR)
-	$(HEX2VHD_TOOL) $(ROM_MODEL) $(ROM_ENTITY) $@ --hex $< 
+$(VHD): $(HEX) $(ROM_MODEL) Makefile | $(BUILD_DIR)
+	$(HEX2VHD_TOOL) $(ROM_MODEL) $(ROM_ENTITY) $@ --hex $< --addr-width $(ROM_ADDR_WIDTH)
 
 # ROM Package Generation
-$(VHD_PKG): $(ROM_PKG) | $(BUILD_DIR)
-	$(HEX2VHD_TOOL) $(ROM_PKG) $(ROM_ENTITY) $@
+$(VHD_PKG): $(ROM_PKG) Makefile | $(BUILD_DIR)
+	$(HEX2VHD_TOOL) $(ROM_PKG) $(ROM_ENTITY) $@ --addr-width $(ROM_ADDR_WIDTH)
 
 $(BUILD_DIR) :
 	mkdir -p $@

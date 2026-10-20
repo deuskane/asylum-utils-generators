@@ -133,6 +133,11 @@ class rvcc(Generator):
             
         rom_entity  = self.config.get("entity", "WardRV_ROM")
         rom_model   = self.config.get("model", "generic")
+        rom_addr_width = int(self.config.get("addr_width", 10))
+
+        if rom_addr_width < 1:
+            logger.error(f"Invalid addr_width: {rom_addr_width}. Must be a positive integer")
+            raise RuntimeError
 
         if (not rom_model in ["generic", "xilinx"]):
             logger.error(f"Unknown rom model: {rom_model}. Possible options are 'generic' or 'xilinx'")
@@ -178,6 +183,8 @@ class rvcc(Generator):
             "rom_entity"          : rom_entity,
             "rom_model_vhd"       : rom_model_vhd,
             "rom_pkg_vhd"         : rom_pkg_vhd,
+            "rom_addr_width"      : rom_addr_width, # ROM address width (in 32-bit words)
+            "rom_size"            : 4 << rom_addr_width, # ROM size in bytes (used by link.ld)
             "cflags"              : " ".join(cflags_list),
             "stack_size"          : self.config.get("stack_size", 128), # Default stack size is 128byte
             "start_s_file"        : "start.S", # Name of the copied start.S
@@ -189,8 +196,10 @@ class rvcc(Generator):
         
         makefile_content = template.render(config)
         
-        with open('Makefile', 'w') as f:
-            f.write(makefile_content)
+        # Write only on change: the ROM files depend on the Makefile (parameters)
+        if not Path('Makefile').exists() or Path('Makefile').read_text() != makefile_content:
+            with open('Makefile', 'w') as f:
+                f.write(makefile_content)
         logger.info(f"Makefile generated at {Path.cwd() / 'Makefile'}")
             
         try:

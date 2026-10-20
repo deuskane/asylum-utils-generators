@@ -1,9 +1,12 @@
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
+/* ROM size in bytes (given by --defsym=_rom_size=<bytes> from the addr_width parameter) */
+_rom_size = DEFINED(_rom_size) ? _rom_size : 4K;
+
 MEMORY
 {
-  ROM (rx)      : ORIGIN = 0x00000000, LENGTH = 32K
+  ROM (rx)      : ORIGIN = 0x00000000, LENGTH = _rom_size
   RAM_GLB (rw)  : ORIGIN = 0x80000040, LENGTH = 64
   RAM_LOC (rw)  : ORIGIN = 0x80000080, LENGTH = 128
 }
