@@ -420,8 +420,9 @@ def generate_c_header(csr, output_path):
                 for enum in field.get('enum', []):
                     file.write(f"// Enum        : {reg['name']}.{field['name']}.{enum['name']}\n")
                     file.write(f"// Description : {enum['desc']}\n")
-                    file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     {enum['value']}\n")
-                    file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW ({enum['value']}<<{field['lsb']})\n")
+                    value = parse_value(enum['value'])
+                    file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     0x{value:X}\n")
+                    file.write(f"#define {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW (0x{value:X}<<{field['lsb']})\n")
                     file.write( "\n")
 
         file.write( "//----------------------------------\n")
@@ -583,7 +584,7 @@ def generate_vhdl_package(csr, output_path):
                     file.write(f"-- Enum        : {reg['name']}.{field['name']}.{enum['name']}\n")
                     file.write(f"-- Description : {enum['desc']}\n")
                     file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     : std_logic_vector({field['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value']),field['width'])}\";\n")
-                    file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW : std_logic_vector({reg['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value'])<<field['lsb'],reg['width'])}\";\n")
+                    file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW : std_logic_vector({csr['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value'])<<field['lsb'],csr['width'])}\";\n")
                     file.write( "\n")
 
 
