@@ -136,6 +136,10 @@ generators:
         cflags       : (Optional)
                        Compilation options for C file
 
+        stack_size   : (Optional)
+                       Stack size in bytes, reserved in the RAM by link.ld
+                       Default     : 128
+
         logical_name : (Optional)
                        Default : work
 
