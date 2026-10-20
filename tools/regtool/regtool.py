@@ -1032,6 +1032,13 @@ def generate_vhdl_module(csr, output_path):
             if reg['sw2hw_data']:
                 for field in reg['fields']:
                     file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= {field['expr']};\n")
+                if reg['hwtype'] in ['fifo']:
+                    file.write(f"    sw2hw_o.{reg['name']}.sw2hw_empty <= '1';\n")
+                    file.write(f"    sw2hw_o.{reg['name']}.sw2hw_full  <= '0';\n")
+            if reg['hw2sw_data']:
+                if reg['hwtype'] in ['fifo']:
+                    file.write(f"    sw2hw_o.{reg['name']}.hw2sw_empty <= '1';\n")
+                    file.write(f"    sw2hw_o.{reg['name']}.hw2sw_full  <= '0';\n")
             if reg['sw2hw_re']:
                 file.write(f"    sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']} <= '0';\n")
             if reg['sw2hw_we']:
