@@ -187,6 +187,28 @@ filesets:
     file_type : user
 
 #=========================================
+generate:
+#=========================================
+
+  #---------------------------------------
+  gen_csr_example1:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : tools/regtool/examples/example1.hjson
+      name         : example1
+      logical_name : asylum
+
+#=========================================
+parameters:
+#=========================================
+
+  REG1_ENABLE :
+    datatype    : bool
+    description : Enable the register reg1 of example1
+    paramtype   : generic
+
+#=========================================
 targets:
 #=========================================
 
@@ -197,3 +219,19 @@ targets:
     filesets        :
       - deps
       - "tool_ghdl?(files_ghdl)"
+
+  #---------------------------------------
+  sim_regtool_example1:
+  #---------------------------------------
+    << : *default
+    description     : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
+    generate        :
+      - gen_csr_example1
+    toplevel        : asylum.example1_registers
+    parameters      :
+      - REG1_ENABLE=true
+    default_tool    : ghdl
+    tools :
+      ghdl :
+        analyze_options : ["-Wall"]
+        run_options     : ["--ieee-asserts=disable"]
