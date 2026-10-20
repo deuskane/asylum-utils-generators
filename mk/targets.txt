@@ -1,0 +1,4 @@
+default         : Default Target
+lint_ghdl       : Lint with GHDL (-Wall analysis and elaboration of csr_synth_top)
+lint_ghdl_synth : Synthesis check, ghdl --synth -Wall of csr_synth_top (5 configurations)
+

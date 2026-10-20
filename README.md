@@ -63,7 +63,7 @@ This repository provides the code generators used by the other Asylum cores thro
 - **`pbcc_gen`**: compiles a C file with the PicoBlaze port of SDCC (pbcc) or takes a KCPSM3 / PBlazeIDE assembler file, assembles it with picoasm and produces a ROM entity plus its component package (OpenBlaze8 / PicoBlaze-3 processors).
 - **`rvcc_gen`**: compiles C / assembler with a RISC-V GCC toolchain (`rv32i`) and produces a ROM entity plus its component package (WardRV processor).
 
-Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the FuseSoC generator work directory under an exclusive file lock, and registers the produced files in the calling core. The core itself has no HDL fileset: its `default` target only pulls `asylum:component:fifo`, required by the `csr_fifo` building block that regtool adds to the calling core.
+Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the FuseSoC generator work directory under an exclusive file lock, and registers the produced files in the calling core. The core itself has no HDL fileset in its `default` target (the `regtool_hdl` fileset is only used by the lint targets): `default` only pulls `asylum:component:fifo`, required by the `csr_fifo` building block that regtool adds to the calling core.
 
 ### Key Features
 
@@ -344,7 +344,7 @@ Generated files, all named after the generator `name`:
 
 ### Testbenches
 
-There is no testbench, Makefile or `mk/` directory in this repository, and no CI workflow. The generators are exercised by the cores that use them:
+There is no testbench and no CI workflow in this repository (the `Makefile` / `mk/` only run the lint targets below). The generators are exercised by the cores that use them:
 
 | File | DUT | Description |
 |------|-----|-------------|
@@ -356,6 +356,8 @@ There is no testbench, Makefile or `mk/` directory in this repository, and no CI
 | Target | Toplevel | Description |
 |--------|----------|-------------|
 | `default` | *(none)* | `deps` fileset only (depends on `asylum:component:fifo`); not meant to be run |
+| `lint_ghdl` | `csr_synth_top` | Lint: GHDL `-Wall` analysis and elaboration (empty simulation) of the regtool building blocks `csr_pkg`, `csr_reg` (one instance per software access model), `csr_ext`, `csr_fifo` in a wrapper with flat ports (`syn/ghdl/csr_synth_top.vhd`) |
+| `lint_ghdl_synth` | `csr_synth_top` | Synthesis check: `lint_ghdl`, then `ghdl --synth -Wall` of 5 configurations (`syn/ghdl/ghdl_synth.sh`: defaults (`WIDTH = 8`, FIFO depths 0), `WIDTH = 1` with `INIT = "1"`, `INIT = x"A5"`, `csr_fifo` with FIFOs and blocking read, `csr_fifo` with FIFOs and non-blocking write), fails on a synthesis error or an inferred latch |
 
 ### How to Run
 
@@ -365,6 +367,13 @@ The generators run automatically when FuseSoC executes the setup stage of a targ
 make help                       # in the consuming IP
 make default STEP=setup         # runs its generators (regtool for gen_csr)
 fusesoc --cores-root . run --build-root build --setup --target default asylum:communication:SPI:2.0.0
+```
+
+Lint of the regtool building blocks, from this repository:
+
+```bash
+make lint_ghdl                  # GHDL -Wall lint (make nonreg_lint: every lint_* target)
+make lint_ghdl_synth            # GHDL -Wall lint + ghdl --synth -Wall check
 ```
 
 regtool can also be run standalone (Python 3 with `hjson`, `jsonschema`, `prettytable`, see [tools/regtool/requirements.txt](tools/regtool/requirements.txt)):
@@ -421,6 +430,13 @@ Next value of the register (`hw` = `hw_wd_i` when `hw_we_i = 1`, else the curren
 ```
 asylum-utils-generators/
 ├── generators.core              # FuseSoC core (asylum:utils:generators), generators: section
+├── Makefile                     # Common Asylum Makefile (FuseSoC wrapper)
+├── mk/
+│   ├── defs.mk                  # FILE_CORE, default TARGET and TOOL
+│   └── targets.txt              # Target list (generated from the .core)
+├── syn/ghdl/
+│   ├── csr_synth_top.vhd        # Lint / synthesis check top (csr_reg, csr_ext, csr_fifo)
+│   └── ghdl_synth.sh            # ghdl --synth check (post_run hook of lint_ghdl_synth)
 ├── doc/
 │   └── pbccv2_user_manual.pdf   # PicoBlaze C compiler manual
 ├── generators/
