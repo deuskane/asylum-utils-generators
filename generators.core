@@ -51,11 +51,12 @@ CAPI=2:
 # 2026-09-28  2.6.9    mrosiere rvcc         : Update check condition for zicsr
 #                               regtool      : Move copy in Makefile
 #                               pbcc         : Move rom generation in Makefile
-# 2026-10-02 2.7.0     mrosiere rvcc/pbcc/regtool : Use lock for run and write
+# 2026-10-02  2.7.0    mrosiere rvcc/pbcc/regtool : Use lock for run and write
 # 2026-10-05  2.7.1    mrosiere regtool      : Makefile outputs depend on the regtool sources
 #                                              ($(shell find), was always empty)
 #                               csr_reg      : Add "wo" model
 #                               gen_rom      : Exit with status 1 on error
+# 2026-10-21  2.8.0    mrosiere ghdl         : add script and Makefile to generate ghdl synth option
 #-----------------------------------------------------------------------------
 
 name       : asylum:utils:generators:2.7.1
@@ -173,6 +174,14 @@ filesets:
     depend       :
       - asylum:component:fifo
 
+  #---------------------------------------
+  files_ghdl:
+  #---------------------------------------
+    files:
+      - tools/ghdl/ghdl_synth.sh : {file_type : user, copyto : ghdl_synth.sh}
+      - tools/ghdl/ghdl_synth.mk : {file_type : user, copyto : ghdl_synth.mk}
+    file_type : user
+
 #=========================================
 targets:
 #=========================================
@@ -183,3 +192,4 @@ targets:
     description     : Default Target
     filesets        :
       - deps
+      - "tool_ghdl?(files_ghdl)"
