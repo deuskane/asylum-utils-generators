@@ -32,7 +32,7 @@ class AddrMap:
         """
         self.registers = {}
 
-    def add(self, name, address):
+    def add(self, name, address, unique_address=True):
         """
         Adds a new register with a unique name and address.
 
@@ -42,15 +42,18 @@ class AddrMap:
             The name of the register.
         address : str
             The address of the register.
+        unique_address : bool
+            False : the address can be shared with other registers.
 
         Raises
         ------
         ValueError
-            If the register name or address already exists.
+            If the register name already exists, or if the address already
+            exists and unique_address is True.
         """
         if name    in self.registers:
             raise ValueError(f"Name '{name}' already exists.")
-        if address in self.registers.values():
+        if unique_address and address in self.registers.values():
             raise ValueError(f"Address '{address}' already exists.")
         self.registers[name] = address
 

@@ -71,20 +71,51 @@ def check_interface(csr):
 #--------------------------------------------
 def check_reg_addr(reg,addrmap,addr_offset):
     """
-    Checks if the address is already present in the addrmap dictionary.
-    If the address is present, raises an error. Otherwise, adds the address to the addrmap.
+    Checks the alignment of the address and adds the register to the addrmap.
+    An address can be shared by several registers, see check_shared_address.
 
     :param reg: Dictionary of register.
     :param addrmap: Discotionary of Address.
     :param addr_offset: mandatory offset between 2 registers 
-    :raises ValueError: If the address is already present in the addrmap.
+    :raises ValueError: If the address is not aligned.
     """
     reg['address'] = parse_value(reg['address'])
 
     if reg['address'] & (addr_offset-1) != 0 :
         raise ValueError(f"The address {reg['address']} have invalid offset {addr_offset}.")
 
-    addrmap.add(reg['name'],reg['address'])
+    addrmap.add(reg['name'],reg['address'],unique_address=False)
+
+#--------------------------------------------
+#--------------------------------------------
+def check_shared_address(csr):
+    """
+    Checks the registers sharing an address : at each address, the software
+    reads at most one register and writes at most one register (own address
+    or alias_write). Example : a write only command register and a read only
+    status register at the same address.
+
+    :param csr: Dictionary of csr.
+    :raises ValueError: If an address is read or written by several registers.
+    """
+    address = {reg['name'] : reg['address'] for reg in csr['registers']}
+    readers = {}
+    writers = {}
+
+    for reg in csr['registers']:
+        if reg['sw2hw_re']:
+            readers.setdefault(reg['address'],[]).append(reg['name'])
+        if reg['sw2hw_we']:
+            for waddr in reg['address_write']:
+                writers.setdefault(address[waddr],[]).append(reg['name'])
+
+    for addr,names in readers.items():
+        if len(names) > 1:
+            raise ValueError(f"Address 0x{addr:X} is read by several registers {names}.")
+
+    for addr,names in writers.items():
+        if len(names) > 1:
+            raise ValueError(f"Address 0x{addr:X} is written by several registers {names}.")
 
     
 #--------------------------------------------
@@ -314,6 +345,8 @@ def parse_hjson(file_path):
             if field['expr'] == '':
                 field['expr'] = f"\"{parse_init_value(field['init'],field['width'])}\""
         
+    check_shared_address(csr)
+
     csr['size_addr'] = int(math.ceil(math.log2(addr_max+1)))
     addrmap.display()
 
@@ -394,7 +427,7 @@ def generate_c_header(csr, output_path):
         
         # Define structs for each register
         for reg in csr['registers']:
-            regmap[reg['address']] = reg['name'];
+            regmap.setdefault(reg['address'],[]).append(reg['name'])
             
             file.write( "//==================================\n")
             file.write(f"// Register    : {reg['name']}\n")
@@ -438,7 +471,8 @@ def generate_c_header(csr, output_path):
             for i in range(curaddr, addr, csr['addr_offset']):
                 file.write(f"  uint{csr['width']}_t __dummy_0x{i:X}__;\n")
             curaddr = addr+csr['addr_offset']
-            file.write(f"  uint{csr['width']}_t {regmap[addr]}; // 0x{addr:X}\n")
+            # Shared address : member named <reg1>_<reg2>
+            file.write(f"  uint{csr['width']}_t {'_'.join(regmap[addr])}; // 0x{addr:X}\n")
         file.write(f"}} {module}_t;\n")
 
         file.write(f"\n#endif // {module.upper()}_REGISTERS_H\n")
@@ -452,7 +486,7 @@ def generate_doc_markdown(csr, output_path):
         
     # Define structs for each register
     for reg in csr['registers']:
-        regmap[reg['address']] = reg['name'];
+        regmap.setdefault(reg['address'],[]).append(reg['name'])
 
     
     with open(output_path, 'w') as file:
@@ -462,7 +496,7 @@ def generate_doc_markdown(csr, output_path):
         file.write( "| Address | Registers |\n")
         file.write( "|---------|-----------|\n")
         for addr in sorted(regmap.keys()):
-            file.write(f"|0x{addr:X}|{regmap[addr]}|\n")
+            file.write(f"|0x{addr:X}|{', '.join(regmap[addr])}|\n")
         file.write( "\n")
         
         # Define structs for each register
