@@ -59,7 +59,7 @@ CAPI=2:
 # 2026-10-21  2.8.0    mrosiere ghdl         : add script and Makefile to generate ghdl synth option
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.7.1
+name       : asylum:utils:generators:2.8.0
 description: A collection of useful generators
 
 #=========================================
