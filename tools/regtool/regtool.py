@@ -906,9 +906,9 @@ def generate_vhdl_module(csr, output_path):
                     lsb=msb+1
 
             else:
+                # No software write : <reg>_wbusy is driven by the instance
                 file.write(f"    {reg['name']}_wcs      <= '0';\n") 
                 file.write(f"    {reg['name']}_we       <= '0';\n")
-                file.write(f"    {reg['name']}_wbusy    <= '0';\n")
                 file.write(f"    {reg['name']}_wdata    <= (others=>'0');\n")
                 file.write(f"    {reg['name']}_wdata_sw <= (others=>'0');\n")
                 
