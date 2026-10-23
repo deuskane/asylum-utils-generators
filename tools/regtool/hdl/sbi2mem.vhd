@@ -19,6 +19,7 @@
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-23  1.0      mrosiere Created
+-- 2026-10-24  1.1      mrosiere Add DEFAULT_NAME (name if NAME is empty)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -32,7 +33,8 @@ entity sbi2mem is
   generic (
     ADDR_WIDTH : natural := 8;                               -- Memory Address Width (LSB of sbi_ini_i.addr)
     DATA_WIDTH : natural := 8;                               -- Data Width (sbi_ini_i.wdata'length)
-    NAME       : string  := ""                               -- Target Name (sbi_tgt_o.info.name)
+    NAME       : string  := "";                              -- Target Name (sbi_tgt_o.info.name)
+    DEFAULT_NAME : string := ""                              -- Target Name if NAME is empty
     );
 
   port (
@@ -52,6 +54,16 @@ end entity sbi2mem;
 
 architecture rtl of sbi2mem is
 
+  -- NAME, or DEFAULT_NAME if NAME is empty
+  function target_name
+    return string is
+  begin  -- function target_name
+    if NAME = "" then
+      return DEFAULT_NAME;
+    end if;
+    return NAME;
+  end function target_name;
+
 begin  -- architecture rtl
 
   cs_o                <= sbi_ini_i.cs;
@@ -62,6 +74,6 @@ begin  -- architecture rtl
 
   sbi_tgt_o.rdata     <= rdata_i;
   sbi_tgt_o.ready     <= not busy_i;
-  sbi_tgt_o.info.name <= to_sbi_name(NAME);
+  sbi_tgt_o.info.name <= to_sbi_name(target_name);
 
 end architecture rtl;
