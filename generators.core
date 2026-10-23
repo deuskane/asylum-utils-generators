@@ -57,9 +57,14 @@ CAPI=2:
 #                               csr_reg      : Add "wo" model
 #                               gen_rom      : Exit with status 1 on error
 # 2026-10-21  2.8.0    mrosiere ghdl         : add script and Makefile to generate ghdl synth option
+# 2026-10-23  2.9.0    mrosiere regtool      : CSR model separated from the generators (csr_model, gen_*)
+#                                              memory interface only, buses through the bridges
+#                                              sbi2mem, pbi2mem, apb2mem, axi4lite2mem (interface "reg" = "mem")
+#                                              Verilog output (parameter language), parameter interface
+#                                              pytest unit tests, sim_regtool_<interface>_<scenario> targets
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.8.0
+name       : asylum:utils:generators:2.9.0
 description: A collection of useful generators
 
 #=========================================
