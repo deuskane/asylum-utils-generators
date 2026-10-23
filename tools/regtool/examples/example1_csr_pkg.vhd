@@ -12,6 +12,13 @@ use     IEEE.NUMERIC_STD.ALL;
 
 package example1_csr_pkg is
 
+  ------------------------------------
+  -- Global Constants
+  ------------------------------------
+
+  constant EXAMPLE1_ADDR_WIDTH : natural := 5;
+  constant EXAMPLE1_DATA_WIDTH : natural := 32;
+
   --==================================
   -- Register    : reg1
   -- Description : Register 1
@@ -21,6 +28,8 @@ package example1_csr_pkg is
   -- Hw Access   : rw
   -- Hw Type     : reg
   --==================================
+  constant EXAMPLE1_REG1 : unsigned(EXAMPLE1_ADDR_WIDTH-1 downto 0) := to_unsigned(0, EXAMPLE1_ADDR_WIDTH);
+
   type example1_reg1_sw2hw_t is record
     re : std_logic;
     we : std_logic;
@@ -63,6 +72,8 @@ package example1_csr_pkg is
   -- Hw Access   : ro
   -- Hw Type     : reg
   --==================================
+  constant EXAMPLE1_REG2 : unsigned(EXAMPLE1_ADDR_WIDTH-1 downto 0) := to_unsigned(4, EXAMPLE1_ADDR_WIDTH);
+
   type example1_reg2_sw2hw_t is record
     re : std_logic;
     we : std_logic;
@@ -89,6 +100,8 @@ package example1_csr_pkg is
   -- Hw Access   : ro
   -- Hw Type     : ext
   --==================================
+  constant EXAMPLE1_REG3 : unsigned(EXAMPLE1_ADDR_WIDTH-1 downto 0) := to_unsigned(8, EXAMPLE1_ADDR_WIDTH);
+
   type example1_reg3_sw2hw_t is record
     re : std_logic;
     we : std_logic;
@@ -115,6 +128,8 @@ package example1_csr_pkg is
   -- Hw Access   : wo
   -- Hw Type     : fifo
   --==================================
+  constant EXAMPLE1_FIFO_SW2HW : unsigned(EXAMPLE1_ADDR_WIDTH-1 downto 0) := to_unsigned(16, EXAMPLE1_ADDR_WIDTH);
+
   type example1_fifo_sw2hw_sw2hw_t is record
     ready : std_logic;
     hw2sw_empty : std_logic;
@@ -146,6 +161,8 @@ package example1_csr_pkg is
   -- Hw Access   : ro
   -- Hw Type     : fifo
   --==================================
+  constant EXAMPLE1_FIFO_HW2SW : unsigned(EXAMPLE1_ADDR_WIDTH-1 downto 0) := to_unsigned(20, EXAMPLE1_ADDR_WIDTH);
+
   type example1_fifo_hw2sw_sw2hw_t is record
     valid : std_logic;
   --==================================
@@ -177,6 +194,8 @@ package example1_csr_pkg is
   -- Hw Access   : rw
   -- Hw Type     : fifo
   --==================================
+  constant EXAMPLE1_FIFO_BIDIR : unsigned(EXAMPLE1_ADDR_WIDTH-1 downto 0) := to_unsigned(24, EXAMPLE1_ADDR_WIDTH);
+
   type example1_fifo_bidir_sw2hw_t is record
     ready : std_logic;
     valid : std_logic;
@@ -234,31 +253,29 @@ package example1_csr_pkg is
     fifo_bidir : example1_fifo_bidir_hw2sw_t;
   end record example1_hw2sw_t;
 
-  constant example1_ADDR_WIDTH : natural := 5;
-  constant example1_DATA_WIDTH : natural := 32;
-
   ------------------------------------
   -- Component
   ------------------------------------
 component example1_registers is
   generic (
-    REG1_ENABLE : boolean -- 
+    MODULE_NAME :  string := "" -- Name of the module
+   ;REG1_ENABLE : boolean -- 
   );
   port (
     -- Clock and Reset
-    clk_i      : in  std_logic;
-    arst_b_i   : in  std_logic;
+    clk_i      : in  std_logic
+   ;arst_b_i   : in  std_logic
     -- Bus
-    cs_i       : in    std_logic;
-    re_i       : in    std_logic;
-    we_i       : in    std_logic;
-    addr_i     : in    std_logic_vector (5-1 downto 0);
-    wdata_i    : in    std_logic_vector (32-1 downto 0);
-    rdata_o    : out   std_logic_vector (32-1 downto 0);
-    busy_o     : out   std_logic;
+   ;cs_i       : in    std_logic
+   ;re_i       : in    std_logic
+   ;we_i       : in    std_logic
+   ;addr_i     : in    std_logic_vector (5-1 downto 0)
+   ;wdata_i    : in    std_logic_vector (32-1 downto 0)
+   ;rdata_o    : out   std_logic_vector (32-1 downto 0)
+   ;busy_o     : out   std_logic
     -- CSR
-    sw2hw_o    : out example1_sw2hw_t;
-    hw2sw_i    : in  example1_hw2sw_t
+   ;sw2hw_o    : out example1_sw2hw_t
+   ;hw2sw_i    : in  example1_hw2sw_t
   );
 end component example1_registers;
 

@@ -17,23 +17,24 @@ use     asylum.csr_pkg.ALL;
 --==================================
 entity example1_registers is
   generic (
-    REG1_ENABLE : boolean -- 
+    MODULE_NAME :  string := "" -- Name of the module
+   ;REG1_ENABLE : boolean -- 
   );
   port (
     -- Clock and Reset
-    clk_i      : in  std_logic;
-    arst_b_i   : in  std_logic;
+    clk_i      : in  std_logic
+   ;arst_b_i   : in  std_logic
     -- Bus
-    cs_i       : in    std_logic;
-    re_i       : in    std_logic;
-    we_i       : in    std_logic;
-    addr_i     : in    std_logic_vector (5-1 downto 0);
-    wdata_i    : in    std_logic_vector (32-1 downto 0);
-    rdata_o    : out   std_logic_vector (32-1 downto 0);
-    busy_o     : out   std_logic;
+   ;cs_i       : in    std_logic
+   ;re_i       : in    std_logic
+   ;we_i       : in    std_logic
+   ;addr_i     : in    std_logic_vector (5-1 downto 0)
+   ;wdata_i    : in    std_logic_vector (32-1 downto 0)
+   ;rdata_o    : out   std_logic_vector (32-1 downto 0)
+   ;busy_o     : out   std_logic
     -- CSR
-    sw2hw_o    : out example1_sw2hw_t;
-    hw2sw_i    : in  example1_hw2sw_t
+   ;sw2hw_o    : out example1_sw2hw_t
+   ;hw2sw_i    : in  example1_hw2sw_t
   );
 end entity example1_registers;
 
@@ -41,22 +42,27 @@ architecture rtl of example1_registers is
 
   signal   sig_wcs   : std_logic;
   signal   sig_we    : std_logic;
-  signal   sig_waddr : std_logic_vector(addr_i'length-1 downto 0);
+  signal   sig_waddr : unsigned(example1_ADDR_WIDTH-1 downto 0);
   signal   sig_wdata : std_logic_vector(wdata_i'length-1 downto 0);
   signal   sig_wbusy : std_logic;
 
   signal   sig_rcs   : std_logic;
   signal   sig_re    : std_logic;
-  signal   sig_raddr : std_logic_vector(addr_i'length-1 downto 0);
+  signal   sig_raddr : unsigned(example1_ADDR_WIDTH-1 downto 0);
   signal   sig_rdata : std_logic_vector(rdata_o'length-1 downto 0);
   signal   sig_rbusy : std_logic;
 
   signal   sig_busy  : std_logic;
 
-  constant INIT_reg1 : std_logic_vector(2-1 downto 0) :=
-             "0" -- field1
-           & "0" -- field2
-           ;
+  function INIT_reg1
+    return std_logic_vector is
+    variable tmp : std_logic_vector(2-1 downto 0);
+  begin  -- function INIT_reg1
+    tmp(0 downto 0) := "0"; -- field1
+    tmp(1 downto 1) := "0"; -- field2
+    return tmp;
+  end function INIT_reg1;
+
   signal   reg1_wcs       : std_logic;
   signal   reg1_we        : std_logic;
   signal   reg1_wdata     : std_logic_vector(32-1 downto 0);
@@ -71,15 +77,19 @@ architecture rtl of example1_registers is
   signal   reg1_rdata_hw  : std_logic_vector(2-1 downto 0);
   signal   reg1_rbusy     : std_logic;
 
-  constant INIT_reg2 : std_logic_vector(16-1 downto 0) :=
-             "00000000" -- field1
-           & "11111111" -- field2
-           ;
+  function INIT_reg2
+    return std_logic_vector is
+    variable tmp : std_logic_vector(16-1 downto 0);
+  begin  -- function INIT_reg2
+    tmp(7 downto 0) := "00000000"; -- field1
+    tmp(15 downto 8) := "11111111"; -- field2
+    return tmp;
+  end function INIT_reg2;
+
   signal   reg2_wcs       : std_logic;
   signal   reg2_we        : std_logic;
   signal   reg2_wdata     : std_logic_vector(32-1 downto 0);
   signal   reg2_wdata_sw  : std_logic_vector(16-1 downto 0);
-  signal   reg2_wdata_hw  : std_logic_vector(16-1 downto 0);
   signal   reg2_wbusy     : std_logic;
 
   signal   reg2_rcs       : std_logic;
@@ -89,15 +99,10 @@ architecture rtl of example1_registers is
   signal   reg2_rdata_hw  : std_logic_vector(16-1 downto 0);
   signal   reg2_rbusy     : std_logic;
 
-  constant INIT_reg3 : std_logic_vector(16-1 downto 0) :=
-             "00000000" -- field1
-           & "11111111" -- field2
-           ;
   signal   reg3_wcs       : std_logic;
   signal   reg3_we        : std_logic;
   signal   reg3_wdata     : std_logic_vector(32-1 downto 0);
   signal   reg3_wdata_sw  : std_logic_vector(16-1 downto 0);
-  signal   reg3_wdata_hw  : std_logic_vector(16-1 downto 0);
   signal   reg3_wbusy     : std_logic;
 
   signal   reg3_rcs       : std_logic;
@@ -107,10 +112,6 @@ architecture rtl of example1_registers is
   signal   reg3_rdata_hw  : std_logic_vector(16-1 downto 0);
   signal   reg3_rbusy     : std_logic;
 
-  constant INIT_fifo_sw2hw : std_logic_vector(12-1 downto 0) :=
-             "0000" -- field1
-           & "00000000" -- field2
-           ;
   signal   fifo_sw2hw_wcs       : std_logic;
   signal   fifo_sw2hw_we        : std_logic;
   signal   fifo_sw2hw_wdata     : std_logic_vector(32-1 downto 0);
@@ -125,15 +126,10 @@ architecture rtl of example1_registers is
   signal   fifo_sw2hw_rdata_hw  : std_logic_vector(12-1 downto 0);
   signal   fifo_sw2hw_rbusy     : std_logic;
 
-  constant INIT_fifo_hw2sw : std_logic_vector(12-1 downto 0) :=
-             "0000" -- field1
-           & "00000000" -- field2
-           ;
   signal   fifo_hw2sw_wcs       : std_logic;
   signal   fifo_hw2sw_we        : std_logic;
   signal   fifo_hw2sw_wdata     : std_logic_vector(32-1 downto 0);
   signal   fifo_hw2sw_wdata_sw  : std_logic_vector(12-1 downto 0);
-  signal   fifo_hw2sw_wdata_hw  : std_logic_vector(12-1 downto 0);
   signal   fifo_hw2sw_wbusy     : std_logic;
 
   signal   fifo_hw2sw_rcs       : std_logic;
@@ -143,10 +139,6 @@ architecture rtl of example1_registers is
   signal   fifo_hw2sw_rdata_hw  : std_logic_vector(12-1 downto 0);
   signal   fifo_hw2sw_rbusy     : std_logic;
 
-  constant INIT_fifo_bidir : std_logic_vector(12-1 downto 0) :=
-             "0000" -- field1
-           & "00000000" -- field2
-           ;
   signal   fifo_bidir_wcs       : std_logic;
   signal   fifo_bidir_we        : std_logic;
   signal   fifo_bidir_wdata     : std_logic_vector(32-1 downto 0);
@@ -166,12 +158,12 @@ begin  -- architecture rtl
   -- Interface 
   sig_wcs   <= cs_i;
   sig_we    <= we_i;
-  sig_waddr <= addr_i;
+  sig_waddr <= unsigned(addr_i(example1_ADDR_WIDTH-1 downto 0));
   sig_wdata <= wdata_i;
 
   sig_rcs   <= cs_i;
   sig_re    <= re_i;
-  sig_raddr <= addr_i;
+  sig_raddr <= unsigned(addr_i(example1_ADDR_WIDTH-1 downto 0));
   rdata_o <= sig_rdata;
   busy_o <= sig_busy;
 
@@ -203,14 +195,15 @@ begin  -- architecture rtl
   --==================================
 
 
-    reg1_rcs     <= '1' when     (sig_raddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(0,example1_ADDR_WIDTH))) else '0';
+    reg1_rcs     <= '1' when (sig_raddr = example1_REG1) else '0';
     reg1_re      <= sig_rcs and sig_re and reg1_rcs;
     reg1_rdata   <= (
-      0 => reg1_rdata_sw(0), -- field1(0)
-      2 => reg1_rdata_sw(1), -- field2(0)
-      others => '0');
+       0 => reg1_rdata_sw(0) -- field1(0)
+      ,2 => reg1_rdata_sw(1) -- field2(0)
+      ,others => '0'
+      );
 
-    reg1_wcs     <= '1' when       (sig_waddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(0,example1_ADDR_WIDTH)))   else '0';
+    reg1_wcs     <= '1' when       (sig_waddr = example1_REG1)   else '0';
     reg1_we      <= sig_wcs and sig_we and reg1_wcs;
     reg1_wdata   <= sig_wdata;
     reg1_wdata_sw(0 downto 0) <= reg1_wdata(0 downto 0); -- field1
@@ -281,28 +274,29 @@ begin  -- architecture rtl
   --==================================
 
 
-    reg2_rcs     <= '1' when     (sig_raddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(4,example1_ADDR_WIDTH))) else '0';
+    reg2_rcs     <= '1' when (sig_raddr = example1_REG2) else '0';
     reg2_re      <= sig_rcs and sig_re and reg2_rcs;
     reg2_rdata   <= (
-      0 => reg2_rdata_sw(0), -- field1(0)
-      1 => reg2_rdata_sw(1), -- field1(1)
-      2 => reg2_rdata_sw(2), -- field1(2)
-      3 => reg2_rdata_sw(3), -- field1(3)
-      4 => reg2_rdata_sw(4), -- field1(4)
-      5 => reg2_rdata_sw(5), -- field1(5)
-      6 => reg2_rdata_sw(6), -- field1(6)
-      7 => reg2_rdata_sw(7), -- field1(7)
-      8 => reg2_rdata_sw(8), -- field2(0)
-      9 => reg2_rdata_sw(9), -- field2(1)
-      10 => reg2_rdata_sw(10), -- field2(2)
-      11 => reg2_rdata_sw(11), -- field2(3)
-      12 => reg2_rdata_sw(12), -- field2(4)
-      13 => reg2_rdata_sw(13), -- field2(5)
-      14 => reg2_rdata_sw(14), -- field2(6)
-      15 => reg2_rdata_sw(15), -- field2(7)
-      others => '0');
+       0 => reg2_rdata_sw(0) -- field1(0)
+      ,1 => reg2_rdata_sw(1) -- field1(1)
+      ,2 => reg2_rdata_sw(2) -- field1(2)
+      ,3 => reg2_rdata_sw(3) -- field1(3)
+      ,4 => reg2_rdata_sw(4) -- field1(4)
+      ,5 => reg2_rdata_sw(5) -- field1(5)
+      ,6 => reg2_rdata_sw(6) -- field1(6)
+      ,7 => reg2_rdata_sw(7) -- field1(7)
+      ,8 => reg2_rdata_sw(8) -- field2(0)
+      ,9 => reg2_rdata_sw(9) -- field2(1)
+      ,10 => reg2_rdata_sw(10) -- field2(2)
+      ,11 => reg2_rdata_sw(11) -- field2(3)
+      ,12 => reg2_rdata_sw(12) -- field2(4)
+      ,13 => reg2_rdata_sw(13) -- field2(5)
+      ,14 => reg2_rdata_sw(14) -- field2(6)
+      ,15 => reg2_rdata_sw(15) -- field2(7)
+      ,others => '0'
+      );
 
-    reg2_wcs     <= '1' when       (sig_waddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(4,example1_ADDR_WIDTH)))   else '0';
+    reg2_wcs     <= '1' when       (sig_waddr = example1_REG2)   else '0';
     reg2_we      <= sig_wcs and sig_we and reg2_wcs;
     reg2_wdata   <= sig_wdata;
     reg2_wdata_sw(7 downto 0) <= reg2_wdata(7 downto 0); -- field1
@@ -371,28 +365,29 @@ begin  -- architecture rtl
   --==================================
 
 
-    reg3_rcs     <= '1' when     (sig_raddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(8,example1_ADDR_WIDTH))) else '0';
+    reg3_rcs     <= '1' when (sig_raddr = example1_REG3) else '0';
     reg3_re      <= sig_rcs and sig_re and reg3_rcs;
     reg3_rdata   <= (
-      0 => reg3_rdata_sw(0), -- field1(0)
-      1 => reg3_rdata_sw(1), -- field1(1)
-      2 => reg3_rdata_sw(2), -- field1(2)
-      3 => reg3_rdata_sw(3), -- field1(3)
-      4 => reg3_rdata_sw(4), -- field1(4)
-      5 => reg3_rdata_sw(5), -- field1(5)
-      6 => reg3_rdata_sw(6), -- field1(6)
-      7 => reg3_rdata_sw(7), -- field1(7)
-      8 => reg3_rdata_sw(8), -- field2(0)
-      9 => reg3_rdata_sw(9), -- field2(1)
-      10 => reg3_rdata_sw(10), -- field2(2)
-      11 => reg3_rdata_sw(11), -- field2(3)
-      12 => reg3_rdata_sw(12), -- field2(4)
-      13 => reg3_rdata_sw(13), -- field2(5)
-      14 => reg3_rdata_sw(14), -- field2(6)
-      15 => reg3_rdata_sw(15), -- field2(7)
-      others => '0');
+       0 => reg3_rdata_sw(0) -- field1(0)
+      ,1 => reg3_rdata_sw(1) -- field1(1)
+      ,2 => reg3_rdata_sw(2) -- field1(2)
+      ,3 => reg3_rdata_sw(3) -- field1(3)
+      ,4 => reg3_rdata_sw(4) -- field1(4)
+      ,5 => reg3_rdata_sw(5) -- field1(5)
+      ,6 => reg3_rdata_sw(6) -- field1(6)
+      ,7 => reg3_rdata_sw(7) -- field1(7)
+      ,8 => reg3_rdata_sw(8) -- field2(0)
+      ,9 => reg3_rdata_sw(9) -- field2(1)
+      ,10 => reg3_rdata_sw(10) -- field2(2)
+      ,11 => reg3_rdata_sw(11) -- field2(3)
+      ,12 => reg3_rdata_sw(12) -- field2(4)
+      ,13 => reg3_rdata_sw(13) -- field2(5)
+      ,14 => reg3_rdata_sw(14) -- field2(6)
+      ,15 => reg3_rdata_sw(15) -- field2(7)
+      ,others => '0'
+      );
 
-    reg3_wcs     <= '1' when       (sig_waddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(8,example1_ADDR_WIDTH)))   else '0';
+    reg3_wcs     <= '1' when       (sig_waddr = example1_REG3)   else '0';
     reg3_we      <= sig_wcs and sig_we and reg3_wcs;
     reg3_wdata   <= sig_wdata;
     reg3_wdata_sw(7 downto 0) <= reg3_wdata(7 downto 0); -- field1
@@ -459,26 +454,26 @@ begin  -- architecture rtl
   --==================================
 
 
-    fifo_sw2hw_rcs     <= '1' when     (sig_raddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(16,example1_ADDR_WIDTH))) else '0';
+    fifo_sw2hw_rcs     <= '1' when (sig_raddr = example1_FIFO_SW2HW) else '0';
     fifo_sw2hw_re      <= sig_rcs and sig_re and fifo_sw2hw_rcs;
     fifo_sw2hw_rdata   <= (
-      0 => fifo_sw2hw_rdata_sw(0), -- field1(0)
-      1 => fifo_sw2hw_rdata_sw(1), -- field1(1)
-      2 => fifo_sw2hw_rdata_sw(2), -- field1(2)
-      3 => fifo_sw2hw_rdata_sw(3), -- field1(3)
-      8 => fifo_sw2hw_rdata_sw(4), -- field2(0)
-      9 => fifo_sw2hw_rdata_sw(5), -- field2(1)
-      10 => fifo_sw2hw_rdata_sw(6), -- field2(2)
-      11 => fifo_sw2hw_rdata_sw(7), -- field2(3)
-      12 => fifo_sw2hw_rdata_sw(8), -- field2(4)
-      13 => fifo_sw2hw_rdata_sw(9), -- field2(5)
-      14 => fifo_sw2hw_rdata_sw(10), -- field2(6)
-      15 => fifo_sw2hw_rdata_sw(11), -- field2(7)
-      others => '0');
+       0 => fifo_sw2hw_rdata_sw(0) -- field1(0)
+      ,1 => fifo_sw2hw_rdata_sw(1) -- field1(1)
+      ,2 => fifo_sw2hw_rdata_sw(2) -- field1(2)
+      ,3 => fifo_sw2hw_rdata_sw(3) -- field1(3)
+      ,8 => fifo_sw2hw_rdata_sw(4) -- field2(0)
+      ,9 => fifo_sw2hw_rdata_sw(5) -- field2(1)
+      ,10 => fifo_sw2hw_rdata_sw(6) -- field2(2)
+      ,11 => fifo_sw2hw_rdata_sw(7) -- field2(3)
+      ,12 => fifo_sw2hw_rdata_sw(8) -- field2(4)
+      ,13 => fifo_sw2hw_rdata_sw(9) -- field2(5)
+      ,14 => fifo_sw2hw_rdata_sw(10) -- field2(6)
+      ,15 => fifo_sw2hw_rdata_sw(11) -- field2(7)
+      ,others => '0'
+      );
 
     fifo_sw2hw_wcs      <= '0';
     fifo_sw2hw_we       <= '0';
-    fifo_sw2hw_wbusy    <= '0';
     fifo_sw2hw_wdata    <= (others=>'0');
     fifo_sw2hw_wdata_sw <= (others=>'0');
     fifo_sw2hw_wdata_hw(3 downto 0) <= hw2sw_i.fifo_sw2hw.field1; -- field1
@@ -518,6 +513,8 @@ begin  -- architecture rtl
     fifo_sw2hw_rdata   <= (others => '0');
     fifo_sw2hw_wcs      <= '0';
     fifo_sw2hw_wbusy    <= '0';
+    sw2hw_o.fifo_sw2hw.hw2sw_empty <= '1';
+    sw2hw_o.fifo_sw2hw.hw2sw_full  <= '0';
     sw2hw_o.fifo_sw2hw.ready <= '0';
   end generate gen_fifo_sw2hw_b;
 
@@ -549,7 +546,7 @@ begin  -- architecture rtl
     fifo_hw2sw_re      <= '0';
     fifo_hw2sw_rdata   <= (others=>'0');
 
-    fifo_hw2sw_wcs     <= '1' when       (sig_waddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(20,example1_ADDR_WIDTH)))   else '0';
+    fifo_hw2sw_wcs     <= '1' when       (sig_waddr = example1_FIFO_HW2SW)   else '0';
     fifo_hw2sw_we      <= sig_wcs and sig_we and fifo_hw2sw_wcs;
     fifo_hw2sw_wdata   <= sig_wdata;
     fifo_hw2sw_wdata_sw(3 downto 0) <= fifo_hw2sw_wdata(3 downto 0); -- field1
@@ -593,6 +590,8 @@ begin  -- architecture rtl
     fifo_hw2sw_wbusy    <= '0';
     sw2hw_o.fifo_hw2sw.field1 <= "0000";
     sw2hw_o.fifo_hw2sw.field2 <= "00000000";
+    sw2hw_o.fifo_hw2sw.sw2hw_empty <= '1';
+    sw2hw_o.fifo_hw2sw.sw2hw_full  <= '0';
     sw2hw_o.fifo_hw2sw.valid <= '0';
   end generate gen_fifo_hw2sw_b;
 
@@ -620,24 +619,25 @@ begin  -- architecture rtl
   --==================================
 
 
-    fifo_bidir_rcs     <= '1' when     (sig_raddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(24,example1_ADDR_WIDTH))) else '0';
+    fifo_bidir_rcs     <= '1' when (sig_raddr = example1_FIFO_BIDIR) else '0';
     fifo_bidir_re      <= sig_rcs and sig_re and fifo_bidir_rcs;
     fifo_bidir_rdata   <= (
-      0 => fifo_bidir_rdata_sw(0), -- field1(0)
-      1 => fifo_bidir_rdata_sw(1), -- field1(1)
-      2 => fifo_bidir_rdata_sw(2), -- field1(2)
-      3 => fifo_bidir_rdata_sw(3), -- field1(3)
-      8 => fifo_bidir_rdata_sw(4), -- field2(0)
-      9 => fifo_bidir_rdata_sw(5), -- field2(1)
-      10 => fifo_bidir_rdata_sw(6), -- field2(2)
-      11 => fifo_bidir_rdata_sw(7), -- field2(3)
-      12 => fifo_bidir_rdata_sw(8), -- field2(4)
-      13 => fifo_bidir_rdata_sw(9), -- field2(5)
-      14 => fifo_bidir_rdata_sw(10), -- field2(6)
-      15 => fifo_bidir_rdata_sw(11), -- field2(7)
-      others => '0');
+       0 => fifo_bidir_rdata_sw(0) -- field1(0)
+      ,1 => fifo_bidir_rdata_sw(1) -- field1(1)
+      ,2 => fifo_bidir_rdata_sw(2) -- field1(2)
+      ,3 => fifo_bidir_rdata_sw(3) -- field1(3)
+      ,8 => fifo_bidir_rdata_sw(4) -- field2(0)
+      ,9 => fifo_bidir_rdata_sw(5) -- field2(1)
+      ,10 => fifo_bidir_rdata_sw(6) -- field2(2)
+      ,11 => fifo_bidir_rdata_sw(7) -- field2(3)
+      ,12 => fifo_bidir_rdata_sw(8) -- field2(4)
+      ,13 => fifo_bidir_rdata_sw(9) -- field2(5)
+      ,14 => fifo_bidir_rdata_sw(10) -- field2(6)
+      ,15 => fifo_bidir_rdata_sw(11) -- field2(7)
+      ,others => '0'
+      );
 
-    fifo_bidir_wcs     <= '1' when       (sig_waddr(example1_ADDR_WIDTH-1 downto 0) = std_logic_vector(to_unsigned(24,example1_ADDR_WIDTH)))   else '0';
+    fifo_bidir_wcs     <= '1' when       (sig_waddr = example1_FIFO_BIDIR)   else '0';
     fifo_bidir_we      <= sig_wcs and sig_we and fifo_bidir_wcs;
     fifo_bidir_wdata   <= sig_wdata;
     fifo_bidir_wdata_sw(3 downto 0) <= fifo_bidir_wdata(3 downto 0); -- field1
@@ -683,6 +683,10 @@ begin  -- architecture rtl
     fifo_bidir_wbusy    <= '0';
     sw2hw_o.fifo_bidir.field1 <= "0000";
     sw2hw_o.fifo_bidir.field2 <= "00000000";
+    sw2hw_o.fifo_bidir.sw2hw_empty <= '1';
+    sw2hw_o.fifo_bidir.sw2hw_full  <= '0';
+    sw2hw_o.fifo_bidir.hw2sw_empty <= '1';
+    sw2hw_o.fifo_bidir.hw2sw_full  <= '0';
     sw2hw_o.fifo_bidir.ready <= '0';
     sw2hw_o.fifo_bidir.valid <= '0';
   end generate gen_fifo_bidir_b;
