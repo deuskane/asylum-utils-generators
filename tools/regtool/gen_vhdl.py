@@ -1,700 +1,324 @@
 """
 Module gen_vhdl.py
-VHDL generator of regtool : CSR package and CSR module.
+Generic VHDL writer : writes a package or a module described with
+hdl_model (independent of the CSR, see gen_hdl.py for the CSR).
 """
 
-from   csr_model import parse_value, parse_init_value
+from hdl_model import *
+
+INDENT = "  "
+
+#============================================
+# Types and expressions
+#============================================
 
 #--------------------------------------------
+def vhdl_msb(width):
+    """Most significant bit index of a vector of this width"""
+    if isinstance(width, int):
+        return str(width-1)
+    return f"{vhdl_expr(width)}-1"
+
 #--------------------------------------------
-def vhdl_bus_ports(csr):
+def vhdl_type(t):
+    """VHDL type"""
+    if isinstance(t, Bit):
+        return "std_logic"
+    if isinstance(t, Vector):
+        kind = "unsigned" if t.kind == "unsigned" else "std_logic_vector"
+        return f"{kind}({vhdl_msb(t.width)} downto 0)"
+    if isinstance(t, Integer):
+        return t.kind
+    if isinstance(t, Boolean):
+        return "boolean"
+    if isinstance(t, String):
+        return "string"
+    if isinstance(t, (RecordType, ExternalType)):
+        return t.name
+    raise TypeError(f"Unknown type {t}")
+
+#--------------------------------------------
+def vhdl_operand(e):
+    """Expression, between parentheses if it is an operation"""
+    text = vhdl_expr(e)
+    if isinstance(e, (Not, And, Or, Eq, BoolOr, Arith)):
+        return f"({text})"
+    return text
+
+#--------------------------------------------
+def vhdl_expr(e, concat=False):
     """
-    Ports of the bus of the interface (except "mem"), connected to the bridge
-    <interface>2mem (hdl/<interface>2mem.vhd) with the same port names.
-
-    :param csr: Dictionary of csr
-    :return: List of (name, direction, type)
+    VHDL expression ; concat : operand of a concatenation (a Fill is then
+    a bit string literal)
     """
-    addr  = f"std_logic_vector({csr['size_addr']}-1 downto 0)"
-    data  = f"std_logic_vector({csr['width']}-1 downto 0)"
-    strb  = f"std_logic_vector({csr['width']}/8-1 downto 0)"
-    resp  =  "std_logic_vector(1 downto 0)"
+    if isinstance(e, Ref):
+        return ".".join([e.name, *e.path])
+    if isinstance(e, BitConst):
+        return f"'{e.value}'"
+    if isinstance(e, VecConst):
+        return f"\"{e.value:0{e.width}b}\""
+    if isinstance(e, IntConst):
+        return str(e.value)
+    if isinstance(e, BoolConst):
+        return "true" if e.value else "false"
+    if isinstance(e, StrConst):
+        return f"\"{e.value}\""
+    if isinstance(e, Fill):
+        if not concat:
+            return f"(others => '{e.bit}')"
+        if isinstance(e.width, int):
+            return f"\"{str(e.bit)*e.width}\""
+        return f"std_logic_vector'({vhdl_msb(e.width)} downto 0 => '{e.bit}')"
+    if isinstance(e, Slice):
+        return f"{vhdl_expr(e.expr)}({vhdl_expr(e.msb)} downto {vhdl_expr(e.lsb)})"
+    if isinstance(e, Index):
+        return f"{vhdl_expr(e.expr)}({vhdl_expr(e.index)})"
+    if isinstance(e, Concat):
+        return " & ".join([vhdl_expr(p, concat=True) for p in e.parts])
+    if isinstance(e, Not):
+        return f"not {vhdl_operand(e.expr)}"
+    if isinstance(e, And):
+        return " and ".join([vhdl_operand(x) for x in e.exprs])
+    if isinstance(e, Or):
+        return " or ".join([vhdl_operand(x) for x in e.exprs])
+    if isinstance(e, Eq):
+        return f"{vhdl_operand(e.left)} = {vhdl_operand(e.right)}"
+    if isinstance(e, BoolOr):
+        return " or ".join([f"({vhdl_expr(c)})" for c in e.conds])
+    if isinstance(e, Truth):
+        return vhdl_expr(e.expr)
+    if isinstance(e, Cast):
+        kind = "unsigned" if e.kind == "unsigned" else "std_logic_vector"
+        return f"{kind}({vhdl_expr(e.expr)})"
+    if isinstance(e, Arith):
+        return f"{vhdl_operand(e.left)}{e.op}{vhdl_operand(e.right)}"
+    if isinstance(e, Raw):
+        return e.text
+    if isinstance(e, (int, str)):
+        return str(e)
+    raise TypeError(f"Unknown expression {e}")
 
-    ports = {
-        'pbi'      : [("pbi_ini_i"      , "in" , "pbi_ini_t"),
-                      ("pbi_tgt_o"      , "out", "pbi_tgt_t")],
-        'sbi'      : [("sbi_ini_i"      , "in" , "sbi_ini_t"),
-                      ("sbi_tgt_o"      , "out", "sbi_tgt_t")],
-        'apb'      : [("s_apb_psel_i"   , "in" , "std_logic"),
-                      ("s_apb_penable_i", "in" , "std_logic"),
-                      ("s_apb_pwrite_i" , "in" , "std_logic"),
-                      ("s_apb_paddr_i"  , "in" , addr),
-                      ("s_apb_pwdata_i" , "in" , data),
-                      ("s_apb_prdata_o" , "out", data),
-                      ("s_apb_pready_o" , "out", "std_logic"),
-                      ("s_apb_pslverr_o", "out", "std_logic")],
-        'axi4lite' : [("s_axi_awvalid_i", "in" , "std_logic"),
-                      ("s_axi_awready_o", "out", "std_logic"),
-                      ("s_axi_awaddr_i" , "in" , addr),
-                      ("s_axi_wvalid_i" , "in" , "std_logic"),
-                      ("s_axi_wready_o" , "out", "std_logic"),
-                      ("s_axi_wdata_i"  , "in" , data),
-                      ("s_axi_wstrb_i"  , "in" , strb),
-                      ("s_axi_bvalid_o" , "out", "std_logic"),
-                      ("s_axi_bready_i" , "in" , "std_logic"),
-                      ("s_axi_bresp_o"  , "out", resp),
-                      ("s_axi_arvalid_i", "in" , "std_logic"),
-                      ("s_axi_arready_o", "out", "std_logic"),
-                      ("s_axi_araddr_i" , "in" , addr),
-                      ("s_axi_rvalid_o" , "out", "std_logic"),
-                      ("s_axi_rready_i" , "in" , "std_logic"),
-                      ("s_axi_rdata_o"  , "out", data),
-                      ("s_axi_rresp_o"  , "out", resp)],
-    }
-    return ports[csr['interface']]
-
-#--------------------------------------------
-#--------------------------------------------
-def print_vhdl_header_csr(csr,file):
-    file.write( "--==================================\n")
-    file.write(f"-- Module      : {csr['name']}\n")
-    file.write(f"-- Description : {csr['desc']}\n")
-    file.write(f"-- Width       : {csr['width']}\n")
-    file.write( "--==================================\n")
-        
-#--------------------------------------------
-#--------------------------------------------
-def print_vhdl_header_reg(reg,file):
-    file.write( "  --==================================\n")
-    file.write(f"  -- Register    : {reg['name']}\n")
-    file.write(f"  -- Description : {reg['desc']}\n")
-    file.write(f"  -- Address     : 0x{reg['address']:X}\n")
-    file.write(f"  -- Width       : {reg['width']}\n")
-    file.write(f"  -- Sw Access   : {reg['swaccess']}\n")
-    file.write(f"  -- Hw Access   : {reg['hwaccess']}\n")
-    file.write(f"  -- Hw Type     : {reg['hwtype']}\n")
-    file.write( "  --==================================\n")
+#============================================
+# Declarations and statements
+#============================================
 
 #--------------------------------------------
-#--------------------------------------------
-def print_vhdl_header_field(field,file):
-    file.write( "  --==================================\n")
-    file.write(f"  -- Field       : {field['name']}\n")
-    file.write(f"  -- Description : {field['desc']}\n")
-    file.write(f"  -- Width       : {field['width']}\n")
-    file.write( "  --==================================\n")
+def vhdl_comment(c, indent):
+    if c.banner:
+        lines = [f"{indent}--=================================="]
+        lines+= [f"{indent}-- {line}" for line in c.lines]
+        lines+= [f"{indent}--=================================="]
+        return lines
+    return [f"{indent}-- {line}" if line else f"{indent}--" for line in c.lines]
 
 #--------------------------------------------
+def vhdl_comment_tail(comment):
+    return f" -- {comment}" if comment else ""
+
 #--------------------------------------------
-def generate_vhdl_package(csr, output_path):
-    module = csr['name']
-    
+def vhdl_record(r, indent):
+    lines = vhdl_comment(Comment([r.comment]), indent) if r.comment else []
+    lines.append(f"{indent}type {r.name} is record")
+    width = max(len(f.name) for f in r.fields)
+    for f in r.fields:
+        lines.append(f"{indent}  {f.name:<{width}} : {vhdl_type(f.type)};{vhdl_comment_tail(f.comment)}")
+    lines.append(f"{indent}end record {r.name};")
+    lines.append("")
+    return lines
+
+#--------------------------------------------
+def runs(items, kinds, key):
+    """Width of key(item) on each run of consecutive items of kinds (alignment), 0 elsewhere"""
+    widths = [0] * len(items)
+    i      = 0
+    while i < len(items):
+        j = i
+        while j < len(items) and isinstance(items[j], kinds):
+            j += 1
+        if j > i:
+            widths[i:j] = [max(key(x) for x in items[i:j])] * (j-i)
+        i = max(j, i+1)
+    return widths
+
+#--------------------------------------------
+def vhdl_decls(decls, indent):
+    """Lines of declarations, names aligned"""
+    widths = runs(decls, (Signal, Constant), lambda d: len(d.name))
+    lines  = []
+    for d, width in zip(decls, widths):
+        lines += vhdl_decl(d, indent, width)
+    return lines
+
+#--------------------------------------------
+def vhdl_decl(d, indent, width=0):
+    """Lines of a declaration"""
+    if isinstance(d, Comment):
+        return vhdl_comment(d, indent)
+    if isinstance(d, Signal):
+        return [f"{indent}signal   {d.name:<{width}} : {vhdl_type(d.type)};{vhdl_comment_tail(d.comment)}"]
+    if isinstance(d, Constant):
+        return [f"{indent}constant {d.name:<{width}} : {vhdl_type(d.type)} := {vhdl_expr(d.value)};{vhdl_comment_tail(d.comment)}"]
+    if isinstance(d, RecordType):
+        return vhdl_record(d, indent)
+    if isinstance(d, Component):
+        return vhdl_interface(d.module, "component", indent) + [""]
+    if d is None or d == "":
+        return [""]
+    raise TypeError(f"Unknown declaration {d}")
+
+#--------------------------------------------
+def vhdl_map(items, indent):
+    """Lines of a generic map / port map association list"""
+    width = max(len(formal) for formal, _ in items)
+    lines = []
+    for i, (formal, actual) in enumerate(items):
+        text = "open" if actual is None else vhdl_expr(actual)
+        lines.append(f"{indent}{'(' if i == 0 else ','}{formal:<{width}} => {text}")
+    return lines
+
+#--------------------------------------------
+def vhdl_stmts(stmts, indent):
+    """Lines of statements, targets of the assignments aligned"""
+    widths = runs(stmts, Assign, lambda s: len(vhdl_expr(s.target)))
+    lines  = []
+    for s, width in zip(stmts, widths):
+        lines += vhdl_stmt(s, indent, width)
+    return lines
+
+#--------------------------------------------
+def vhdl_stmt(s, indent, width=0):
+    """Lines of a concurrent statement"""
+    if isinstance(s, Comment):
+        return vhdl_comment(s, indent)
+    if isinstance(s, Assign):
+        return [f"{indent}{vhdl_expr(s.target):<{width}} <= {vhdl_expr(s.expr)};"]
+    if isinstance(s, CondAssign):
+        head  = f"{indent}{vhdl_expr(s.target)} <= "
+        pad   = " " * len(head)
+        lines = []
+        for cond, value in s.choices:
+            lines.append(f"{pad if lines else head}{vhdl_expr(value)} when {vhdl_expr(cond)} else")
+        lines.append(f"{pad if lines else head}{vhdl_expr(s.default)};")
+        return lines
+    if isinstance(s, Instance):
+        unit  = s.module if s.library is None else f"entity {s.library}.{s.module}"
+        lines = [f"{indent}{s.name} : {unit}"]
+        if s.generics:
+            lines.append(f"{indent}  generic map")
+            lines+= vhdl_map(s.generics, indent + "    ")
+            lines.append(f"{indent}    )")
+        lines.append(f"{indent}  port map")
+        lines+= vhdl_map(s.ports, indent + "    ")
+        lines.append(f"{indent}    );")
+        return lines
+    if isinstance(s, IfGenerate):
+        cond  = vhdl_expr(s.cond)
+        lines = vhdl_generate(s.name, f"({cond})", s.decls, s.stmts, indent)
+        if s.else_decls or s.else_stmts:
+            lines.append("")
+            lines += vhdl_generate(f"{s.name}_b", f"not ({cond})", s.else_decls, s.else_stmts, indent)
+        return lines
+    if s is None or s == "":
+        return [""]
+    raise TypeError(f"Unknown statement {s}")
+
+#--------------------------------------------
+def vhdl_generate(name, cond, decls, stmts, indent):
+    lines = [f"{indent}{name}: if {cond} generate"]
+    lines+= vhdl_decls(decls, indent + INDENT)
+    if decls:
+        lines.append(f"{indent}begin")
+    lines+= vhdl_stmts(stmts, indent + INDENT)
+    lines.append(f"{indent}end generate {name};")
+    return lines
+
+#============================================
+# Units
+#============================================
+
+#--------------------------------------------
+def vhdl_header(header):
+    return [f"-- {line}" if line else "--" for line in header] + ([""] if header else [])
+
+#--------------------------------------------
+def vhdl_context(imports):
+    """Context clause : IEEE, then one library / use per imported package"""
+    lines = ["library IEEE;",
+             "use     IEEE.STD_LOGIC_1164.ALL;",
+             "use     IEEE.NUMERIC_STD.ALL;",
+             ""]
+    libraries = []
+    for p in imports:
+        if p.library not in libraries:
+            libraries.append(p.library)
+    for library in libraries:
+        lines.append(f"library {library};")
+        for p in imports:
+            if p.library == library:
+                lines.append(f"use     {library}.{p.name if isinstance(p, Package) else p.package}.ALL;")
+        lines.append("")
+    return lines
+
+#--------------------------------------------
+def vhdl_interface(m, kind, indent=""):
+    """Entity or component declaration of the module m"""
+    lines = [f"{indent}{kind} {m.name} is"]
+    if m.generics:
+        lines.append(f"{indent}  generic (")
+        width = max(len(g.name) for g in m.generics)
+        for i, g in enumerate(m.generics):
+            default = "" if g.default is None else f" := {vhdl_expr(g.default)}"
+            lines.append(f"{indent}   {' ' if i == 0 else ';'}{g.name:<{width}} : {vhdl_type(g.type)}{default}{vhdl_comment_tail(g.comment)}")
+        lines.append(f"{indent}  );")
+    lines.append(f"{indent}  port (")
+    width = max([len(p.name) for p in m.ports if isinstance(p, Port)] + [0])
+    first = True
+    for p in m.ports:
+        if isinstance(p, Comment):
+            lines += vhdl_comment(p, indent + "    ")
+            continue
+        lines.append(f"{indent}   {' ' if first else ';'}{p.name:<{width}} : {p.direction:<3} {vhdl_type(p.type)}{vhdl_comment_tail(p.comment)}")
+        first = False
+    lines.append(f"{indent}  );")
+    lines.append(f"{indent}end {kind} {m.name};")
+    return lines
+
+#--------------------------------------------
+def vhdl_package(p):
+    """Text of the package p"""
+    lines  = vhdl_header(p.header)
+    lines += vhdl_context(p.uses)
+    lines.append(f"package {p.name} is")
+    lines.append("")
+    lines += vhdl_decls(p.items, INDENT)
+    lines.append("")
+    lines.append(f"end package {p.name};")
+    return "\n".join(lines) + "\n"
+
+#--------------------------------------------
+def vhdl_module(m):
+    """Text of the module m (entity and architecture rtl)"""
+    lines  = vhdl_header(m.header)
+    lines += vhdl_context(m.imports)
+    lines += vhdl_interface(m, "entity")
+    lines.append("")
+    lines.append(f"architecture rtl of {m.name} is")
+    lines.append("")
+    lines += vhdl_decls(m.decls, INDENT)
+    lines.append("")
+    lines.append("begin  -- architecture rtl")
+    lines.append("")
+    lines += vhdl_stmts(m.stmts, INDENT)
+    lines.append("")
+    lines.append("end architecture rtl;")
+    return "\n".join(lines) + "\n"
+
+#--------------------------------------------
+def write_vhdl_package(p, output_path):
     with open(output_path, 'w') as file:
-        file.write(f"-- Generated VHDL Package for {module}\n\n")
-        file.write( "library IEEE;\n")
-        file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
-        file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
-        if csr["interface"] == "pbi":
-            file.write(f"library {csr['logical_name']};\n")
-            file.write(f"use     {csr['logical_name']}.pbi_pkg.all;\n")
-        if csr["interface"] == "sbi":
-            file.write(f"library {csr['logical_name']};\n")
-            file.write(f"use     {csr['logical_name']}.sbi_pkg.all;\n")
-        
-        print_vhdl_header_csr(csr,file)
-        file.write( "\n")
-        file.write(f"package {module}_csr_pkg is\n\n")
-
-        file.write( "  ------------------------------------\n")
-        file.write(f"  -- Global Constants\n")
-        file.write( "  ------------------------------------\n")
-        file.write( "\n")
-        file.write(f"  constant {module.upper()}_ADDR_WIDTH : natural := {csr['size_addr']};\n")
-        file.write(f"  constant {module.upper()}_DATA_WIDTH : natural := {csr['width']};\n")
-        file.write( "\n")
-
-        # Generate structs for each register
-        for reg in csr['registers']:
-            print_vhdl_header_reg(reg,file)
-            
-            file.write(f"  constant {module.upper()}_{reg['name'].upper()} : unsigned({module.upper()}_ADDR_WIDTH-1 downto 0) := to_unsigned({reg['address']}, {module.upper()}_ADDR_WIDTH);\n")
-            file.write( "\n")
-        
-            if (reg['sw2hw']):
-                file.write(f"  type {module}_{reg['name']}_sw2hw_t is record\n")
-
-                if reg['sw2hw_re']:
-                    file.write(f"    {reg['sw2hw_name_re']} : std_logic;\n")
-                if reg['sw2hw_we']:
-                    file.write(f"    {reg['sw2hw_name_we']} : std_logic;\n")
-                if reg['sw2hw_data']:
-                    for field in reg['fields']:
-                        print_vhdl_header_field(field,file)
-                        file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
-                    if reg['hwtype'] in ['fifo']:
-                        file.write(f"    sw2hw_empty : std_logic;\n")
-                        file.write(f"    sw2hw_full  : std_logic;\n")
-                if reg['hw2sw_data']:
-                    if reg['hwtype'] in ['fifo']:
-                        file.write(f"    hw2sw_empty : std_logic;\n")
-                        file.write(f"    hw2sw_full  : std_logic;\n")
-                file.write(f"  end record {module}_{reg['name']}_sw2hw_t;\n")
-                file.write( "\n")
-
-            if (reg['hw2sw']):
-                file.write(f"  type {module}_{reg['name']}_hw2sw_t is record\n")
-                if reg['hw2sw_re']:
-                    file.write(f"    {reg['hw2sw_name_re']} : std_logic;\n")
-                if reg['hw2sw_we']:
-                    file.write(f"    {reg['hw2sw_name_we']} : std_logic;\n")
-                if reg['hw2sw_data']:
-                    for field in reg['fields']:
-                        print_vhdl_header_field(field,file)
-                        file.write(f"    {field['name']} : std_logic_vector({field['width']}-1 downto 0);\n")
-                        
-                file.write(f"  end record {module}_{reg['name']}_hw2sw_t;\n")
-                file.write( "\n")
-            for field in reg['fields']:
-                for enum in field.get('enum', []):
-                    file.write(f"-- Enum        : {reg['name']}.{field['name']}.{enum['name']}\n")
-                    file.write(f"-- Description : {enum['desc']}\n")
-                    file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}     : std_logic_vector({field['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value']),field['width'])}\";\n")
-                    file.write(f"constant {module.upper()}_{reg['name'].upper()}_{field['name'].upper()}_{enum['name'].upper()}_RAW : std_logic_vector({csr['width']}-1 downto 0) := \"{parse_init_value(parse_value(enum['value'])<<field['lsb'],csr['width'])}\";\n")
-                    file.write( "\n")
-
-
-        # Generate global struct containing all registers
-        file.write( "  ------------------------------------\n")
-        file.write(f"  -- Structure {module}_t\n")
-        file.write( "  ------------------------------------\n")
-        
-        sw2hw_regs = [reg for reg in csr['registers'] if reg['sw2hw']]
-        if sw2hw_regs:
-            file.write(f"  type {module}_sw2hw_t is record\n")
-            for reg in sw2hw_regs:
-                file.write(f"    {reg['name']} : {module}_{reg['name']}_sw2hw_t;\n")
-            file.write(f"  end record {module}_sw2hw_t;\n")
-            file.write( "\n")
-
-        hw2sw_regs = [reg for reg in csr['registers'] if reg['hw2sw']]
-        if hw2sw_regs:
-            file.write(f"  type {module}_hw2sw_t is record\n")
-            for reg in hw2sw_regs:
-                file.write(f"    {reg['name']} : {module}_{reg['name']}_hw2sw_t;\n")
-            file.write(f"  end record {module}_hw2sw_t;\n")
-            file.write( "\n")
-        
-        file.write( "  ------------------------------------\n")
-        file.write(f"  -- Component\n")
-        file.write( "  ------------------------------------\n")
-        generate_vhdl_entity(csr, file, "component")
-        file.write( "\n")
-
-        file.write(f"end package {module}_csr_pkg;\n")
-
-        #file.write(f"package body {module}_csr_pkg is\n")
-        #file.write(f"end package body {module}_csr_pkg;\n")
+        file.write(vhdl_package(p))
 
 #--------------------------------------------
-#--------------------------------------------
-def generate_vhdl_entity(csr, file, entity_type):
-    module = csr['name']
-
-    # Generate VHDL entity and architecture
-    file.write(f"{entity_type} {module}_registers is\n")
-    file.write( "  generic (\n")
-    file.write(f"    MODULE_NAME :  string := \"\" -- Name of the module\n")
-    if csr['parameters'] != []:
-        first = True
-        for param in csr['parameters']:
-            file.write(f"   ;{param['name']} : {param['type']} -- {param['desc']}\n")
-              
-    file.write( "  );\n")
-    
-    file.write( "  port (\n")
-    file.write( "    -- Clock and Reset\n")
-    file.write( "    clk_i      : in  std_logic\n")
-    file.write( "   ;arst_b_i   : in  std_logic\n")
-    file.write( "    -- Bus\n")
-
-    # Generate Port for interface "mem"
-    if csr["interface"] == "mem":
-        
-        file.write(f"   ;cs_i       : in    std_logic\n")
-        file.write(f"   ;re_i       : in    std_logic\n")
-        file.write(f"   ;we_i       : in    std_logic\n")
-        file.write(f"   ;addr_i     : in    std_logic_vector ({csr['size_addr']}-1 downto 0)\n")
-        file.write(f"   ;wdata_i    : in    std_logic_vector ({csr['width']}-1 downto 0)\n")
-        file.write(f"   ;rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0)\n")
-        file.write(f"   ;busy_o     : out   std_logic\n")
-
-    # Generate Port for the other interfaces (bus of the bridge)
-    else:
-        ports = vhdl_bus_ports(csr)
-        width = max([10]+[len(name) for name,_,_ in ports])
-        for name,direction,type in ports:
-            file.write(f"   ;{name:<{width}} : {direction:<3} {type}\n")
-
-    file.write( "    -- CSR\n")
-    sw2hw_regs = [reg for reg in csr['registers'] if reg['sw2hw']]
-    if sw2hw_regs:
-        file.write(f"   ;sw2hw_o    : out {module}_sw2hw_t\n")
-    hw2sw_regs = [reg for reg in csr['registers'] if reg['hw2sw']]
-    if hw2sw_regs:
-        file.write(f"   ;hw2sw_i    : in  {module}_hw2sw_t\n")
-    file.write( "  );\n")
-    file.write(f"end {entity_type} {module}_registers;\n\n")
-        
-#--------------------------------------------
-#--------------------------------------------
-def generate_vhdl_bridge(csr, file):
-    """
-    Instance of the bridge <interface>2mem between the bus ports and the
-    memory interface (mem_*)
-    """
-    module = csr['name']
-    bridge = f"{csr['interface']}2mem"
-
-    file.write(f"  -- Bus Interface : bridge {bridge}\n")
-    file.write(f"  ins_{bridge} : entity {csr['logical_name']}.{bridge}\n")
-    file.write( "    generic map\n")
-    file.write(f"      (ADDR_WIDTH      => {module}_ADDR_WIDTH\n")
-    file.write(f"      ,DATA_WIDTH      => {module}_DATA_WIDTH\n")
-    if csr["interface"] == "sbi":
-        file.write( "      ,NAME            => sbi_name\n")
-    file.write( "      )\n")
-    file.write( "    port map\n")
-    prefix = "("
-    if csr["interface"] == "axi4lite":
-        file.write( "      (clk_i           => clk_i\n")
-        file.write( "      ,arst_b_i        => arst_b_i\n")
-        prefix = ","
-    for name,_,_ in vhdl_bus_ports(csr):
-        file.write(f"      {prefix}{name:<15} => {name}\n")
-        prefix = ","
-    file.write( "      ,cs_o            => mem_cs\n")
-    file.write( "      ,re_o            => mem_re\n")
-    file.write( "      ,we_o            => mem_we\n")
-    file.write( "      ,addr_o          => mem_addr\n")
-    file.write( "      ,wdata_o         => mem_wdata\n")
-    file.write( "      ,rdata_i         => mem_rdata\n")
-    file.write( "      ,busy_i          => mem_busy\n")
-    file.write( "      );\n")
-    file.write( "\n")
-
-#--------------------------------------------
-#--------------------------------------------
-def generate_vhdl_module(csr, output_path):
-    module = csr['name']
-    
+def write_vhdl_module(m, output_path):
     with open(output_path, 'w') as file:
-        file.write(f"-- Generated VHDL Module for {module}\n\n")
-        file.write( "\n")
-        file.write( "library IEEE;\n")
-        file.write( "use     IEEE.STD_LOGIC_1164.ALL;\n")
-        file.write( "use     IEEE.NUMERIC_STD.ALL;\n\n")
-        file.write(f"library {csr['logical_name']};\n")
-        file.write(f"use     {csr['logical_name']}.{module}_csr_pkg.ALL;\n")
-        file.write(f"library {csr['logical_name']};\n")
-        file.write(f"use     {csr['logical_name']}.csr_pkg.ALL;\n")
-        if csr["interface"] == "pbi":
-            file.write(f"library {csr['logical_name']};\n")
-            file.write(f"use     {csr['logical_name']}.pbi_pkg.all;\n")
-        if csr["interface"] == "sbi":
-            file.write(f"library {csr['logical_name']};\n")
-            file.write(f"use     {csr['logical_name']}.sbi_pkg.all;\n")
-        file.write( "\n")
-
-        print_vhdl_header_csr(csr,file)
-        
-        # Generate VHDL entity and architecture
-        generate_vhdl_entity(csr, file, "entity")
-
-        sig_wcs     = ""
-        sig_we      = ""
-        sig_waddr   = ""
-        sig_wdata   = ""
-                    
-        sig_rcs     = ""
-        sig_re      = ""
-        sig_raddr   = ""
-        sig_rdata   = ""
-                    
-        sig_busy    = ""
-        sig_busy_op = ""
-        
-        # Generate Port for interface "mem"
-        if csr["interface"] == "mem":
-            sig_wcs   = "cs_i"
-            sig_we    = "we_i"
-            sig_waddr = "addr_i"
-            sig_wdata = "wdata_i"
-
-            sig_rcs   = "cs_i"
-            sig_re    = "re_i"
-            sig_raddr = "addr_i"
-            sig_rdata = "rdata_o"
-
-            sig_busy  = "busy_o"
-
-        # Other interfaces : memory interface of the bridge
-        else:
-            sig_wcs   = "mem_cs"
-            sig_we    = "mem_we"
-            sig_waddr = "mem_addr"
-            sig_wdata = "mem_wdata"
-
-            sig_rcs   = "mem_cs"
-            sig_re    = "mem_re"
-            sig_raddr = "mem_addr"
-            sig_rdata = "mem_rdata"
-
-            sig_busy  = "mem_busy"
-
-        # Architecture
-        file.write(f"architecture rtl of {module}_registers is\n")
-        file.write( "\n")
-
-        # Memory interface of the bridge
-        if csr["interface"] != "mem":
-            file.write(f"  -- Memory Interface of the bridge {csr['interface']}2mem\n")
-            file.write( "  signal   mem_cs    : std_logic;\n")
-            file.write( "  signal   mem_re    : std_logic;\n")
-            file.write( "  signal   mem_we    : std_logic;\n")
-            file.write(f"  signal   mem_addr  : std_logic_vector({module}_ADDR_WIDTH-1 downto 0);\n")
-            file.write(f"  signal   mem_wdata : std_logic_vector({module}_DATA_WIDTH-1 downto 0);\n")
-            file.write(f"  signal   mem_rdata : std_logic_vector({module}_DATA_WIDTH-1 downto 0);\n")
-            file.write( "  signal   mem_busy  : std_logic;\n")
-            file.write( "\n")
-
-        if csr["interface"] == "sbi":
-            file.write(f"  -- Name of the SBI target : MODULE_NAME or \"{csr['name']}\" if empty\n")
-            file.write( "  function sbi_name\n")
-            file.write( "    return string is\n")
-            file.write( "  begin  -- function sbi_name\n")
-            file.write( "    if MODULE_NAME = \"\" then\n")
-            file.write(f"      return \"{csr['name']}\";\n")
-            file.write( "    end if;\n")
-            file.write( "    return MODULE_NAME;\n")
-            file.write( "  end function sbi_name;\n")
-            file.write( "\n")
-
-        # Declare tmp signal (easier for debug)
-        file.write( "  signal   sig_wcs   : std_logic;\n")
-        file.write( "  signal   sig_we    : std_logic;\n")
-        file.write(f"  signal   sig_waddr : unsigned({module}_ADDR_WIDTH-1 downto 0);\n")
-        file.write(f"  signal   sig_wdata : std_logic_vector({sig_wdata}'length-1 downto 0);\n")
-        file.write( "  signal   sig_wbusy : std_logic;\n")
-        file.write( "\n")
-        file.write( "  signal   sig_rcs   : std_logic;\n")
-        file.write( "  signal   sig_re    : std_logic;\n")
-        file.write(f"  signal   sig_raddr : unsigned({module}_ADDR_WIDTH-1 downto 0);\n")
-        file.write(f"  signal   sig_rdata : std_logic_vector({sig_rdata}'length-1 downto 0);\n")
-        file.write( "  signal   sig_rbusy : std_logic;\n")
-        file.write( "\n")
-        file.write( "  signal   sig_busy  : std_logic;\n")
-        file.write( "\n")
-        
-        # Declare register and field signals
-        for reg in csr['registers']:
-
-
-            if reg['hwtype'] in ['reg']:
-                file.write(f"  function INIT_{reg['name']}\n")
-                file.write(f"    return std_logic_vector is\n")
-                file.write(f"    variable tmp : std_logic_vector({reg['width']}-1 downto 0);\n")
-                file.write(f"  begin  -- function INIT_{reg['name']}\n")
-                lsb=0
-                for field in reg['fields']:
-                    msb=lsb+field['width']-1
-                    file.write(f"    tmp({msb} downto {lsb}) := {field['expr']}; -- {field['name']}\n")
-                    lsb=msb+1
-                file.write(f"    return tmp;\n")
-                file.write(f"  end function INIT_{reg['name']};\n")
-                file.write( "\n")
-
-            file.write(f"  signal   {reg['name']}_wcs       : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_we        : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_wdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_wdata_sw  : std_logic_vector({reg['width']}-1 downto 0);\n");
-            if reg['hw2sw_data']:
-                file.write(f"  signal   {reg['name']}_wdata_hw  : std_logic_vector({reg['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_wbusy     : std_logic;\n");
-            #for field in reg['fields']:
-            #    file.write(f"  signal   {reg['name']}_{field['name']}_wdata : std_logic_vector({field['msb']} downto {field['lsb']});\n");
-            file.write( "\n")
-                                                            
-            file.write(f"  signal   {reg['name']}_rcs       : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_re        : std_logic;\n");
-            file.write(f"  signal   {reg['name']}_rdata     : std_logic_vector({csr['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_rdata_sw  : std_logic_vector({reg['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_rdata_hw  : std_logic_vector({reg['width']}-1 downto 0);\n");
-            file.write(f"  signal   {reg['name']}_rbusy     : std_logic;\n");
-            #for field in reg['fields']:
-            #    file.write(f"  signal   {reg['name']}_{field['name']}_rdata : std_logic_vector({field['msb']} downto {field['lsb']});\n");
-            file.write( "\n")
-
-        file.write( "begin  -- architecture rtl\n")
-        file.write( "\n")
-
-        if csr["interface"] != "mem":
-            generate_vhdl_bridge(csr, file)
-
-        file.write( "  -- Interface \n")
-        file.write(f"  sig_wcs   <= {sig_wcs};\n")
-        file.write(f"  sig_we    <= {sig_we};\n")
-        file.write(f"  sig_waddr <= unsigned({sig_waddr}({module}_ADDR_WIDTH-1 downto 0));\n")
-        file.write(f"  sig_wdata <= {sig_wdata};\n")
-        file.write( "\n")
-        file.write(f"  sig_rcs   <= {sig_rcs};\n")
-        file.write(f"  sig_re    <= {sig_re};\n")
-        file.write(f"  sig_raddr <= unsigned({sig_raddr}({module}_ADDR_WIDTH-1 downto 0));\n")
-        file.write(f"  {sig_rdata} <= sig_rdata;\n")
-        file.write(f"  {sig_busy} <= {sig_busy_op}sig_busy;\n")
-        file.write( "\n")
-        file.write(f"  sig_busy  <= sig_wbusy when sig_we = '1' else\n")
-        file.write(f"               sig_rbusy when sig_re = '1' else\n")
-        file.write(f"               '0';\n")
-        file.write( "\n")
-
-        
-        for reg in csr['registers']:
-
-            file.write(f"  gen_{reg['name']}: if ({reg['enable']})\n")
-            file.write(f"  generate\n")
-            
-            print_vhdl_header_reg(reg,file)
-
-            for field in reg['fields']:
-                print_vhdl_header_field(field,file)
-                file.write( "\n")
-                
-
-            file.write( "\n")
-            if reg['sw2hw_re']:
-                file.write(f"    {reg['name']}_rcs     <= '1' when (sig_raddr = {module}_{reg['name'].upper()}) else '0';\n")
-                file.write(f"    {reg['name']}_re      <= sig_rcs and sig_re and {reg['name']}_rcs;\n")
-
-                #lsb=0
-                #for field in reg['fields']:
-                #    msb=lsb+field['width']-1
-                #    file.write(f"    {reg['name']}_{field['name']}_rdata({field['msb']} downto {field['lsb']}) <= {reg['name']}_rdata_sw({msb} downto {lsb});\n")
-                #    lsb=msb+1
-
-                file.write(f"    {reg['name']}_rdata   <= (\n");
-                x=0
-                assigned_width = 0
-                for field in reg['fields']:
-                    assigned_width += field['width']
-                    y=0
-                    for i in range(field['lsb'], field['msb']+1):
-                        prefix = " " if x == 0 else ","
-                        file.write(f"      {prefix}{i} => {reg['name']}_rdata_sw({x}) -- {field['name']}({y})\n")
-                        x=x+1
-                        y=y+1
-                if assigned_width < csr['width']:
-                    file.write(f"      ,others => '0'\n")
-                file.write(f"      );\n")
-
-            else:
-                file.write(f"    {reg['name']}_rcs     <= '0';\n")
-                file.write(f"    {reg['name']}_re      <= '0';\n")
-                file.write(f"    {reg['name']}_rdata   <= (others=>'0');\n");
-
-            file.write( "\n")
-
-            if reg['sw2hw_we']:
-                file.write(f"    {reg['name']}_wcs     <= '1' when ")
-                prefix="    "
-                for waddr in reg['address_write']:
-                    file.write(f"  {prefix}(sig_waddr = {module}_{waddr.upper()})")
-                    prefix=" or"
-                
-                file.write(f"   else '0';\n")
-                file.write(f"    {reg['name']}_we      <= sig_wcs and sig_we and {reg['name']}_wcs;\n")
-                file.write(f"    {reg['name']}_wdata   <= sig_wdata;\n")
-                #lsb=0
-                #for field in reg['fields']:
-                #    msb=lsb+field['width']-1
-                #    file.write(f"    {reg['name']}_{field['name']}_wdata({field['msb']} downto {field['lsb']}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']});\n")
-                #    lsb=msb+1
-                lsb=0
-                for field in reg['fields']:
-                    msb=lsb+field['width']-1
-                    file.write(f"    {reg['name']}_wdata_sw({msb} downto {lsb}) <= {reg['name']}_wdata({field['msb']} downto {field['lsb']}); -- {field['name']}\n")
-                    lsb=msb+1
-
-            else:
-                # No software write : <reg>_wbusy is driven by the instance
-                file.write(f"    {reg['name']}_wcs      <= '0';\n") 
-                file.write(f"    {reg['name']}_we       <= '0';\n")
-                file.write(f"    {reg['name']}_wdata    <= (others=>'0');\n")
-                file.write(f"    {reg['name']}_wdata_sw <= (others=>'0');\n")
-                
-            if reg['hw2sw_data']:
-                lsb=0
-                for field in reg['fields']:
-                    msb=lsb+field['width']-1
-                    file.write(f"    {reg['name']}_wdata_hw({msb} downto {lsb}) <= hw2sw_i.{reg['name']}.{field['name']}; -- {field['name']}\n")
-                    lsb=msb+1
-
-            if reg['sw2hw_data']:
-                lsb=0
-                for field in reg['fields']:
-                    msb=lsb+field['width']-1
-                    file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= {reg['name']}_rdata_hw({msb} downto {lsb}); -- {field['name']}\n")
-                    lsb=msb+1
-
-            file.write( "\n")
-
-            file.write(f"    ins_{reg['name']} : csr_{reg['hwtype']}\n")
-            file.write( "      generic map\n")
-            file.write(f"        (WIDTH         => {reg['width']}\n")
-            
-            if reg['hwtype'] in ['reg']:
-                file.write(f"        ,INIT          => INIT_{reg['name']}\n")
-                file.write(f"        ,MODEL         => \"{reg['swaccess']}\"\n")
-            if reg['hwtype'] in ['fifo']:
-                if 'params' in reg:
-                    params=reg['params']
-                    for param in reg['params']:
-                        file.write(f"        ,{param} => {params[param]}\n")
-                
-            file.write( "        )\n")
-            file.write( "      port map\n")
-            file.write( "        (clk_i         => clk_i\n")
-            file.write( "        ,arst_b_i      => arst_b_i\n")
-            file.write(f"        ,sw_wd_i       => {reg['name']}_wdata_sw\n")
-            file.write(f"        ,sw_rd_o       => {reg['name']}_rdata_sw\n")
-            file.write(f"        ,sw_we_i       => {reg['name']}_we\n")
-            file.write(f"        ,sw_re_i       => {reg['name']}_re\n")
-            file.write(f"        ,sw_rbusy_o    => {reg['name']}_rbusy\n")
-            file.write(f"        ,sw_wbusy_o    => {reg['name']}_wbusy\n")
-
-            if reg['hwtype'] in ['reg','ext']:
-                if reg['hw2sw_data']:
-                    file.write(f"        ,hw_wd_i       => {reg['name']}_wdata_hw\n")
-                else:
-                    file.write(f"        ,hw_wd_i       => (others => '0')\n")
-                if reg['sw2hw_data']:
-                    file.write(f"        ,hw_rd_o       => {reg['name']}_rdata_hw\n")
-                else:
-                    file.write(f"        ,hw_rd_o       => open\n")
-                if reg['hw2sw_we']:
-                    file.write(f"        ,hw_we_i       => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
-                else:
-                    file.write(f"        ,hw_we_i       => '0'\n")
-                if reg['sw2hw_re']:
-                    file.write(f"        ,hw_sw_re_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
-                else:
-                    file.write(f"        ,hw_sw_re_o    => open\n")
-                if reg['sw2hw_we']:
-                    file.write(f"        ,hw_sw_we_o    => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
-                else:
-                    file.write(f"        ,hw_sw_we_o      => open\n")
-
-            if reg['hwtype'] in ['fifo']:
-                if reg['hw2sw_we']:
-                    file.write(f"        ,hw_tx_valid_i        => hw2sw_i.{reg['name']}.{reg['hw2sw_name_we']}\n")
-                else:
-                    file.write(f"        ,hw_tx_valid_i        => '0'\n")
-                if reg['sw2hw_re']:
-                    file.write(f"        ,hw_tx_ready_o        => sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']}\n")
-                else:
-                    file.write(f"        ,hw_tx_ready_o        => open\n")
-                if reg['hw2sw_data']:
-                    file.write(f"        ,hw_tx_data_i         => {reg['name']}_wdata_hw\n")
-                    file.write(f"        ,hw_tx_empty_o        => sw2hw_o.{reg['name']}.hw2sw_empty\n")
-                    file.write(f"        ,hw_tx_full_o         => sw2hw_o.{reg['name']}.hw2sw_full\n") 
-                   #file.write(f"        ,hw_tx_nb_elt_empty_o => open\n")
-                   #file.write(f"        ,hw_tx_nb_elt_full_o  => open\n")
-                else:
-                    file.write(f"        ,hw_tx_data_i         => (others => '0')\n")
-                    file.write(f"        ,hw_tx_empty_o        => open\n")
-                    file.write(f"        ,hw_tx_full_o         => open\n")
-                   #file.write(f"        ,hw_tx_nb_elt_empty_o => open\n")
-                   #file.write(f"        ,hw_tx_nb_elt_full_o  => open\n")
-
-                if reg['sw2hw_we']:
-                    file.write(f"        ,hw_rx_valid_o        => sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']}\n")
-                else:
-                    file.write(f"        ,hw_rx_valid_o        => open\n")
-                if reg['hw2sw_re']:
-                    file.write(f"        ,hw_rx_ready_i        => hw2sw_i.{reg['name']}.{reg['hw2sw_name_re']}\n")
-                else:
-                    file.write(f"        ,hw_rx_ready_i        => '1'\n")
-                if reg['sw2hw_data']:
-                    file.write(f"        ,hw_rx_data_o         => {reg['name']}_rdata_hw\n")
-                    file.write(f"        ,hw_rx_empty_o        => sw2hw_o.{reg['name']}.sw2hw_empty\n")
-                    file.write(f"        ,hw_rx_full_o         => sw2hw_o.{reg['name']}.sw2hw_full\n")
-                   #file.write(f"        ,hw_rx_nb_elt_empty_o => open\n")
-                   #file.write(f"        ,hw_rx_nb_elt_full_o  => open\n")
-                else:
-                    file.write(f"        ,hw_rx_data_o         => open\n")
-                    file.write(f"        ,hw_rx_empty_o        => open\n")
-                    file.write(f"        ,hw_rx_full_o         => open\n")
-                   #file.write(f"        ,hw_rx_nb_elt_empty_o => open\n")
-                   #file.write(f"        ,hw_rx_nb_elt_full_o  => open\n")
-
-                    
-            file.write( "        );\n")
-            file.write( "\n")
-            file.write(f"  end generate gen_{reg['name']};\n")
-            file.write( "\n")
-            file.write(f"  gen_{reg['name']}_b: if not ({reg['enable']})\n")
-            file.write(f"  generate\n")
-            file.write(f"    {reg['name']}_rcs     <= '0';\n")
-            file.write(f"    {reg['name']}_rbusy   <= '0';\n")
-            file.write(f"    {reg['name']}_rdata   <= (others => '0');\n");
-            file.write(f"    {reg['name']}_wcs      <= '0';\n") 
-            file.write(f"    {reg['name']}_wbusy    <= '0';\n")
-            if reg['sw2hw_data']:
-                for field in reg['fields']:
-                    file.write(f"    sw2hw_o.{reg['name']}.{field['name']} <= {field['expr']};\n")
-                if reg['hwtype'] in ['fifo']:
-                    file.write(f"    sw2hw_o.{reg['name']}.sw2hw_empty <= '1';\n")
-                    file.write(f"    sw2hw_o.{reg['name']}.sw2hw_full  <= '0';\n")
-            if reg['hw2sw_data']:
-                if reg['hwtype'] in ['fifo']:
-                    file.write(f"    sw2hw_o.{reg['name']}.hw2sw_empty <= '1';\n")
-                    file.write(f"    sw2hw_o.{reg['name']}.hw2sw_full  <= '0';\n")
-            if reg['sw2hw_re']:
-                file.write(f"    sw2hw_o.{reg['name']}.{reg['sw2hw_name_re']} <= '0';\n")
-            if reg['sw2hw_we']:
-                file.write(f"    sw2hw_o.{reg['name']}.{reg['sw2hw_name_we']} <= '0';\n")
-            file.write(f"  end generate gen_{reg['name']}_b;\n")
-            file.write( "\n")
-
-        file.write(f"  sig_wbusy <= \n");
-        for reg in csr['registers']:
-            file.write(f"    {reg['name']}_wbusy when {reg['name']}_wcs = '1' else\n");
-        file.write(f"    '0'; -- Bad Address, no busy\n")
-
-        file.write(f"  sig_rbusy <= \n");
-        for reg in csr['registers']:
-            file.write(f"    {reg['name']}_rbusy when {reg['name']}_rcs = '1' else\n");
-        file.write(f"    '0'; -- Bad Address, no busy\n")
-
-        file.write(f"  sig_rdata <= \n");
-        for reg in csr['registers']:
-            file.write(f"    {reg['name']}_rdata when {reg['name']}_rcs = '1' else\n");
-        file.write(f"    (others => '0'); -- Bad Address, return 0\n")
-
-#        file.write( "\n")
-#        file.write( "-- pragma translate_off\n")
-#        file.write( "\n")
-#        file.write( "  process is\n")
-#        file.write( "  begin  -- process\n")
-#        file.write( "\n")
-#        file.write(f"    report \"Address Size : \"&integer'image(sig_raddr'length) severity note;\n");  
-#        file.write(f"    report \"Data    Size : \"&integer'image(sig_raddr'length) severity note;\n");  
-#
-#        file.write( "\n")
-#        file.write( "    wait;\n")
-#        file.write( "  end process;\n")
-#        file.write( "\n")
-#        file.write( "-- pragma translate_on  \n")
-#        file.write( "\n")
-
-
-        file.write( "end architecture rtl;\n")
+        file.write(vhdl_module(m))

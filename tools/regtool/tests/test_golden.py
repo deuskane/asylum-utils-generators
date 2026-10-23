@@ -13,15 +13,15 @@ import pytest
 
 import csr_model
 from conftest import EXAMPLES_DIR
-from gen_vhdl     import generate_vhdl_package, generate_vhdl_module
+from gen_hdl      import generate_hdl_package, generate_hdl_module
 from gen_c        import generate_c_header
 from gen_markdown import generate_doc_markdown
 
 EXAMPLES = ["example1", "example2", "example3"]
 
 OUTPUTS  = {
-    "_csr_pkg.vhd" : generate_vhdl_package,
-    "_csr.vhd"     : generate_vhdl_module,
+    "_csr_pkg.vhd" : lambda csr, path: generate_hdl_package(csr, path, "vhdl"),
+    "_csr.vhd"     : lambda csr, path: generate_hdl_module (csr, path, "vhdl"),
     "_csr.h"       : generate_c_header,
     "_csr.md"      : generate_doc_markdown,
 }
