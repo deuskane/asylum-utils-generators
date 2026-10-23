@@ -134,6 +134,10 @@ generators:
                        "xilinx"    : Xilinx  implementation
                        Default     : "generic"
 
+        addr_width   : (Optional)
+                       ROM address width (ROM of 2**addr_width 32-bit words)
+                       Default     : 10
+
         cflags       : (Optional)
                        Compilation options for C file
 
