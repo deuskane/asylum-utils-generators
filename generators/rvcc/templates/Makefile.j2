@@ -70,7 +70,7 @@ CFLAGS          += -ffunction-sections             # Place each function in its 
 CFLAGS          += -fdata-sections                 # Place each data item in its own section
 CFLAGS          += -Wl,--gc-sections               # Remove unused sections
 CFLAGS          += -Wstack-usage=$(STACK_SIZE)     # Warn if stack usage exceeds $(STACK_SIZE) bytes
-CFLAGS          += -Wl,-z,stack-size=$(STACK_SIZE) # Set stack size to $(STACK_SIZE) bytes
+CFLAGS          += -Wl,--defsym=_stack_size=$(STACK_SIZE) # Reserve $(STACK_SIZE) bytes for the stack (checked by link.ld)
 CFLAGS          += -fverbose-asm                   # Add explanatory comments in generated assembly
 CFLAGS          += -Wall                           # Enable all basic warnings
 CFLAGS          += -Wextra                         # Enable extra warnings
