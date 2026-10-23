@@ -167,10 +167,22 @@ generators:
                        Name prefix
 
         copy         : (Optional)
+                       Directory of the calling core where the outputs are copied
                        Default : None
 
         logical_name : (Optional)
                        Default : work
+
+        interface    : (Optional)
+                       Replace the interface of the hjson file
+                       "mem"       : memory interface (cs, re, we, addr, wdata, rdata, busy)
+                       "sbi", "pbi", "apb", "axi4lite" : bus through the bridge <interface>2mem
+                       Default : interface of the hjson file
+
+        language     : (Optional)
+                       "vhdl"      : <name>_csr_pkg.vhd and <name>_csr.vhd
+                       "verilog"   : <name>_csr_pkg.vh  and <name>_csr.v  (mem, apb, axi4lite)
+                       Default : vhdl
 
 #=========================================
 filesets:

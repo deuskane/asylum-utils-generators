@@ -1,61 +1,35 @@
 REGTOOL       = {{ python }} {{ regtool }}
 REGTOOL_OPT   =  --logical_name {{ libname }}
-{% if interface %}
+{%- if interface %}
 REGTOOL_OPT  +=  --interface {{ interface }}
-{% endif %}
+{%- endif %}
 
 # Generated files depend on the regtool sources (scripts and schema)
 REGTOOL_DIR   = {{ dir_script }}/tools/regtool
 REGTOOL_FILES = $(shell find $(REGTOOL_DIR) -maxdepth 1 -type f \( -name '*.py' -o -name '*.hjson' \))
 
-FILE_IN       = {{ file_in }} 
-FILES_OUT     = {{ file_vhdl_pkg }}
-FILES_OUT    += {{ file_vhdl_csr }}
-FILES_OUT    += {{ file_md }}
-FILES_OUT    += {{ file_h }}
+FILE_IN       = {{ file_in }}
+{%- for file, option in outputs %}
+FILES_OUT    += {{ file }}
+{%- endfor %}
 
-{% if copy_dir %}
+{% if copy_dir -%}
 COPY_DIR      = {{ copy_dir }}
-all      :  $(COPY_DIR)/$(notdir {{ file_vhdl_pkg }}) \
-			$(COPY_DIR)/$(notdir {{ file_vhdl_csr }}) \
-			$(COPY_DIR)/$(notdir {{ file_md }}) \
-			$(COPY_DIR)/$(notdir {{ file_h }})
+all      : $(addprefix $(COPY_DIR)/,$(notdir $(FILES_OUT)))
 
 $(COPY_DIR) :
 	mkdir -p "$@"
-
-$(COPY_DIR)/$(notdir {{ file_vhdl_pkg }}) : {{ file_vhdl_pkg }} | $(COPY_DIR)
+{% for file, option in outputs %}
+$(COPY_DIR)/$(notdir {{ file }}) : {{ file }} | $(COPY_DIR)
 	cp $< $@
-
-$(COPY_DIR)/$(notdir {{ file_vhdl_csr }}) : {{ file_vhdl_csr }} | $(COPY_DIR)
-	cp $< $@
-
-$(COPY_DIR)/$(notdir {{ file_md }}) : {{ file_md }} | $(COPY_DIR)
-	cp $< $@
-
-$(COPY_DIR)/$(notdir {{ file_h }}) : {{ file_h }} | $(COPY_DIR)
-	cp $< $@
-
-{% else %}
+{% endfor %}
+{%- else -%}
 all      : $(FILES_OUT)
-
 {% endif %}
-
-{{ file_vhdl_pkg }} : \
+{%- for file, option in outputs %}
+{{ file }} : \
   $(FILE_IN) $(REGTOOL_FILES)
-	$(REGTOOL) $(REGTOOL_OPT) $< --vhdl_package $@
-
-{{ file_vhdl_csr }} : \
-  $(FILE_IN) $(REGTOOL_FILES)
-	$(REGTOOL) $(REGTOOL_OPT) $< --vhdl_module  $@
-
-{{ file_md }} : \
-  $(FILE_IN) $(REGTOOL_FILES)
-	$(REGTOOL) $(REGTOOL_OPT) $< --doc_markdown $@
-
-{{ file_h }} : \
-  $(FILE_IN) $(REGTOOL_FILES)
-	$(REGTOOL) $(REGTOOL_OPT) $< --c_header     $@
-
+	$(REGTOOL) $(REGTOOL_OPT) $< {{ option }} $@
+{% endfor %}
 clean :
 	rm -f $(FILES_OUT)

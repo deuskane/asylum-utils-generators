@@ -55,6 +55,22 @@ def test_interface(monkeypatch, tmp_path):
     assert "ins_apb2mem : entity work.apb2mem" in (tmp_path / "example2_csr.vhd").read_text()
 
 #--------------------------------------------
+def test_verilog(monkeypatch, tmp_path):
+    """Verilog outputs only on request"""
+    run(monkeypatch, tmp_path, os.path.join(EXAMPLES_DIR, "example2.hjson"),
+        "--verilog_module", "m.v", "--verilog_header", "h.vh")
+
+    assert (tmp_path / "m.v").read_text().count("module example2_registers") == 1
+    assert (tmp_path / "h.vh").exists()
+
+#--------------------------------------------
+def test_verilog_sbi(monkeypatch, tmp_path):
+    """No Verilog for the sbi interface (VHDL records)"""
+    with pytest.raises(ValueError):
+        run(monkeypatch, tmp_path, os.path.join(EXAMPLES_DIR, "example2.hjson"),
+            "--interface", "sbi", "--verilog_module", "m.v")
+
+#--------------------------------------------
 def test_invalid_hjson(monkeypatch, tmp_path):
     hjson_file = tmp_path / "bad.hjson"
     hjson_file.write_text('{ name: "bad", registers: [ { name: "r" } ] }')
