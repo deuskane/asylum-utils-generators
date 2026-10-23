@@ -58,15 +58,21 @@ def check_reg_width(csr):
 #--------------------------------------------
 def check_interface(csr):
     """
-    Checks interface is valid value
+    Checks interface is valid value.
+    The CSR logic has only the memory interface ("mem"), the other
+    interfaces are buses connected through a bridge <bus>2mem.
+    "reg" is the former name of "mem".
 
     :param csr: Dictionary of csr.
     :raises ValueError: If interface is not valid
     """
-    interface           = ['reg','pbi','sbi']
+    interface           = ['mem','reg','pbi','sbi','apb','axi4lite']
 
     if csr['interface'] not in interface:
         raise KeyError(f"interface '{csr['interface']}' must be in {interface}.")
+
+    if csr['interface'] == 'reg':
+        csr['interface'] = 'mem'
     
 #--------------------------------------------
 #--------------------------------------------
@@ -380,18 +386,22 @@ def check_csr(csr, dump=False, source=None):
 
 #--------------------------------------------
 #--------------------------------------------
-def parse_hjson(file_path, dump=False):
+def parse_hjson(file_path, dump=False, interface=None):
     """
     Read the file, then check it (see check_csr)
     
     :param file_path: Path to the hjson file
     :param dump: True : dump the structure after each step in <name>_dump[123].hjson
+    :param interface: If set, replaces the interface of the hjson file
     :return: Return an hjson structure
     """
 
     # Open hjson file
     with open(file_path, 'r') as data_file:
         csr=hjson.load(data_file)
+
+    if interface:
+        csr['interface'] = interface
 
     return check_csr(csr, dump, file_path)
 

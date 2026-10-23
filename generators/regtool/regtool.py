@@ -16,6 +16,7 @@
 
 import os
 import fcntl
+import hjson
 
 import sys
 from   fusesoc.capi2.generator import Generator
@@ -92,6 +93,16 @@ class regtool(Generator):
         file_md       = os.path.join(dir_work,name+'_csr.md')    
         copy          = self.config.get("copy",None)
         logical_name  = self.config.get("logical_name",None)
+        interface     = self.config.get("interface",None)
+
+        # Bus interface : the CSR has a memory interface, the other
+        # interfaces use the bridge <interface>2mem of the hdl directory
+        bus           = interface
+        if bus == None:
+            with open(file_in, 'r') as f:
+                bus   = hjson.load(f).get("interface","mem")
+        if bus not in ["mem","reg"]:
+            files_hdl.append(bus+"2mem.vhd")
 
         if copy != None:
             dir_copy = os.path.join(dir_root,copy)
@@ -119,6 +130,7 @@ class regtool(Generator):
         logger.debug("file_md            : {file_md}")
         logger.debug("Copy               : {copy}")
         logger.debug("logical_name       : {logical_name}")
+        logger.debug("interface          : {interface}")
         
         args =  [script,file_in,"--vhdl_package" ,file_vhdl_pkg,"--vhdl_module",file_vhdl_csr,"--c_header",file_h,"--doc_markdown",file_md]
         
@@ -141,6 +153,7 @@ class regtool(Generator):
             "file_h"       : file_h,
             "dir_script"   : dir_script,
             "copy_dir"     : dir_copy if copy is not None else None,
+            "interface"    : interface,
        }
         
         # Chemin vers le dossier contenant les templates

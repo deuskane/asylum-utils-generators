@@ -9,7 +9,7 @@ import subprocess
 
 import pytest
 
-from conftest import field, reg, desc, tool, HDL_DIR
+from conftest import field, reg, desc, tool, utils_pkg_dir, HDL_DIR
 from gen_vhdl import generate_vhdl_package, generate_vhdl_module
 
 #--------------------------------------------
@@ -69,21 +69,57 @@ def test_package_component(make_csr, generate):
 # Module
 #============================================
 
+BUS_PORTS = {
+    "mem"      : ["cs_i", "re_i", "we_i", "addr_i", "wdata_i", "rdata_o", "busy_o"],
+    "pbi"      : ["pbi_ini_i", "pbi_tgt_o"],
+    "sbi"      : ["sbi_ini_i", "sbi_tgt_o"],
+    "apb"      : ["s_apb_psel_i", "s_apb_penable_i", "s_apb_pwrite_i", "s_apb_paddr_i", "s_apb_pwdata_i",
+                  "s_apb_prdata_o", "s_apb_pready_o", "s_apb_pslverr_o"],
+    "axi4lite" : ["s_axi_awvalid_i", "s_axi_awready_o", "s_axi_awaddr_i",
+                  "s_axi_wvalid_i", "s_axi_wready_o", "s_axi_wdata_i", "s_axi_wstrb_i",
+                  "s_axi_bvalid_o", "s_axi_bready_i", "s_axi_bresp_o",
+                  "s_axi_arvalid_i", "s_axi_arready_o", "s_axi_araddr_i",
+                  "s_axi_rvalid_o", "s_axi_rready_i", "s_axi_rdata_o", "s_axi_rresp_o"],
+}
+
 #--------------------------------------------
-@pytest.mark.parametrize("interface, bus", [
-    ("reg", ["cs_i", "re_i", "we_i", "addr_i", "wdata_i", "rdata_o", "busy_o"]),
-    ("pbi", ["pbi_ini_i", "pbi_tgt_o"]),
-    ("sbi", ["sbi_ini_i", "sbi_tgt_o"]),
-])
-def test_module_interface(make_csr, generate, interface, bus):
+@pytest.mark.parametrize("interface", BUS_PORTS.keys())
+def test_module_interface(make_csr, generate, interface):
     csr  = make_csr(desc([reg()], interface=interface))
-    assert ports(generate(generate_vhdl_module, csr)) == ["clk_i", "arst_b_i"] + bus + ["sw2hw_o", "hw2sw_i"]
+    text = generate(generate_vhdl_module, csr)
+    assert ports(text) == ["clk_i", "arst_b_i"] + BUS_PORTS[interface] + ["sw2hw_o", "hw2sw_i"]
+
+    # Same ports in the component of the package
+    pkg  = generate(generate_vhdl_package, csr, "pkg.vhd")
+    assert pkg[pkg.index("component test_registers is"):pkg.index("end component test_registers;")] == \
+           text[text.index("entity test_registers is"):text.index("end entity test_registers;")].replace("entity", "component")
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["pbi", "sbi", "apb", "axi4lite"])
+def test_module_bridge(make_csr, generate, interface):
+    """The bus is connected to the memory interface through the bridge <interface>2mem"""
+    text = generate(generate_vhdl_module, make_csr(desc([reg()], interface=interface)))
+
+    assert f"  ins_{interface}2mem : entity asylum.{interface}2mem\n" in text
+    for port in BUS_PORTS[interface]:
+        assert re.search(rf"^      [(,]{port}\s+=> {port}$", text, re.M), port
+    for port, signal in [("cs_o", "mem_cs"), ("addr_o", "mem_addr"), ("rdata_i", "mem_rdata"), ("busy_i", "mem_busy")]:
+        assert re.search(rf"^      ,{port}\s+=> {signal}$", text, re.M), port
+    assert ("      (clk_i           => clk_i\n" in text) == (interface == "axi4lite")
+
+#--------------------------------------------
+def test_module_no_bridge(make_csr, generate):
+    text = generate(generate_vhdl_module, make_csr(desc([reg()], interface="mem")))
+    assert "2mem" not in text
+    assert "  sig_wcs   <= cs_i;\n" in text
+    assert "  busy_o <= sig_busy;\n" in text
 
 #--------------------------------------------
 def test_module_sbi_name(make_csr, generate):
+    """Name of the SBI target : MODULE_NAME, else the name of the CSR"""
     text = generate(generate_vhdl_module, make_csr(desc([reg()], interface="sbi")))
-    assert 'sbi_tgt_o.info.name <= to_sbi_name("test");'   in text
-    assert "sbi_tgt_o.info.name <= to_sbi_name(MODULE_NAME);" in text
+    assert '      return "test";\n'                 in text
+    assert "      ,NAME            => sbi_name\n" in text
 
 #--------------------------------------------
 def test_module_parameters(make_csr, generate):
@@ -145,17 +181,28 @@ def ghdl(*args, cwd):
     assert result.returncode == 0, result.stdout + result.stderr
 
 #--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite", "pbi", "sbi"])
 @pytest.mark.parametrize("enable", ["true", "false"])
-def test_ghdl_elaborate(make_csr, tmp_path, enable):
-    """The generated package and module of a 'reg' CSR (no FIFO) are analyzed and elaborated"""
+def test_ghdl_elaborate(make_csr, tmp_path, enable, interface):
+    """The generated package and module of a CSR (no FIFO) are analyzed and elaborated"""
     tool("ghdl")
-    csr = make_csr(GHDL_DESC)
+    csr = make_csr(dict(GHDL_DESC, interface=interface))
     generate_vhdl_package(csr, str(tmp_path / "test_csr_pkg.vhd"))
     generate_vhdl_module (csr, str(tmp_path / "test_csr.vhd"))
 
     options = ["--std=08", "--work=asylum", f"--workdir={tmp_path}"]
-    files   = [os.path.join(HDL_DIR, f) for f in ["csr_pkg.vhd", "csr_reg.vhd", "csr_ext.vhd"]]
+    files   = []
+    if interface in ["pbi", "sbi"]:
+        files += [os.path.join(utils_pkg_dir(), f) for f in ["types_pkg.vhd", f"{interface}_pkg.vhd"]]
+    files  += [os.path.join(HDL_DIR, f) for f in ["csr_pkg.vhd", "csr_reg.vhd", "csr_ext.vhd"]]
+    if interface != "mem":
+        files += [os.path.join(HDL_DIR, f"{interface}2mem.vhd")]
     files  += [str(tmp_path / "test_csr_pkg.vhd"), str(tmp_path / "test_csr.vhd")]
+
+    if interface in ["pbi", "sbi"]:
+        # Unconstrained record ports : analysis only
+        ghdl("-a", *options, *files, cwd=tmp_path)
+        return
 
     # The generics of the top are set at run time (elaboration of the generate statements)
     ghdl("-a"        , *options, *files, cwd=tmp_path)

@@ -18,7 +18,7 @@ def test_defaults(make_csr):
 
     assert csr['desc']      == ""
     assert csr['width']     == 32
-    assert csr['interface'] == "reg"
+    assert csr['interface'] == "mem"
     assert csr['parameters'] == []
 
     r = csr['registers'][0]
@@ -50,6 +50,18 @@ def test_defaults(make_csr):
 def test_schema_error(make_csr, description):
     with pytest.raises(jsonschema.exceptions.ValidationError):
         make_csr(description)
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface, result", [
+    ("mem"     , "mem"     ),
+    ("reg"     , "mem"     ),                                  # former name of mem
+    ("pbi"     , "pbi"     ),
+    ("sbi"     , "sbi"     ),
+    ("apb"     , "apb"     ),
+    ("axi4lite", "axi4lite"),
+])
+def test_interface(make_csr, interface, result):
+    assert make_csr(desc([reg()], interface=interface))['interface'] == result
 
 #============================================
 # Width and addresses

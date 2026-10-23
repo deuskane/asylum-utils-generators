@@ -20,10 +20,11 @@ def main():
     parser.add_argument('--c_header'    , type=str,  help='Path to the C header output file')
     parser.add_argument('--doc_markdown', type=str,  help='Path to the Markdown Documentation output file')
     parser.add_argument('--logical_name', type=str,  help='Library', default='work')
+    parser.add_argument('--interface'   , type=str,  help='Replace the interface of the HJSON input file')
 
     args         = parser.parse_args()
 
-    csr          = parse_hjson(args.input_file, dump=True)
+    csr          = parse_hjson(args.input_file, dump=True, interface=args.interface)
     csr['logical_name'] = args.logical_name
 
 

@@ -1,5 +1,8 @@
 REGTOOL       = {{ python }} {{ regtool }}
 REGTOOL_OPT   =  --logical_name {{ libname }}
+{% if interface %}
+REGTOOL_OPT  +=  --interface {{ interface }}
+{% endif %}
 
 # Generated files depend on the regtool sources (scripts and schema)
 REGTOOL_DIR   = {{ dir_script }}/tools/regtool

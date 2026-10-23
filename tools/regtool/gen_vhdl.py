@@ -7,6 +7,54 @@ from   csr_model import parse_value, parse_init_value
 
 #--------------------------------------------
 #--------------------------------------------
+def vhdl_bus_ports(csr):
+    """
+    Ports of the bus of the interface (except "mem"), connected to the bridge
+    <interface>2mem (hdl/<interface>2mem.vhd) with the same port names.
+
+    :param csr: Dictionary of csr
+    :return: List of (name, direction, type)
+    """
+    addr  = f"std_logic_vector({csr['size_addr']}-1 downto 0)"
+    data  = f"std_logic_vector({csr['width']}-1 downto 0)"
+    strb  = f"std_logic_vector({csr['width']}/8-1 downto 0)"
+    resp  =  "std_logic_vector(1 downto 0)"
+
+    ports = {
+        'pbi'      : [("pbi_ini_i"      , "in" , "pbi_ini_t"),
+                      ("pbi_tgt_o"      , "out", "pbi_tgt_t")],
+        'sbi'      : [("sbi_ini_i"      , "in" , "sbi_ini_t"),
+                      ("sbi_tgt_o"      , "out", "sbi_tgt_t")],
+        'apb'      : [("s_apb_psel_i"   , "in" , "std_logic"),
+                      ("s_apb_penable_i", "in" , "std_logic"),
+                      ("s_apb_pwrite_i" , "in" , "std_logic"),
+                      ("s_apb_paddr_i"  , "in" , addr),
+                      ("s_apb_pwdata_i" , "in" , data),
+                      ("s_apb_prdata_o" , "out", data),
+                      ("s_apb_pready_o" , "out", "std_logic"),
+                      ("s_apb_pslverr_o", "out", "std_logic")],
+        'axi4lite' : [("s_axi_awvalid_i", "in" , "std_logic"),
+                      ("s_axi_awready_o", "out", "std_logic"),
+                      ("s_axi_awaddr_i" , "in" , addr),
+                      ("s_axi_wvalid_i" , "in" , "std_logic"),
+                      ("s_axi_wready_o" , "out", "std_logic"),
+                      ("s_axi_wdata_i"  , "in" , data),
+                      ("s_axi_wstrb_i"  , "in" , strb),
+                      ("s_axi_bvalid_o" , "out", "std_logic"),
+                      ("s_axi_bready_i" , "in" , "std_logic"),
+                      ("s_axi_bresp_o"  , "out", resp),
+                      ("s_axi_arvalid_i", "in" , "std_logic"),
+                      ("s_axi_arready_o", "out", "std_logic"),
+                      ("s_axi_araddr_i" , "in" , addr),
+                      ("s_axi_rvalid_o" , "out", "std_logic"),
+                      ("s_axi_rready_i" , "in" , "std_logic"),
+                      ("s_axi_rdata_o"  , "out", data),
+                      ("s_axi_rresp_o"  , "out", resp)],
+    }
+    return ports[csr['interface']]
+
+#--------------------------------------------
+#--------------------------------------------
 def print_vhdl_header_csr(csr,file):
     file.write( "--==================================\n")
     file.write(f"-- Module      : {csr['name']}\n")
@@ -169,8 +217,8 @@ def generate_vhdl_entity(csr, file, entity_type):
     file.write( "   ;arst_b_i   : in  std_logic\n")
     file.write( "    -- Bus\n")
 
-    # Generate Port for interface "reg"
-    if csr["interface"] == "reg":
+    # Generate Port for interface "mem"
+    if csr["interface"] == "mem":
         
         file.write(f"   ;cs_i       : in    std_logic\n")
         file.write(f"   ;re_i       : in    std_logic\n")
@@ -180,17 +228,12 @@ def generate_vhdl_entity(csr, file, entity_type):
         file.write(f"   ;rdata_o    : out   std_logic_vector ({csr['width']}-1 downto 0)\n")
         file.write(f"   ;busy_o     : out   std_logic\n")
 
-    # Generate Port for interface "pbi"
-    if csr["interface"] == "pbi":
-        
-        file.write( "   ;pbi_ini_i  : in  pbi_ini_t\n")
-        file.write( "   ;pbi_tgt_o  : out pbi_tgt_t\n")
-
-    # Generate Port for interface "sbi"
-    if csr["interface"] == "sbi":
-        
-        file.write( "   ;sbi_ini_i  : in  sbi_ini_t\n")
-        file.write( "   ;sbi_tgt_o  : out sbi_tgt_t\n")
+    # Generate Port for the other interfaces (bus of the bridge)
+    else:
+        ports = vhdl_bus_ports(csr)
+        width = max([10]+[len(name) for name,_,_ in ports])
+        for name,direction,type in ports:
+            file.write(f"   ;{name:<{width}} : {direction:<3} {type}\n")
 
     file.write( "    -- CSR\n")
     sw2hw_regs = [reg for reg in csr['registers'] if reg['sw2hw']]
@@ -202,6 +245,43 @@ def generate_vhdl_entity(csr, file, entity_type):
     file.write( "  );\n")
     file.write(f"end {entity_type} {module}_registers;\n\n")
         
+#--------------------------------------------
+#--------------------------------------------
+def generate_vhdl_bridge(csr, file):
+    """
+    Instance of the bridge <interface>2mem between the bus ports and the
+    memory interface (mem_*)
+    """
+    module = csr['name']
+    bridge = f"{csr['interface']}2mem"
+
+    file.write(f"  -- Bus Interface : bridge {bridge}\n")
+    file.write(f"  ins_{bridge} : entity {csr['logical_name']}.{bridge}\n")
+    file.write( "    generic map\n")
+    file.write(f"      (ADDR_WIDTH      => {module}_ADDR_WIDTH\n")
+    file.write(f"      ,DATA_WIDTH      => {module}_DATA_WIDTH\n")
+    if csr["interface"] == "sbi":
+        file.write( "      ,NAME            => sbi_name\n")
+    file.write( "      )\n")
+    file.write( "    port map\n")
+    prefix = "("
+    if csr["interface"] == "axi4lite":
+        file.write( "      (clk_i           => clk_i\n")
+        file.write( "      ,arst_b_i        => arst_b_i\n")
+        prefix = ","
+    for name,_,_ in vhdl_bus_ports(csr):
+        file.write(f"      {prefix}{name:<15} => {name}\n")
+        prefix = ","
+    file.write( "      ,cs_o            => mem_cs\n")
+    file.write( "      ,re_o            => mem_re\n")
+    file.write( "      ,we_o            => mem_we\n")
+    file.write( "      ,addr_o          => mem_addr\n")
+    file.write( "      ,wdata_o         => mem_wdata\n")
+    file.write( "      ,rdata_i         => mem_rdata\n")
+    file.write( "      ,busy_i          => mem_busy\n")
+    file.write( "      );\n")
+    file.write( "\n")
+
 #--------------------------------------------
 #--------------------------------------------
 def generate_vhdl_module(csr, output_path):
@@ -243,8 +323,8 @@ def generate_vhdl_module(csr, output_path):
         sig_busy    = ""
         sig_busy_op = ""
         
-        # Generate Port for interface "reg"
-        if csr["interface"] == "reg":
+        # Generate Port for interface "mem"
+        if csr["interface"] == "mem":
             sig_wcs   = "cs_i"
             sig_we    = "we_i"
             sig_waddr = "addr_i"
@@ -257,39 +337,47 @@ def generate_vhdl_module(csr, output_path):
 
             sig_busy  = "busy_o"
 
-        # Generate Port for interface "pbi"
-        if csr["interface"] == "pbi":
+        # Other interfaces : memory interface of the bridge
+        else:
+            sig_wcs   = "mem_cs"
+            sig_we    = "mem_we"
+            sig_waddr = "mem_addr"
+            sig_wdata = "mem_wdata"
 
-            sig_wcs   = "pbi_ini_i.cs"
-            sig_we    = "pbi_ini_i.we"
-            sig_waddr = "pbi_ini_i.addr"
-            sig_wdata = "pbi_ini_i.wdata"
+            sig_rcs   = "mem_cs"
+            sig_re    = "mem_re"
+            sig_raddr = "mem_addr"
+            sig_rdata = "mem_rdata"
 
-            sig_rcs   = "pbi_ini_i.cs"
-            sig_re    = "pbi_ini_i.re"
-            sig_raddr = "pbi_ini_i.addr"
-            sig_rdata = "pbi_tgt_o.rdata"
+            sig_busy  = "mem_busy"
 
-            sig_busy  = "pbi_tgt_o.busy"
-
-        # Generate Port for interface "sbi"
-        if csr["interface"] == "sbi":
-
-            sig_wcs     = "sbi_ini_i.cs"
-            sig_we      = "sbi_ini_i.we"
-            sig_waddr   = "sbi_ini_i.addr"
-            sig_wdata   = "sbi_ini_i.wdata"
-                        
-            sig_rcs     = "sbi_ini_i.cs"
-            sig_re      = "sbi_ini_i.re"
-            sig_raddr   = "sbi_ini_i.addr"
-            sig_rdata   = "sbi_tgt_o.rdata"
-
-            sig_busy    = "sbi_tgt_o.ready"
-            sig_busy_op = "not "
         # Architecture
         file.write(f"architecture rtl of {module}_registers is\n")
         file.write( "\n")
+
+        # Memory interface of the bridge
+        if csr["interface"] != "mem":
+            file.write(f"  -- Memory Interface of the bridge {csr['interface']}2mem\n")
+            file.write( "  signal   mem_cs    : std_logic;\n")
+            file.write( "  signal   mem_re    : std_logic;\n")
+            file.write( "  signal   mem_we    : std_logic;\n")
+            file.write(f"  signal   mem_addr  : std_logic_vector({module}_ADDR_WIDTH-1 downto 0);\n")
+            file.write(f"  signal   mem_wdata : std_logic_vector({module}_DATA_WIDTH-1 downto 0);\n")
+            file.write(f"  signal   mem_rdata : std_logic_vector({module}_DATA_WIDTH-1 downto 0);\n")
+            file.write( "  signal   mem_busy  : std_logic;\n")
+            file.write( "\n")
+
+        if csr["interface"] == "sbi":
+            file.write(f"  -- Name of the SBI target : MODULE_NAME or \"{csr['name']}\" if empty\n")
+            file.write( "  function sbi_name\n")
+            file.write( "    return string is\n")
+            file.write( "  begin  -- function sbi_name\n")
+            file.write( "    if MODULE_NAME = \"\" then\n")
+            file.write(f"      return \"{csr['name']}\";\n")
+            file.write( "    end if;\n")
+            file.write( "    return MODULE_NAME;\n")
+            file.write( "  end function sbi_name;\n")
+            file.write( "\n")
 
         # Declare tmp signal (easier for debug)
         file.write( "  signal   sig_wcs   : std_logic;\n")
@@ -348,6 +436,9 @@ def generate_vhdl_module(csr, output_path):
 
         file.write( "begin  -- architecture rtl\n")
         file.write( "\n")
+
+        if csr["interface"] != "mem":
+            generate_vhdl_bridge(csr, file)
 
         file.write( "  -- Interface \n")
         file.write(f"  sig_wcs   <= {sig_wcs};\n")
@@ -605,15 +696,5 @@ def generate_vhdl_module(csr, output_path):
 #        file.write( "-- pragma translate_on  \n")
 #        file.write( "\n")
 
-
-        if csr["interface"] == "sbi":
-            file.write( "\n")
-
-            file.write(f"  gen_tgt_info_name : if MODULE_NAME = \"\"\n")
-            file.write( "  generate\n")
-            file.write(f"    sbi_tgt_o.info.name <= to_sbi_name(\"{csr['name']}\");\n")
-            file.write(f"  else generate\n")
-            file.write(f"    sbi_tgt_o.info.name <= to_sbi_name(MODULE_NAME);\n")
-            file.write(f"  end generate;\n")
 
         file.write( "end architecture rtl;\n")

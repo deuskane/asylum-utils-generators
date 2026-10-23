@@ -78,6 +78,19 @@ def generate(tmp_path):
     return _generate
 
 #--------------------------------------------
+def utils_pkg_dir():
+    """
+    Directory of sbi_pkg.vhd / pbi_pkg.vhd (asylum-utils-pkg/hdl) : environment
+    variable ASYLUM_UTILS_PKG_DIR, else the asylum-utils-pkg next to this
+    repository (asylum-project/ip). Skip the test if not found.
+    """
+    path = os.environ.get("ASYLUM_UTILS_PKG_DIR",
+                          os.path.join(REGTOOL_DIR, "..", "..", "..", "asylum-utils-pkg", "hdl"))
+    if not os.path.isfile(os.path.join(path, "sbi_pkg.vhd")):
+        pytest.skip("sbi_pkg.vhd not found (set ASYLUM_UTILS_PKG_DIR)")
+    return os.path.abspath(path)
+
+#--------------------------------------------
 def tool(name):
     """Skip the test if the tool is not in the PATH"""
     path = shutil.which(name)

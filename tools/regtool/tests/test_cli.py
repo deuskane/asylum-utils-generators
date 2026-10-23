@@ -48,6 +48,13 @@ def test_logical_name(monkeypatch, tmp_path, logical_name):
     assert f"use     {logical_name}.example2_csr_pkg.ALL;" in (tmp_path / "example2_csr.vhd").read_text()
 
 #--------------------------------------------
+def test_interface(monkeypatch, tmp_path):
+    """--interface replaces the interface of the hjson file"""
+    run(monkeypatch, tmp_path, os.path.join(EXAMPLES_DIR, "example2.hjson"), "--interface", "apb")
+
+    assert "ins_apb2mem : entity work.apb2mem" in (tmp_path / "example2_csr.vhd").read_text()
+
+#--------------------------------------------
 def test_invalid_hjson(monkeypatch, tmp_path):
     hjson_file = tmp_path / "bad.hjson"
     hjson_file.write_text('{ name: "bad", registers: [ { name: "r" } ] }')

@@ -313,7 +313,7 @@
       width: 12
     }
   ]
-  interface: reg
+  interface: mem
   addr_offset: 4
   size_addr: 5
 }
