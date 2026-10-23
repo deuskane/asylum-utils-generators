@@ -1,0 +1,88 @@
+{
+    // CSR of the regtool testbenches (tb_regtool_<interface>.vhd, tb_regtool.v)
+    // The interface is set by the generator parameter "interface"
+    name      : "tbcsr",
+    desc      : "CSR of the regtool testbenches",
+    width     : 32,
+
+    registers : [
+        {
+            name       : "ctrl",
+            address    : "x00",
+            desc       : "Read / write register, read by the hardware",
+            swaccess   : "rw",
+            hwaccess   : "ro",
+            fields: [
+                { name: "en"   , bits: "0"   , init: "1"  , desc: "Enable" },
+                { name: "mode" , bits: "5:4" , init: "2"  , desc: "Mode"   },
+                { name: "div"  , bits: "15:8", init: "x10", desc: "Divider"}
+            ]
+        },
+        {
+            name       : "status",
+            address    : "x04",
+            desc       : "Read only register, written by the hardware",
+            swaccess   : "ro",
+            hwaccess   : "wo",
+            fields: [
+                { name: "busy" , bits: "0"   , desc: "Busy"  },
+                { name: "count", bits: "11:4", desc: "Count" }
+            ]
+        },
+        {
+            name       : "irq",
+            address    : "x08",
+            desc       : "Flags set by the hardware, cleared by writing 1",
+            swaccess   : "rw1c",
+            hwaccess   : "rw",
+            fields: [
+                { name: "flags", bits: "3:0" , desc: "Flags" }
+            ]
+        },
+        {
+            name       : "cmd",
+            address    : "x0C",
+            desc       : "Write only register (reads 0)",
+            swaccess   : "wo",
+            hwaccess   : "ro",
+            fields: [
+                { name: "op"   , bits: "7:0" , desc: "Operation" }
+            ]
+        },
+        {
+            name       : "ext",
+            address    : "x10",
+            desc       : "External register",
+            swaccess   : "rw",
+            hwaccess   : "rw",
+            hwtype     : "ext",
+            fields: [
+                { name: "data" , bits: "31:0", desc: "Data" }
+            ]
+        },
+        {
+            name       : "rx",
+            address    : "x14",
+            desc       : "FIFO hardware to software, blocking read",
+            swaccess   : "ro",
+            hwaccess   : "wo",
+            hwtype     : "fifo",
+            params     : { BLOCKING_READ : "True", DEPTH_HW2SW : "2" },
+            fields: [
+                { name: "data" , bits: "15:0", desc: "Data" }
+            ]
+        },
+        {
+            name       : "tx",
+            address    : "x18",
+            desc       : "FIFO software to hardware, blocking write",
+            swaccess   : "wo",
+            hwaccess   : "ro",
+            hwtype     : "fifo",
+            params     : { BLOCKING_WRITE : "True", DEPTH_SW2HW : "1" },
+            fields: [
+                { name: "data" , bits: "15:0", desc: "Data" }
+            ]
+        }
+    ]
+}
