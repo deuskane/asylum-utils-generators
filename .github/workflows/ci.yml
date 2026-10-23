@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+jobs:
+#<GENERATE_BEGIN>
+  sim_regtool_example1:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_example1
+
+#<GENERATE_END>
