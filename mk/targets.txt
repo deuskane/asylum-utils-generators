@@ -1,3 +1,4 @@
 default              : Default Target
+sim                  : default run rule
 sim_regtool_example1 : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
 
