@@ -1,10 +1,11 @@
 """
 Unit tests of the HDL generator of the CSR (gen_hdl.py) : CSR model ->
-package and module (hdl_model), written in VHDL. Text checks, then
-analysis and elaboration with GHDL when ghdl is in the PATH (skipped
-otherwise).
+package and module (hdl_model), written in VHDL and in Verilog. Text checks,
+then GHDL (analysis, elaboration), verilator (lint) and iverilog
+(compilation) when they are in the PATH (skipped otherwise).
 """
 
+import glob
 import os
 import re
 import subprocess
@@ -16,6 +17,7 @@ from gen_hdl  import (build_package, build_module, generate_hdl_package, generat
                       parse_expr, parse_type)
 from hdl_model import *
 import gen_vhdl
+import gen_verilog
 
 #--------------------------------------------
 def vhdl(csr):
@@ -278,3 +280,130 @@ def test_ghdl_elaborate(make_csr, tmp_path, enable, interface):
 
     # The generics of the top are set at run time (elaboration of the generate statements)
     ghdl("--elab-run", *options, "test_registers", f"-gOPT_ENABLE={enable}", "-gINIT=01011010", "--stop-time=1ns", cwd=tmp_path)
+
+#============================================
+# Verilog
+#============================================
+
+#--------------------------------------------
+def verilog(csr):
+    """Verilog texts (header, module) of the csr"""
+    package = build_package(csr, "verilog")
+    return gen_verilog.verilog_header(package), gen_verilog.verilog_module(build_module(csr, package, "verilog"))
+
+#--------------------------------------------
+def vports(text):
+    """Port names of the module test_registers"""
+    header = text[text.index("module test_registers"):text.index("   );")]
+    return re.findall(r"^\s*,?(?:input|output)\s+wire\s+(?:\[[^\]]*\]\s*)?(\w+)", header, re.M)
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["pbi", "sbi"])
+def test_verilog_record_interface(make_csr, tmp_path, interface):
+    """No Verilog for the buses defined by VHDL records"""
+    with pytest.raises(ValueError):
+        generate_hdl_module(make_csr(desc([reg()], interface=interface)), str(tmp_path / "m.v"), "verilog")
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
+def test_verilog_interface(make_csr, interface):
+    """sw2hw / hw2sw records flattened in sw2hw_<reg>_<item>_o / hw2sw_<reg>_<item>_i"""
+    _, mod = verilog(make_csr(desc([reg(fields=[field("a", "0"), field("b", "11:4")])], interface=interface)))
+    assert vports(mod) == ["clk_i", "arst_b_i"] + BUS_PORTS[interface] + \
+        ["sw2hw_r_re_o", "sw2hw_r_we_o", "sw2hw_r_a_o", "sw2hw_r_b_o", "hw2sw_r_we_i", "hw2sw_r_a_i", "hw2sw_r_b_i"]
+    assert ("2mem" in mod) == (interface != "mem")
+
+#--------------------------------------------
+def test_verilog_fifo_ports(make_csr):
+    """Flattened records of a FIFO register (same items as the VHDL records)"""
+    _, mod = verilog(make_csr(desc([reg("q", hwtype="fifo")])))
+    assert vports(mod)[-10:] == ["sw2hw_q_ready_o", "sw2hw_q_valid_o", "sw2hw_q_f_o",
+                                 "sw2hw_q_sw2hw_empty_o", "sw2hw_q_sw2hw_full_o",
+                                 "sw2hw_q_hw2sw_empty_o", "sw2hw_q_hw2sw_full_o",
+                                 "hw2sw_q_ready_i", "hw2sw_q_valid_i", "hw2sw_q_f_i"]
+
+#--------------------------------------------
+def test_verilog_parameters(make_csr):
+    csr    = make_csr(desc([reg(enable="EN")], parameters=[{"name": "EN", "type": "boolean", "desc": "Enable"},
+                                                           {"name": "V" , "type": "std_logic_vector(7 downto 0)"}]))
+    _, mod = verilog(csr)
+    assert "  #(parameter EN = 0 // Enable\n" in mod
+    assert "   ,parameter [7:0] V = 0\n"      in mod
+    assert "    if ((EN) != 0)\n"             in mod
+
+#--------------------------------------------
+def test_verilog_constants(make_csr):
+    """Constants of the package used by the module copied as localparam"""
+    enum   = [{"name": "run", "value": "x2"}]
+    _, mod = verilog(make_csr(desc([reg("r0"), reg("cmd", address="x10", fields=[field("op", "5:4", enum=enum)])])))
+    assert re.search(r"localparam\s+TEST_ADDR_WIDTH\s+= 5;", mod)
+    assert re.search(r"localparam \[TEST_ADDR_WIDTH-1:0\] TEST_CMD\s+= 5'h10;", mod)
+    assert "TEST_CMD_OP_RUN" not in mod                         # not used by the module
+
+#--------------------------------------------
+def test_verilog_alias_write(make_csr):
+    _, mod = verilog(make_csr(desc([reg("r0"), reg("r1", alias_write="r0")])))
+    assert "assign r0_wcs = ((sig_waddr == TEST_R0) || (sig_waddr == TEST_R1)) ? 1'b1 :" in mod
+
+#--------------------------------------------
+def test_verilog_fifo_params(make_csr):
+    params = {"BLOCKING_READ": "True", "DEPTH_HW2SW": "DEPTH"}
+    _, mod = verilog(make_csr(desc([reg("q", hwtype="fifo", params=params)],
+                                   parameters=[{"name": "DEPTH", "type": "natural"}])))
+    assert re.search(r",\.BLOCKING_READ\s+\(1\)$"   , mod, re.M)
+    assert re.search(r",\.DEPTH_HW2SW\s+\(DEPTH\)$" , mod, re.M)
+
+#--------------------------------------------
+def test_verilog_header(make_csr):
+    enum   = [{"name": "run", "value": "x2", "desc": "Run"}]
+    hdr, _ = verilog(make_csr(desc([reg("r0"), reg("cmd", address="x10", fields=[field("op", "5:4", enum=enum)])], width=8)))
+    assert "`ifndef TEST_CSR_PKG_VH\n"       in hdr
+    assert "`define TEST_ADDR_WIDTH 5\n"     in hdr
+    assert "`define TEST_DATA_WIDTH 8\n"     in hdr
+    assert "`define TEST_CMD 5'h10\n"        in hdr
+    assert "`define TEST_CMD_OP_RUN 2'h2\n"  in hdr
+    assert "`define TEST_CMD_OP_RUN_RAW 8'h20\n" in hdr
+
+#--------------------------------------------
+TOOLS_DESC = desc([
+    reg("ctrl"  , swaccess="rw"   , hwaccess="ro", fields=[field("en", "0"), field("div", "15:8", init="x10")]),
+    reg("status", swaccess="ro"   , hwaccess="wo", fields=[field("busy", "0")]),
+    reg("irq"   , swaccess="rw1c" , hwaccess="rw", fields=[field("flags", "3:0")]),
+    reg("cmd"   , swaccess="wo"   , hwaccess="ro", fields=[field("op", "1:0")], address="x10"),
+    reg("data"  , swaccess="rw"   , hwaccess="rw", hwtype="ext"),
+    reg("rx"    , swaccess="ro"   , hwaccess="wo", hwtype="fifo", params={"BLOCKING_READ": "True", "DEPTH_HW2SW": "DEPTH"}),
+    reg("tx"    , swaccess="wo"   , hwaccess="ro", hwtype="fifo", params={"DEPTH_SW2HW": "4"}),
+    reg("opt"   , swaccess="rw"   , hwaccess="ro", enable="OPT_ENABLE", fields=[field("v", "7:0", expr="INIT")]),
+], parameters=[{"name": "OPT_ENABLE", "type": "boolean"}, {"name": "DEPTH", "type": "natural"},
+               {"name": "INIT", "type": "std_logic_vector(7 downto 0)"}])
+
+#--------------------------------------------
+def verilog_files(make_csr, tmp_path, interface):
+    csr = make_csr(dict(TOOLS_DESC, interface=interface))
+    generate_hdl_module (csr, str(tmp_path / "test_csr.v")     , "verilog")
+    generate_hdl_package(csr, str(tmp_path / "test_csr_pkg.vh"), "verilog")
+    return sorted(glob.glob(os.path.join(HDL_DIR, "*.v"))) + [str(tmp_path / "test_csr.v")]
+
+#--------------------------------------------
+def run(*args, cwd):
+    result = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    return result.stdout + result.stderr
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
+@pytest.mark.parametrize("enable", ["1", "0"])
+def test_verilator_lint(make_csr, tmp_path, interface, enable):
+    """Lint clean (-Wall), except the unused signals of a disabled register"""
+    verilator = tool("verilator")
+    files     = verilog_files(make_csr, tmp_path, interface)
+    run(verilator, "--lint-only", "-Wall", "-Wno-UNUSEDSIGNAL", "--top-module", "test_registers",
+        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", *files, cwd=tmp_path)
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
+def test_iverilog_compile(make_csr, tmp_path, interface):
+    iverilog = tool("iverilog")
+    files    = verilog_files(make_csr, tmp_path, interface)
+    run(iverilog, "-g2005", "-Wall", "-s", "test_registers", "-o", "test.vvp",
+        "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", *files, cwd=tmp_path)

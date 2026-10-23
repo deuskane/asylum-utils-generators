@@ -1,184 +1,253 @@
 """
-Unit tests of the Verilog generator (gen_verilog.py) : text checks, then lint
-with verilator and compilation with iverilog when they are in the PATH
-(skipped otherwise).
+Unit tests of the generic Verilog writer (gen_verilog.py) : hdl_model ->
+Verilog, without CSR. The module DEMO (a counter with a record port, a
+generate and an instance) is linted with verilator and simulated with
+iverilog when they are in the PATH.
 """
 
-import glob
-import os
-import re
 import subprocess
 
 import pytest
 
-from conftest import field, reg, desc, tool, HDL_DIR
-from gen_verilog import (generate_verilog_module, generate_verilog_header, check_verilog,
-                         verilog_expr, verilog_param_range, verilog_init, verilog_bus_data)
-
-#--------------------------------------------
-def ports(text):
-    """Port names of the module test_registers"""
-    header = text[text.index("module test_registers"):text.index(");")]
-    return re.findall(r"^\s*,?(?:input|output)\s+wire\s+(?:\[[^\]]*\]\s*)?(\w+)", header, re.M)
+from conftest import tool
+from hdl_model import *
+from gen_verilog import (verilog_range, verilog_expr, verilog_decls, verilog_stmts, verilog_header,
+                         verilog_module, flat_ports, imported_constants)
 
 #============================================
-# Helpers
+# Types and expressions
 #============================================
 
 #--------------------------------------------
-@pytest.mark.parametrize("interface", ["pbi", "sbi"])
-def test_check_verilog(make_csr, interface):
+@pytest.mark.parametrize("t, text", [
+    (Bit()                          , ""),
+    (Vector(8)                      , "[7:0] "),
+    (Vector(1)                      , "[0:0] "),
+    (Vector(Ref("W"))               , "[W-1:0] "),
+    (Vector(4, "unsigned")          , "[3:0] "),
+    (Integer()                      , ""),
+    (Boolean()                      , ""),
+])
+def test_range(t, text):
+    assert verilog_range(t) == text
+
+#--------------------------------------------
+@pytest.mark.parametrize("e, text", [
+    (Ref("a")                               , "a"),
+    (BitConst(1)                            , "1'b1"),
+    (VecConst(26, 5)                        , "5'h1A"),
+    (IntConst(3)                            , "3"),
+    (BoolConst(False)                       , "0"),
+    (StrConst("rw")                         , '"rw"'),
+    (Fill(0, 8)                             , "{8{1'b0}}"),
+    (Fill(1, Ref("W"))                      , "{W{1'b1}}"),
+    (Slice(Ref("a"), 7, 4)                  , "a[7:4]"),
+    (Index(Ref("a"), 2)                     , "a[2]"),
+    (Concat([Fill(0, 3), Ref("a"), BitConst(1)]), "{{3{1'b0}}, a, 1'b1}"),
+    (Not(Ref("a"))                          , "~a"),
+    (And([Ref("a"), Not(Ref("b"))])         , "a & (~b)"),
+    (Or([Ref("a"), Ref("b")])               , "a | b"),
+    (Eq(Ref("a"), BitConst(1))              , "a == 1'b1"),
+    (BoolOr([Eq(Ref("a"), Ref("b")), Eq(Ref("c"), Ref("d"))]), "(a == b) || (c == d)"),
+    (Truth(Ref("EN"))                       , "(EN) != 0"),
+    (Truth(BoolConst(True))                 , "1"),
+    (Cast(Ref("a"), "unsigned")             , "a"),
+    (Arith("/", Ref("W"), IntConst(8))      , "W/8"),
+    (Raw("f(x)")                            , "f(x)"),
+])
+def test_expr(e, text):
+    assert verilog_expr(e) == text
+
+#--------------------------------------------
+REC  = RecordType("rec_t", [RecordField("x", Bit()), RecordField("sub", RecordType("sub_t", [RecordField("y", Vector(2))]))])
+PORT = Port("r_o", "out", REC, prefix="r", suffix="_o")
+
+#--------------------------------------------
+def test_record_element():
+    """A record element is the flattened port"""
+    ctx = {"r_o": PORT}
+    assert verilog_expr(Ref("r_o", ("x",)), ctx)              == "r_x_o"
+    assert verilog_expr(Ref("r_o", ("sub", "y")), ctx)        == "r_sub_y_o"
+    assert verilog_expr(Slice(Ref("r_o", ("sub", "y")), 1, 1), ctx) == "r_sub_y_o[1:1]"
+
+#--------------------------------------------
+@pytest.mark.parametrize("e", [Ref("s", ("x",)), Slice(Concat([Ref("a")]), 1, 0)])
+def test_unsupported_expr(e):
+    """Element of a record signal (not a port), slice of an expression"""
     with pytest.raises(ValueError):
-        check_verilog(make_csr(desc([reg()], interface=interface)))
+        verilog_expr(e, {})
 
 #--------------------------------------------
-@pytest.mark.parametrize("vhdl, verilog", [
-    ("True"                        , "1"),
-    ("false"                       , "0"),
-    ('"0101"'                      , "4'b0101"),
-    ("PARAM"                       , "PARAM"),
-    ("PARAM(7 downto 0)"           , "PARAM[7:0]"),
-    ("PARAM(15 downto 8)"          , "PARAM[15:8]"),
-    ("DEPTH_TX"                    , "DEPTH_TX"),
-    ("4"                           , "4"),
-])
-def test_verilog_expr(vhdl, verilog):
-    assert verilog_expr(vhdl) == verilog
+def test_flat_ports():
+    ports = flat_ports(Module("m", ports=[Comment(["c"]), Port("a_i", "in", Bit()), PORT]))
+    assert [p.name if isinstance(p, Port) else "#" for p in ports] == ["#", "a_i", "r_x_o", "r_sub_y_o"]
+    assert ports[-1].type == Vector(2) and ports[-1].direction == "out"
 
 #--------------------------------------------
-@pytest.mark.parametrize("vhdl, verilog", [
-    ("boolean"                     , ""),
-    ("natural"                     , ""),
-    ("std_logic_vector(7 downto 0)", "[7:0] "),
-])
-def test_verilog_param_range(vhdl, verilog):
-    assert verilog_param_range(vhdl) == verilog
-
-#--------------------------------------------
-def test_verilog_init(make_csr):
-    """Fields packed from bit 0 in the order of the hjson, expr masked and shifted"""
-    r = make_csr(desc([reg(fields=[field("a", "0", init="1"), field("b", "11:4", init="x5A"), field("c", "13:12", expr="P")])],
-                      parameters=[{"name": "P", "type": "natural"}]))['registers'][0]
-    assert verilog_init(r) == "11'hB5 | ((P & {2{1'b1}}) << 9)"
-
-#--------------------------------------------
-def test_verilog_bus_data(make_csr):
-    """Each field at its bus position, 0 in the gaps"""
-    csr = make_csr(desc([reg(fields=[field("a", "0"), field("b", "11:4"), field("c", "13:12")])], width=16))
-    assert verilog_bus_data(csr, csr['registers'][0], "d") == "{2'b0, d[10:9], d[8:1], 3'b0, d[0:0]}"
+def test_external_port():
+    with pytest.raises(ValueError):
+        flat_ports(Module("m", ports=[Port("s_i", "in", ExternalType("sbi_ini_t"))]))
 
 #============================================
-# Module
+# Declarations and statements
 #============================================
 
 #--------------------------------------------
-BUS_PORTS = {
-    "mem"      : ["cs_i", "re_i", "we_i", "addr_i", "wdata_i", "rdata_o", "busy_o"],
-    "apb"      : ["s_apb_psel_i", "s_apb_penable_i", "s_apb_pwrite_i", "s_apb_paddr_i", "s_apb_pwdata_i",
-                  "s_apb_prdata_o", "s_apb_pready_o", "s_apb_pslverr_o"],
-    "axi4lite" : ["s_axi_awvalid_i", "s_axi_awready_o", "s_axi_awaddr_i",
-                  "s_axi_wvalid_i", "s_axi_wready_o", "s_axi_wdata_i", "s_axi_wstrb_i",
-                  "s_axi_bvalid_o", "s_axi_bready_i", "s_axi_bresp_o",
-                  "s_axi_arvalid_i", "s_axi_arready_o", "s_axi_araddr_i",
-                  "s_axi_rvalid_o", "s_axi_rready_i", "s_axi_rdata_o", "s_axi_rresp_o"],
-}
+def test_decls_aligned():
+    lines = verilog_decls([Signal("a", Bit()), Signal("bcd", Vector(2), "comment"), "",
+                           Constant("C", Vector(4), VecConst(4, 4)), Signal("u", Bit(), unused_ok=True)], "  ", {})
+    assert lines == ["  wire             a;",
+                     "  wire       [1:0] bcd; // comment",
+                     "",
+                     "  localparam [3:0] C = 4'h4;",
+                     "  // verilator lint_off UNUSEDSIGNAL",
+                     "  wire             u;",
+                     "  // verilator lint_on UNUSEDSIGNAL"]
 
 #--------------------------------------------
-@pytest.mark.parametrize("interface", BUS_PORTS.keys())
-def test_module_interface(make_csr, generate, interface):
-    text = generate(generate_verilog_module, make_csr(desc([reg(fields=[field("a", "0"), field("b", "11:4")])],
-                                                           interface=interface)))
-    assert ports(text) == ["clk_i", "arst_b_i"] + BUS_PORTS[interface] + \
-        ["sw2hw_r_re_o", "sw2hw_r_we_o", "sw2hw_r_a_o", "sw2hw_r_b_o", "hw2sw_r_we_i", "hw2sw_r_a_i", "hw2sw_r_b_i"]
-    assert ("2mem" in text) == (interface != "mem")
+def test_cond_assign():
+    s = CondAssign(Ref("y"), [(Eq(Ref("s"), BitConst(1)), Ref("a")), (Eq(Ref("t"), BitConst(1)), Ref("b"))], Fill(0, 4))
+    assert verilog_stmts([s], "", {}) == ["assign y = (s == 1'b1) ? a :",
+                                          "           (t == 1'b1) ? b :",
+                                          "           {4{1'b0}};"]
 
 #--------------------------------------------
-def test_module_fifo_ports(make_csr, generate):
-    """Flattened records of a FIFO register (same items as the VHDL records)"""
-    text = generate(generate_verilog_module, make_csr(desc([reg("q", hwtype="fifo")])))
-    assert ports(text)[-10:] == ["sw2hw_q_ready_o", "sw2hw_q_valid_o", "sw2hw_q_f_o",
-                                 "sw2hw_q_sw2hw_empty_o", "sw2hw_q_sw2hw_full_o",
-                                 "sw2hw_q_hw2sw_empty_o", "sw2hw_q_hw2sw_full_o",
-                                 "hw2sw_q_ready_i", "hw2sw_q_valid_i", "hw2sw_q_f_i"]
+def test_instance():
+    s = Instance("cell", "ins_cell", [("W", IntConst(4)), ("M", StrConst("rw"))],
+                 [("a_i", Ref("a")), ("y_o", None)], library="lib")
+    assert verilog_stmts([s], "", {}) == ["cell",
+                                          "  #(.W (4)",
+                                          "   ,.M (\"rw\")",
+                                          "   )",
+                                          "ins_cell",
+                                          "  (.a_i (a)",
+                                          "  ,.y_o ()",
+                                          "  );"]
 
 #--------------------------------------------
-def test_module_parameters(make_csr, generate):
-    csr  = make_csr(desc([reg(enable="EN")], parameters=[{"name": "EN", "type": "boolean", "desc": "Enable"},
-                                                         {"name": "V" , "type": "std_logic_vector(7 downto 0)"}]))
-    text = generate(generate_verilog_module, csr)
-    assert "  #(parameter EN = 0 // Enable\n" in text
-    assert "   ,parameter [7:0] V = 0 // \n"  in text
-    assert "    if ((EN) != 0)\n"             in text
-
-#--------------------------------------------
-def test_module_alias_write(make_csr, generate):
-    text = generate(generate_verilog_module, make_csr(desc([reg("r0"), reg("r1", alias_write="r0")])))
-    assert "assign r0_wcs   = (sig_waddr == ADDR_R0) | (sig_waddr == ADDR_R1);" in text
-
-#--------------------------------------------
-def test_module_fifo_params(make_csr, generate):
-    params = {"BLOCKING_READ": "True", "DEPTH_HW2SW": "DEPTH"}
-    text   = generate(generate_verilog_module, make_csr(desc([reg("q", hwtype="fifo", params=params)],
-                                                             parameters=[{"name": "DEPTH", "type": "natural"}])))
-    assert ",.BLOCKING_READ  (1)"     in text
-    assert ",.DEPTH_HW2SW    (DEPTH)" in text
-
-#--------------------------------------------
-def test_header(make_csr, generate):
-    enum = [{"name": "run", "value": "x2", "desc": "Run"}]
-    csr  = make_csr(desc([reg("r0"), reg("cmd", address="x10", fields=[field("op", "5:4", enum=enum)])], width=8))
-    text = generate(generate_verilog_header, csr)
-    assert "`ifndef TEST_CSR_PKG_VH\n"           in text
-    assert "`define TEST_ADDR_WIDTH 5\n"         in text
-    assert "`define TEST_DATA_WIDTH 8\n"         in text
-    assert "`define TEST_CMD 5'h10\n"            in text
-    assert "`define TEST_CMD_OP_RUN     2'h2\n"  in text
-    assert "`define TEST_CMD_OP_RUN_RAW 8'h20\n" in text
+def test_generate():
+    """generate keyword only at the top level, local declarations, else block <name>_b"""
+    inner = IfGenerate("gen_in", Truth(Ref("B")), [], [Assign(Ref("u"), Ref("v"))])
+    s     = IfGenerate("gen_x", Truth(Ref("EN")), [Signal("t", Bit())], [Assign(Ref("t"), Ref("a")), inner],
+                       [], [Assign(Ref("y"), BitConst(0))])
+    assert verilog_stmts([s], "", {}) == ["generate",
+                                          "  if ((EN) != 0)",
+                                          "    begin : gen_x",
+                                          "      wire       t;",
+                                          "      assign t = a;",
+                                          "      if ((B) != 0)",
+                                          "        begin : gen_in",
+                                          "          assign u = v;",
+                                          "        end // gen_in",
+                                          "    end // gen_x",
+                                          "  else",
+                                          "    begin : gen_x_b",
+                                          "      assign y = 1'b0;",
+                                          "    end // gen_x_b",
+                                          "endgenerate"]
 
 #============================================
-# verilator and iverilog
+# Units
 #============================================
 
 #--------------------------------------------
-TOOLS_DESC = desc([
-    reg("ctrl"  , swaccess="rw"   , hwaccess="ro", fields=[field("en", "0"), field("div", "15:8", init="x10")]),
-    reg("status", swaccess="ro"   , hwaccess="wo", fields=[field("busy", "0")]),
-    reg("irq"   , swaccess="rw1c" , hwaccess="rw", fields=[field("flags", "3:0")]),
-    reg("cmd"   , swaccess="wo"   , hwaccess="ro", fields=[field("op", "1:0")], address="x10"),
-    reg("data"  , swaccess="rw"   , hwaccess="rw", hwtype="ext"),
-    reg("rx"    , swaccess="ro"   , hwaccess="wo", hwtype="fifo", params={"BLOCKING_READ": "True", "DEPTH_HW2SW": "DEPTH"}),
-    reg("tx"    , swaccess="wo"   , hwaccess="ro", hwtype="fifo", params={"DEPTH_SW2HW": "4"}),
-    reg("opt"   , swaccess="rw"   , hwaccess="ro", enable="OPT_ENABLE", fields=[field("v", "7:0", expr="INIT")]),
-], parameters=[{"name": "OPT_ENABLE", "type": "boolean"}, {"name": "DEPTH", "type": "natural"},
-               {"name": "INIT", "type": "std_logic_vector(7 downto 0)"}])
+PKG = Package("demo_pkg", "work", [Comment(["Constants"]),
+                                   Constant("DEMO_W"  , Integer(), IntConst(4)),
+                                   Constant("DEMO_MAX", Vector(Ref("DEMO_W")), VecConst(15, 4)),
+                                   Constant("DEMO_NU" , Integer(), IntConst(9))])
 
 #--------------------------------------------
-def generate_files(make_csr, tmp_path, interface):
-    csr = make_csr(dict(TOOLS_DESC, interface=interface))
-    generate_verilog_module(csr, str(tmp_path / "test_csr.v"))
-    generate_verilog_header(csr, str(tmp_path / "test_csr_pkg.vh"))
-    return sorted(glob.glob(os.path.join(HDL_DIR, "*.v"))) + [str(tmp_path / "test_csr.v")]
+def test_imported_constants():
+    """Only the constants used by the module, with their dependencies"""
+    m = Module("m", ports=[Port("a_o", "out", Bit())], stmts=[Assign(Ref("a_o"), Eq(Ref("x"), Ref("DEMO_MAX")))],
+               imports=[PKG, Use("lib", "other_pkg")])
+    assert [c.name for c in imported_constants(m)] == ["DEMO_W", "DEMO_MAX"]
 
 #--------------------------------------------
-def run(*args, cwd):
-    result = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
-    assert result.returncode == 0, result.stdout + result.stderr
-    return result.stdout + result.stderr
+def test_header():
+    text = verilog_header(PKG)
+    assert text.startswith("`ifndef DEMO_PKG_VH\n`define DEMO_PKG_VH\n")
+    assert "`define DEMO_W 4\n" in text
+    assert "`define DEMO_MAX 4'hF\n" in text
+    assert "// Constants\n" in text
+    assert text.rstrip().endswith("`endif // DEMO_PKG_VH")
 
 #--------------------------------------------
-@pytest.mark.parametrize("interface", BUS_PORTS.keys())
-@pytest.mark.parametrize("enable", ["1", "0"])
-def test_verilator_lint(make_csr, tmp_path, interface, enable):
-    """Lint clean (-Wall), except the unused signals of a disabled register"""
+REC_DEMO = RecordType("demo_t", [RecordField("count", Vector(Ref("W"))), RecordField("max", Bit(), "Count = max")])
+
+DEMO     = Module("demo",
+                  generics = [Generic("W", Integer("positive"), IntConst(4), "Width"), Generic("EN", Boolean())],
+                  ports    = [Comment(["Clock"]), Port("clk_i", "in", Bit()), Port("arst_b_i", "in", Bit()),
+                              Port("demo_o", "out", REC_DEMO, prefix="demo", suffix="_o")],
+                  decls    = [Signal("q", Vector(Ref("W"), "unsigned"))],
+                  stmts    = [IfGenerate("gen_count", Truth(Ref("EN")), [], [
+                                 Instance("demo_cnt", "ins_cnt", [("W", Ref("W"))],
+                                          [("clk_i", Ref("clk_i")), ("arst_b_i", Ref("arst_b_i")), ("q_o", Ref("q")), ("unused_o", None)])],
+                                 [], [Assign(Ref("q"), Fill(0, Ref("W")))]),
+                              Assign(Ref("demo_o", ("count",)), Cast(Ref("q"), "slv")),
+                              CondAssign(Ref("demo_o", ("max",)), [(Eq(Ref("q"), Fill(1, Ref("W"))), BitConst(1))], BitConst(0))],
+                  header   = ["Demo"])
+
+#--------------------------------------------
+def test_module():
+    text = verilog_module(DEMO, "demo.v")
+    assert text.startswith("// Demo\n")
+    assert "// verilator lint_off PINCONNECTEMPTY\nmodule demo\n" in text      # open port
+    assert "DECLFILENAME" not in text                                          # file demo.v
+    assert "  #(parameter W = 4 // Width\n   ,parameter EN = 0\n   )\n" in text
+    assert "   ,output wire [W-1:0] demo_count_o\n" in text
+    assert "   ,output wire demo_max_o // Count = max\n" in text
+    assert "DECLFILENAME" in verilog_module(DEMO, "other.v")
+
+#--------------------------------------------
+# Counter instantiated by DEMO and testbench (hand written)
+DEMO_CNT = """
+module demo_cnt #(parameter W = 1) (input wire clk_i, input wire arst_b_i, output reg [W-1:0] q_o, output wire unused_o);
+  always @(posedge clk_i or negedge arst_b_i)
+    if (!arst_b_i) q_o <= {W{1'b0}}; else q_o <= q_o + 1'b1;
+  assign unused_o = 1'b0;
+endmodule
+"""
+
+DEMO_TB = """
+`timescale 1ns/1ps
+module tb;
+  reg clk = 0, arst_b = 0;
+  wire [3:0] count;
+  wire       max;
+  always #5 clk = ~clk;
+  initial #12 arst_b = 1;
+  demo #(.W(4), .EN(1)) dut (.clk_i(clk), .arst_b_i(arst_b), .demo_count_o(count), .demo_max_o(max));
+  initial begin
+    wait (max);
+    if (count !== 4'hF) $display("ERROR");
+    else                $display("OK %0t", $time);
+    $finish;
+  end
+endmodule
+"""
+
+#--------------------------------------------
+def test_verilator(tmp_path):
     verilator = tool("verilator")
-    files     = generate_files(make_csr, tmp_path, interface)
-    run(verilator, "--lint-only", "-Wall", "-Wno-UNUSEDSIGNAL", "--top-module", "test_registers",
-        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", *files, cwd=tmp_path)
+    (tmp_path / "demo.v").write_text(verilog_module(DEMO, "demo.v"))
+    (tmp_path / "demo_cnt.v").write_text(DEMO_CNT)
+    for enable in ["0", "1"]:
+        result = subprocess.run([verilator, "--lint-only", "-Wall", "-Wno-UNUSEDSIGNAL", "-Wno-DECLFILENAME",
+                                 "--top-module", "demo", f"-GEN={enable}", "demo.v", "demo_cnt.v"],
+                                cwd=tmp_path, capture_output=True, text=True)
+        assert result.returncode == 0, result.stdout + result.stderr
 
 #--------------------------------------------
-@pytest.mark.parametrize("interface", BUS_PORTS.keys())
-def test_iverilog_compile(make_csr, tmp_path, interface):
+def test_iverilog(tmp_path):
+    """The counter of DEMO reaches its maximum value"""
     iverilog = tool("iverilog")
-    files    = generate_files(make_csr, tmp_path, interface)
-    run(iverilog, "-g2005", "-Wall", "-s", "test_registers", "-o", "test.vvp",
-        "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", *files, cwd=tmp_path)
+    vvp      = tool("vvp")
+    (tmp_path / "demo.v").write_text(verilog_module(DEMO, "demo.v"))
+    (tmp_path / "demo_cnt.v").write_text(DEMO_CNT)
+    (tmp_path / "tb.v").write_text(DEMO_TB)
+    build = subprocess.run([iverilog, "-g2005", "-o", "tb.vvp", "demo.v", "demo_cnt.v", "tb.v"],
+                           cwd=tmp_path, capture_output=True, text=True)
+    assert build.returncode == 0, build.stdout + build.stderr
+    run   = subprocess.run([vvp, "-n", "tb.vvp"], cwd=tmp_path, capture_output=True, text=True)
+    assert "OK" in run.stdout and "ERROR" not in run.stdout, run.stdout

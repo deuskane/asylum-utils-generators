@@ -13,7 +13,7 @@ import pytest
 
 import csr_model
 from conftest import tool, HDL_DIR, REGTOOL_DIR
-from gen_verilog import generate_verilog_module
+from gen_hdl  import generate_hdl_module
 
 SIM_DIR   = os.path.join(REGTOOL_DIR, "sim")
 
@@ -29,7 +29,7 @@ def test_sim_verilog(tmp_path, interface, test):
     vvp      = tool("vvp")
 
     csr = csr_model.parse_hjson(os.path.join(SIM_DIR, "tbcsr.hjson"), interface=interface)
-    generate_verilog_module(csr, str(tmp_path / "tbcsr_csr.v"))
+    generate_hdl_module(csr, str(tmp_path / "tbcsr_csr.v"), "verilog")
 
     files = sorted(glob.glob(os.path.join(HDL_DIR, "*.v"))) + \
             [str(tmp_path / "tbcsr_csr.v"), os.path.join(SIM_DIR, "tb_regtool.v")]

@@ -1,13 +1,12 @@
 """
 Module regtool.py
 Command line of regtool : reads the CSR description (csr_model) and calls the
-generators (gen_hdl for VHDL, gen_verilog, gen_c, gen_markdown).
+generators (gen_hdl for VHDL and Verilog, gen_c, gen_markdown).
 """
 
 import argparse
 from   csr_model    import parse_hjson
 from   gen_hdl      import generate_hdl_package, generate_hdl_module
-from   gen_verilog  import generate_verilog_header, generate_verilog_module
 from   gen_c        import generate_c_header
 from   gen_markdown import generate_doc_markdown
 
@@ -45,10 +44,10 @@ def main():
     print(f"VHDL module   generated in {vhdl_module}")
     # Verilog only on request (no Verilog bridge for sbi and pbi)
     if args.verilog_header:
-        generate_verilog_header(csr, args.verilog_header)
+        generate_hdl_package(csr, args.verilog_header, 'verilog')
         print(f"Verilog header generated in {args.verilog_header}")
     if args.verilog_module:
-        generate_verilog_module(csr, args.verilog_module)
+        generate_hdl_module (csr, args.verilog_module, 'verilog')
         print(f"Verilog module generated in {args.verilog_module}")
     print(f"C    header   generated in {c_header}")
     print(f"Doc  markdown generated in {doc_markdown}")
