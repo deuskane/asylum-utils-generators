@@ -15,6 +15,9 @@
 //  testbenches (tb_regtool_scenario.vhd), one scenario per simulation (TEST),
 //  plus "axi_concurrent" (axi4lite : read and write requested together).
 //  Prints "[TESTBENCH] Test <TEST> OK" or "[TESTBENCH] ERROR : ..."
+//  SystemVerilog CSR (tbcsr_csr_pkg.sv, tbcsr_csr.sv) : define TB_SV and
+//  compile as SystemVerilog, the sw2hw / hw2sw structs are connected to the
+//  same hardware side signals.
 //  Run by tests/test_sim_verilog.py (iverilog)
 //-----------------------------------------------------------------------------
 // Copyright (c) 2026
@@ -22,6 +25,7 @@
 // Revisions  :
 // Date        Version  Author   Description
 // 2026-10-23  1.0      mrosiere Created
+// 2026-10-24  1.1      mrosiere SystemVerilog CSR (TB_SV)
 //-----------------------------------------------------------------------------
 
 `timescale 1ns/1ps
@@ -128,6 +132,50 @@ module tb_regtool;
   wire          sw2hw_tx_sw2hw_full;
   reg           hw2sw_tx_ready     = 1'b0;
 
+`ifdef TB_SV
+  // SystemVerilog CSR : hardware side in the structs of tbcsr_csr_pkg
+  tbcsr_csr_pkg::tbcsr_sw2hw_t sw2hw;
+  tbcsr_csr_pkg::tbcsr_hw2sw_t hw2sw;
+
+  assign sw2hw_ctrl_re          = sw2hw.ctrl.re;
+  assign sw2hw_ctrl_we          = sw2hw.ctrl.we;
+  assign sw2hw_ctrl_en          = sw2hw.ctrl.en;
+  assign sw2hw_ctrl_mode        = sw2hw.ctrl.mode;
+  assign sw2hw_ctrl_div         = sw2hw.ctrl.div;
+  assign sw2hw_status_re        = sw2hw.status.re;
+  assign sw2hw_irq_re           = sw2hw.irq.re;
+  assign sw2hw_irq_we           = sw2hw.irq.we;
+  assign sw2hw_irq_flags        = sw2hw.irq.flags;
+  assign sw2hw_cmd_we           = sw2hw.cmd.we;
+  assign sw2hw_cmd_op           = sw2hw.cmd.op;
+  assign sw2hw_ext_re           = sw2hw.ext.re;
+  assign sw2hw_ext_we           = sw2hw.ext.we;
+  assign sw2hw_ext_data         = sw2hw.ext.data;
+  assign sw2hw_rx_ready         = sw2hw.rx.ready;
+  assign sw2hw_rx_hw2sw_empty   = sw2hw.rx.hw2sw_empty;
+  assign sw2hw_rx_hw2sw_full    = sw2hw.rx.hw2sw_full;
+  assign sw2hw_tx_valid         = sw2hw.tx.valid;
+  assign sw2hw_tx_data          = sw2hw.tx.data;
+  assign sw2hw_tx_sw2hw_empty   = sw2hw.tx.sw2hw_empty;
+  assign sw2hw_tx_sw2hw_full    = sw2hw.tx.sw2hw_full;
+
+  assign hw2sw.status.we        = hw2sw_status_we;
+  assign hw2sw.status.busy      = hw2sw_status_busy;
+  assign hw2sw.status.count     = hw2sw_status_count;
+  assign hw2sw.irq.we           = hw2sw_irq_we;
+  assign hw2sw.irq.flags        = hw2sw_irq_flags;
+  assign hw2sw.ext.we           = hw2sw_ext_we;
+  assign hw2sw.ext.data         = hw2sw_ext_data;
+  assign hw2sw.rx.valid         = hw2sw_rx_valid;
+  assign hw2sw.rx.data          = hw2sw_rx_data;
+  assign hw2sw.tx.ready         = hw2sw_tx_ready;
+
+`define TB_CSR_PORTS \
+    .clk_i                  (clk),                  \
+    .arst_b_i               (arst_b),               \
+    .sw2hw_o                (sw2hw),                \
+    .hw2sw_i                (hw2sw)
+`else
 `define TB_CSR_PORTS \
     .clk_i                  (clk),                  \
     .arst_b_i               (arst_b),               \
@@ -162,6 +210,7 @@ module tb_regtool;
     .sw2hw_tx_sw2hw_empty_o (sw2hw_tx_sw2hw_empty), \
     .sw2hw_tx_sw2hw_full_o  (sw2hw_tx_sw2hw_full),  \
     .hw2sw_tx_ready_i       (hw2sw_tx_ready)
+`endif
 
   //---------------------------------------------------------------------------
   // DUT
