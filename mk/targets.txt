@@ -1,4 +1,44 @@
-default              : Default Target
-sim                  : default run rule
-sim_regtool_example1 : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
+default                         : Default Target
+sim                             : default run rule
+sim_regtool_apb_ext             : regtool testbench, interface apb, external register
+sim_regtool_apb_fifo_read       : regtool testbench, interface apb, blocking read of an empty FIFO
+sim_regtool_apb_fifo_write      : regtool testbench, interface apb, blocking write of a full FIFO
+sim_regtool_apb_hw_write        : regtool testbench, interface apb, registers written by the hardware, rw1c
+sim_regtool_apb_reset           : regtool testbench, interface apb, reset values
+sim_regtool_apb_unmapped        : regtool testbench, interface apb, access to an unmapped address
+sim_regtool_apb_write_read      : regtool testbench, interface apb, software write / read back, write only register
+sim_regtool_axi4lite_ext        : regtool testbench, interface axi4lite, external register
+sim_regtool_axi4lite_fifo_read  : regtool testbench, interface axi4lite, blocking read of an empty FIFO
+sim_regtool_axi4lite_fifo_write : regtool testbench, interface axi4lite, blocking write of a full FIFO
+sim_regtool_axi4lite_hw_write   : regtool testbench, interface axi4lite, registers written by the hardware, rw1c
+sim_regtool_axi4lite_reset      : regtool testbench, interface axi4lite, reset values
+sim_regtool_axi4lite_unmapped   : regtool testbench, interface axi4lite, access to an unmapped address
+sim_regtool_axi4lite_write_read : regtool testbench, interface axi4lite, software write / read back, write only register
+sim_regtool_example1            : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
+sim_regtool_mem_ext             : regtool testbench, interface mem, external register
+sim_regtool_mem_fifo_read       : regtool testbench, interface mem, blocking read of an empty FIFO
+sim_regtool_mem_fifo_write      : regtool testbench, interface mem, blocking write of a full FIFO
+sim_regtool_mem_hw_write        : regtool testbench, interface mem, registers written by the hardware, rw1c
+sim_regtool_mem_reset           : regtool testbench, interface mem, reset values
+sim_regtool_mem_unmapped        : regtool testbench, interface mem, access to an unmapped address
+sim_regtool_mem_write_read      : regtool testbench, interface mem, software write / read back, write only register
+sim_regtool_pbi_ext             : regtool testbench, interface pbi, external register
+sim_regtool_pbi_fifo_read       : regtool testbench, interface pbi, blocking read of an empty FIFO
+sim_regtool_pbi_fifo_write      : regtool testbench, interface pbi, blocking write of a full FIFO
+sim_regtool_pbi_hw_write        : regtool testbench, interface pbi, registers written by the hardware, rw1c
+sim_regtool_pbi_reset           : regtool testbench, interface pbi, reset values
+sim_regtool_pbi_unmapped        : regtool testbench, interface pbi, access to an unmapped address
+sim_regtool_pbi_write_read      : regtool testbench, interface pbi, software write / read back, write only register
+sim_regtool_sbi_ext             : regtool testbench, interface sbi, external register
+sim_regtool_sbi_fifo_read       : regtool testbench, interface sbi, blocking read of an empty FIFO
+sim_regtool_sbi_fifo_write      : regtool testbench, interface sbi, blocking write of a full FIFO
+sim_regtool_sbi_hw_write        : regtool testbench, interface sbi, registers written by the hardware, rw1c
+sim_regtool_sbi_reset           : regtool testbench, interface sbi, reset values
+sim_regtool_sbi_unmapped        : regtool testbench, interface sbi, access to an unmapped address
+sim_regtool_sbi_write_read      : regtool testbench, interface sbi, software write / read back, write only register
+tb_regtool_apb                  : regtool testbench, interface apb (base of the sim_regtool_apb_* targets)
+tb_regtool_axi4lite             : regtool testbench, interface axi4lite (base of the sim_regtool_axi4lite_* targets)
+tb_regtool_mem                  : regtool testbench, interface mem (base of the sim_regtool_mem_* targets)
+tb_regtool_pbi                  : regtool testbench, interface pbi (base of the sim_regtool_pbi_* targets)
+tb_regtool_sbi                  : regtool testbench, interface sbi (base of the sim_regtool_sbi_* targets)
 

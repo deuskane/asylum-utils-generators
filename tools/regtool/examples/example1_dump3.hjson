@@ -45,7 +45,7 @@
       hwtype: reg
       address_write:
       [
-        0
+        reg1
       ]
       alias_write: null
       sw2hw_re: true
@@ -95,7 +95,7 @@
       hwtype: reg
       address_write:
       [
-        4
+        reg2
       ]
       alias_write: null
       sw2hw_re: true
@@ -145,7 +145,7 @@
       enable: True
       address_write:
       [
-        8
+        reg3
       ]
       alias_write: null
       sw2hw_re: true
@@ -195,7 +195,7 @@
       enable: True
       address_write:
       [
-        16
+        fifo_sw2hw
       ]
       alias_write: null
       sw2hw_re: true
@@ -245,7 +245,7 @@
       enable: True
       address_write:
       [
-        20
+        fifo_hw2sw
       ]
       alias_write: null
       sw2hw_re: false
@@ -295,7 +295,7 @@
       enable: True
       address_write:
       [
-        24
+        fifo_bidir
       ]
       alias_write: null
       sw2hw_re: true
@@ -313,7 +313,7 @@
       width: 12
     }
   ]
-  interface: reg
+  interface: mem
   addr_offset: 4
   size_addr: 5
 }

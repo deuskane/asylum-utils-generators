@@ -57,9 +57,15 @@ CAPI=2:
 #                               csr_reg      : Add "wo" model
 #                               gen_rom      : Exit with status 1 on error
 # 2026-10-21  2.8.0    mrosiere ghdl         : add script and Makefile to generate ghdl synth option
+# 2026-10-23  2.9.0    mrosiere regtool      : CSR model separated from the generators (csr_model, gen_*)
+#                                              gen_hdl (CSR) -> hdl_model -> generic writers gen_vhdl / gen_verilog
+#                                              memory interface only, buses through the bridges
+#                                              sbi2mem, pbi2mem, apb2mem, axi4lite2mem (interface "reg" = "mem")
+#                                              Verilog and SystemVerilog outputs (parameter language), parameter interface
+#                                              pytest unit tests, sim_regtool_<interface>_<scenario> targets
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.8.0
+name       : asylum:utils:generators:2.9.0
 description: A collection of useful generators
 
 #=========================================
@@ -167,10 +173,23 @@ generators:
                        Name prefix
 
         copy         : (Optional)
+                       Directory of the calling core where the outputs are copied
                        Default : None
 
         logical_name : (Optional)
                        Default : work
+
+        interface    : (Optional)
+                       Replace the interface of the hjson file
+                       "mem"       : memory interface (cs, re, we, addr, wdata, rdata, busy)
+                       "sbi", "pbi", "apb", "axi4lite" : bus through the bridge <interface>2mem
+                       Default : interface of the hjson file
+
+        language     : (Optional)
+                       "vhdl"      : <name>_csr_pkg.vhd and <name>_csr.vhd
+                       "verilog"   : <name>_csr_pkg.vh  and <name>_csr.v  (mem, apb, axi4lite)
+                       "systemverilog" : <name>_csr_pkg.sv and <name>_csr.sv (mem, apb, axi4lite)
+                       Default : vhdl
 
 #=========================================
 filesets:
@@ -189,6 +208,62 @@ filesets:
       - tools/ghdl/ghdl_synth.sh : {file_type : user, copyto : ghdl_synth.sh}
       - tools/ghdl/ghdl_synth.mk : {file_type : user, copyto : ghdl_synth.mk}
     file_type : user
+
+  #---------------------------------------
+  files_regtool_sim:
+  #---------------------------------------
+    files:
+      - tools/regtool/sim/tb_regtool_pkg.vhd
+      - tools/regtool/sim/tb_regtool_scenario.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+    depend       :
+      - asylum:utils:pkg
+
+  #---------------------------------------
+  files_regtool_sim_mem:
+  #---------------------------------------
+    files:
+      - tools/regtool/sim/tb_mem_master.vhd
+      - tools/regtool/sim/tb_regtool_mem.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+
+  #---------------------------------------
+  files_regtool_sim_sbi:
+  #---------------------------------------
+    files:
+      - tools/regtool/sim/tb_sbi_master.vhd
+      - tools/regtool/sim/tb_regtool_sbi.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+
+  #---------------------------------------
+  files_regtool_sim_pbi:
+  #---------------------------------------
+    files:
+      - tools/regtool/sim/tb_pbi_master.vhd
+      - tools/regtool/sim/tb_regtool_pbi.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+
+  #---------------------------------------
+  files_regtool_sim_apb:
+  #---------------------------------------
+    files:
+      - tools/regtool/sim/tb_apb_master.vhd
+      - tools/regtool/sim/tb_regtool_apb.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+
+  #---------------------------------------
+  files_regtool_sim_axi4lite:
+  #---------------------------------------
+    files:
+      - tools/regtool/sim/tb_axi4lite_master.vhd
+      - tools/regtool/sim/tb_regtool_axi4lite.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
 
 #=========================================
 generate:
@@ -230,6 +305,56 @@ generate:
       name         : example4
       logical_name : asylum
 
+  #---------------------------------------
+  gen_csr_tb_mem:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : tools/regtool/sim/tbcsr.hjson
+      name         : tbcsr
+      logical_name : asylum
+      interface    : mem
+
+  #---------------------------------------
+  gen_csr_tb_sbi:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : tools/regtool/sim/tbcsr.hjson
+      name         : tbcsr
+      logical_name : asylum
+      interface    : sbi
+
+  #---------------------------------------
+  gen_csr_tb_pbi:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : tools/regtool/sim/tbcsr.hjson
+      name         : tbcsr
+      logical_name : asylum
+      interface    : pbi
+
+  #---------------------------------------
+  gen_csr_tb_apb:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : tools/regtool/sim/tbcsr.hjson
+      name         : tbcsr
+      logical_name : asylum
+      interface    : apb
+
+  #---------------------------------------
+  gen_csr_tb_axi4lite:
+  #---------------------------------------
+    generator : regtool
+    parameters:
+      file         : tools/regtool/sim/tbcsr.hjson
+      name         : tbcsr
+      logical_name : asylum
+      interface    : axi4lite
+
 #=========================================
 parameters:
 #=========================================
@@ -237,6 +362,11 @@ parameters:
   REG1_ENABLE :
     datatype    : bool
     description : Enable the register reg1 of example1
+    paramtype   : generic
+
+  TEST :
+    datatype    : str
+    description : Scenario of the regtool testbenches (tools/regtool/sim/tb_regtool_scenario.vhd)
     paramtype   : generic
 
 #=========================================
@@ -272,6 +402,251 @@ targets:
     toplevel        : asylum.example1_registers
     parameters      :
       - REG1_ENABLE=true
+
+  #---------------------------------------
+  tb_regtool_mem: &tb_regtool_mem
+  #---------------------------------------
+    << : *sim
+    description     : regtool testbench, interface mem (base of the sim_regtool_mem_* targets)
+    filesets        :
+      - deps
+      - "tool_ghdl?(files_ghdl)"
+      - files_regtool_sim
+      - files_regtool_sim_mem
+    generate        :
+      - gen_csr_tb_mem
+    toplevel        : asylum.tb_regtool_mem
+
+  sim_regtool_mem_reset:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, reset values
+    parameters      : [TEST=reset]
+
+  sim_regtool_mem_write_read:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, software write / read back, write only register
+    parameters      : [TEST=write_read]
+
+  sim_regtool_mem_hw_write:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, registers written by the hardware, rw1c
+    parameters      : [TEST=hw_write]
+
+  sim_regtool_mem_ext:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, external register
+    parameters      : [TEST=ext]
+
+  sim_regtool_mem_fifo_read:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, blocking read of an empty FIFO
+    parameters      : [TEST=fifo_read]
+
+  sim_regtool_mem_fifo_write:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, blocking write of a full FIFO
+    parameters      : [TEST=fifo_write]
+
+  sim_regtool_mem_unmapped:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, access to an unmapped address
+    parameters      : [TEST=unmapped]
+
+  #---------------------------------------
+  tb_regtool_sbi: &tb_regtool_sbi
+  #---------------------------------------
+    << : *sim
+    description     : regtool testbench, interface sbi (base of the sim_regtool_sbi_* targets)
+    filesets        :
+      - deps
+      - "tool_ghdl?(files_ghdl)"
+      - files_regtool_sim
+      - files_regtool_sim_sbi
+    generate        :
+      - gen_csr_tb_sbi
+    toplevel        : asylum.tb_regtool_sbi
+
+  sim_regtool_sbi_reset:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, reset values
+    parameters      : [TEST=reset]
+
+  sim_regtool_sbi_write_read:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, software write / read back, write only register
+    parameters      : [TEST=write_read]
+
+  sim_regtool_sbi_hw_write:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, registers written by the hardware, rw1c
+    parameters      : [TEST=hw_write]
+
+  sim_regtool_sbi_ext:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, external register
+    parameters      : [TEST=ext]
+
+  sim_regtool_sbi_fifo_read:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, blocking read of an empty FIFO
+    parameters      : [TEST=fifo_read]
+
+  sim_regtool_sbi_fifo_write:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, blocking write of a full FIFO
+    parameters      : [TEST=fifo_write]
+
+  sim_regtool_sbi_unmapped:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, access to an unmapped address
+    parameters      : [TEST=unmapped]
+
+  #---------------------------------------
+  tb_regtool_pbi: &tb_regtool_pbi
+  #---------------------------------------
+    << : *sim
+    description     : regtool testbench, interface pbi (base of the sim_regtool_pbi_* targets)
+    filesets        :
+      - deps
+      - "tool_ghdl?(files_ghdl)"
+      - files_regtool_sim
+      - files_regtool_sim_pbi
+    generate        :
+      - gen_csr_tb_pbi
+    toplevel        : asylum.tb_regtool_pbi
+
+  sim_regtool_pbi_reset:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, reset values
+    parameters      : [TEST=reset]
+
+  sim_regtool_pbi_write_read:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, software write / read back, write only register
+    parameters      : [TEST=write_read]
+
+  sim_regtool_pbi_hw_write:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, registers written by the hardware, rw1c
+    parameters      : [TEST=hw_write]
+
+  sim_regtool_pbi_ext:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, external register
+    parameters      : [TEST=ext]
+
+  sim_regtool_pbi_fifo_read:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, blocking read of an empty FIFO
+    parameters      : [TEST=fifo_read]
+
+  sim_regtool_pbi_fifo_write:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, blocking write of a full FIFO
+    parameters      : [TEST=fifo_write]
+
+  sim_regtool_pbi_unmapped:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, access to an unmapped address
+    parameters      : [TEST=unmapped]
+
+  #---------------------------------------
+  tb_regtool_apb: &tb_regtool_apb
+  #---------------------------------------
+    << : *sim
+    description     : regtool testbench, interface apb (base of the sim_regtool_apb_* targets)
+    filesets        :
+      - deps
+      - "tool_ghdl?(files_ghdl)"
+      - files_regtool_sim
+      - files_regtool_sim_apb
+    generate        :
+      - gen_csr_tb_apb
+    toplevel        : asylum.tb_regtool_apb
+
+  sim_regtool_apb_reset:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, reset values
+    parameters      : [TEST=reset]
+
+  sim_regtool_apb_write_read:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, software write / read back, write only register
+    parameters      : [TEST=write_read]
+
+  sim_regtool_apb_hw_write:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, registers written by the hardware, rw1c
+    parameters      : [TEST=hw_write]
+
+  sim_regtool_apb_ext:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, external register
+    parameters      : [TEST=ext]
+
+  sim_regtool_apb_fifo_read:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, blocking read of an empty FIFO
+    parameters      : [TEST=fifo_read]
+
+  sim_regtool_apb_fifo_write:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, blocking write of a full FIFO
+    parameters      : [TEST=fifo_write]
+
+  sim_regtool_apb_unmapped:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, access to an unmapped address
+    parameters      : [TEST=unmapped]
+
+  #---------------------------------------
+  tb_regtool_axi4lite: &tb_regtool_axi4lite
+  #---------------------------------------
+    << : *sim
+    description     : regtool testbench, interface axi4lite (base of the sim_regtool_axi4lite_* targets)
+    filesets        :
+      - deps
+      - "tool_ghdl?(files_ghdl)"
+      - files_regtool_sim
+      - files_regtool_sim_axi4lite
+    generate        :
+      - gen_csr_tb_axi4lite
+    toplevel        : asylum.tb_regtool_axi4lite
+
+  sim_regtool_axi4lite_reset:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, reset values
+    parameters      : [TEST=reset]
+
+  sim_regtool_axi4lite_write_read:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, software write / read back, write only register
+    parameters      : [TEST=write_read]
+
+  sim_regtool_axi4lite_hw_write:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, registers written by the hardware, rw1c
+    parameters      : [TEST=hw_write]
+
+  sim_regtool_axi4lite_ext:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, external register
+    parameters      : [TEST=ext]
+
+  sim_regtool_axi4lite_fifo_read:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, blocking read of an empty FIFO
+    parameters      : [TEST=fifo_read]
+
+  sim_regtool_axi4lite_fifo_write:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, blocking write of a full FIFO
+    parameters      : [TEST=fifo_write]
+
+  sim_regtool_axi4lite_unmapped:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, access to an unmapped address
+    parameters      : [TEST=unmapped]
 
 #  #---------------------------------------
 #  sim_regtool_example2:

@@ -6,10 +6,209 @@ on:
   pull_request:
     branches: [ main, develop ]
 jobs:
+  # regtool unit tests (pytest), with GHDL, iverilog and verilator
+  regtool_pytest:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/asylum-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the test tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends iverilog verilator
+          pip3 install --break-system-packages -r tools/regtool/requirements_test.txt
+          # sbi_pkg / pbi_pkg for the GHDL tests of the sbi and pbi interfaces
+          git clone --depth 1 https://github.com/deuskane/asylum-utils-pkg.git /opt/asylum-utils-pkg
+
+      - name: pytest
+        env:
+          ASYLUM_UTILS_PKG_DIR: /opt/asylum-utils-pkg/hdl
+        run: python3 -m pytest tools/regtool -n auto
+
 #<GENERATE_BEGIN>
+  sim_regtool_apb_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_ext
+
+  sim_regtool_apb_fifo_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_fifo_read
+
+  sim_regtool_apb_fifo_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_fifo_write
+
+  sim_regtool_apb_hw_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_hw_write
+
+  sim_regtool_apb_reset:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_reset
+
+  sim_regtool_apb_unmapped:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_unmapped
+
+  sim_regtool_apb_write_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_write_read
+
+  sim_regtool_axi4lite_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_ext
+
+  sim_regtool_axi4lite_fifo_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_fifo_read
+
+  sim_regtool_axi4lite_fifo_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_fifo_write
+
+  sim_regtool_axi4lite_hw_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_hw_write
+
+  sim_regtool_axi4lite_reset:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_reset
+
+  sim_regtool_axi4lite_unmapped:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_unmapped
+
+  sim_regtool_axi4lite_write_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_write_read
+
   sim_regtool_example1:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
       name: sim_regtool_example1
+
+  sim_regtool_mem_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_ext
+
+  sim_regtool_mem_fifo_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_fifo_read
+
+  sim_regtool_mem_fifo_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_fifo_write
+
+  sim_regtool_mem_hw_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_hw_write
+
+  sim_regtool_mem_reset:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_reset
+
+  sim_regtool_mem_unmapped:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_unmapped
+
+  sim_regtool_mem_write_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_write_read
+
+  sim_regtool_pbi_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_ext
+
+  sim_regtool_pbi_fifo_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_fifo_read
+
+  sim_regtool_pbi_fifo_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_fifo_write
+
+  sim_regtool_pbi_hw_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_hw_write
+
+  sim_regtool_pbi_reset:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_reset
+
+  sim_regtool_pbi_unmapped:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_unmapped
+
+  sim_regtool_pbi_write_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_write_read
+
+  sim_regtool_sbi_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_ext
+
+  sim_regtool_sbi_fifo_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_fifo_read
+
+  sim_regtool_sbi_fifo_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_fifo_write
+
+  sim_regtool_sbi_hw_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_hw_write
+
+  sim_regtool_sbi_reset:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_reset
+
+  sim_regtool_sbi_unmapped:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_unmapped
+
+  sim_regtool_sbi_write_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_write_read
 
 #<GENERATE_END>

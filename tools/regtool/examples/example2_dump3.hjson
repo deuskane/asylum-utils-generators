@@ -55,7 +55,7 @@
       width: 16
     }
   ]
-  interface: reg
+  interface: mem
   addr_offset: 4
   parameters: []
   size_addr: 0
