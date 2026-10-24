@@ -1,6 +1,10 @@
-default              : Default Target
-lint_ghdl            : Lint with GHDL (-Wall analysis and elaboration of csr_synth_top)
-lint_ghdl_synth      : Synthesis check, ghdl --synth -Wall of csr_synth_top (5 configurations)
-sim                  : default run rule
-sim_regtool_example1 : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
+default                          : Default Target
+lint_ghdl                        : Lint with GHDL (-Wall analysis and elaboration of csr_wrapper)
+lint_ghdl_synth_default          : Synthesis check of csr_wrapper, default generics
+lint_ghdl_synth_fifo_blocking    : Synthesis check of csr_wrapper, csr_fifo with FIFOs, blocking read
+lint_ghdl_synth_fifo_nonblocking : Synthesis check of csr_wrapper, csr_fifo with FIFOs, non-blocking write
+lint_ghdl_synth_init_a5          : Synthesis check of csr_wrapper, INIT x"A5"
+lint_ghdl_synth_width1_init1     : Synthesis check of csr_wrapper, WIDTH 1, INIT "1"
+sim                              : default run rule
+sim_regtool_example1             : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
 
