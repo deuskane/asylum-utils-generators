@@ -1,6 +1,6 @@
 """
 Unit tests of the HDL generator of the CSR (gen_hdl.py) : CSR model ->
-package and module (hdl_model), written in VHDL and in Verilog. Text checks,
+package and module (hdl_model), written in VHDL, Verilog and SystemVerilog. Text checks,
 then GHDL (analysis, elaboration), verilator (lint) and iverilog
 (compilation) when they are in the PATH (skipped otherwise).
 """
@@ -18,6 +18,7 @@ from gen_hdl  import (build_package, build_module, generate_hdl_package, generat
 from hdl_model import *
 import gen_vhdl
 import gen_verilog
+import gen_systemverilog
 
 #--------------------------------------------
 def vhdl(csr):
@@ -407,3 +408,82 @@ def test_iverilog_compile(make_csr, tmp_path, interface):
     files    = verilog_files(make_csr, tmp_path, interface)
     run(iverilog, "-g2005", "-Wall", "-s", "test_registers", "-o", "test.vvp",
         "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", *files, cwd=tmp_path)
+
+#============================================
+# SystemVerilog
+#============================================
+
+#--------------------------------------------
+def systemverilog(csr):
+    """SystemVerilog texts (package, module) of the csr"""
+    package = build_package(csr, "systemverilog")
+    return gen_systemverilog.sv_package(package), gen_systemverilog.sv_module(build_module(csr, package, "systemverilog"))
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["pbi", "sbi"])
+def test_sv_record_interface(make_csr, tmp_path, interface):
+    """No SystemVerilog for the buses defined by VHDL records"""
+    with pytest.raises(ValueError):
+        generate_hdl_module(make_csr(desc([reg()], interface=interface)), str(tmp_path / "m.sv"), "systemverilog")
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
+def test_sv_interface(make_csr, interface):
+    """Same bus ports as Verilog, hardware side : structs sw2hw_o / hw2sw_i"""
+    _, mod = systemverilog(make_csr(desc([reg(fields=[field("a", "0"), field("b", "11:4")])], interface=interface)))
+    assert vports(mod.replace("logic", "wire")) == ["clk_i", "arst_b_i"] + BUS_PORTS[interface]
+    assert "   ,output test_sw2hw_t sw2hw_o" in mod
+    assert "   ,input  test_hw2sw_t hw2sw_i" in mod
+    assert "module test_registers\n  import test_csr_pkg::*;\n" in mod
+
+#--------------------------------------------
+def test_sv_package(make_csr):
+    """Constants, structs with the items of the VHDL records"""
+    enum   = [{"name": "run", "value": "x2"}]
+    pkg, _ = systemverilog(make_csr(desc([reg("q", hwtype="fifo", fields=[field("d", "0")]),
+                                          reg("cmd", address="x10", fields=[field("op", "5:4", enum=enum)])])))
+    assert "package test_csr_pkg;" in pkg
+    assert re.search(r"localparam int\s+TEST_ADDR_WIDTH = 5;", pkg)
+    assert re.search(r"localparam logic \[TEST_ADDR_WIDTH-1:0\] TEST_CMD = 5'h10;", pkg)
+    assert re.search(r"localparam logic \[1:0\]\s+TEST_CMD_OP_RUN\s+= 2'h2;", pkg)
+    sw2hw = pkg[pkg.index("typedef struct packed"):pkg.index("} test_q_sw2hw_t;")]
+    assert re.findall(r"^\s+logic\s*(?:\[[^\]]*\])?\s+(\w+);", sw2hw, re.M) == \
+        ["ready", "valid", "d", "sw2hw_empty", "sw2hw_full", "hw2sw_empty", "hw2sw_full"]
+    assert re.search(r"test_q_sw2hw_t\s+q;", pkg)
+    assert "} test_sw2hw_t;" in pkg
+
+#--------------------------------------------
+def test_sv_struct_elements(make_csr):
+    """sw2hw_o.<reg>.<item> written, hw2sw_i.<reg>.<item> read with a size cast"""
+    _, mod = systemverilog(make_csr(desc([reg(fields=[field("a", "0"), field("b", "11:4")])])))
+    assert re.search(r"assign sw2hw_o\.r\.b\s+= r_rdata_hw\[8:1\];", mod)
+    assert re.search(r"assign r_wdata_hw\s+= \{8'\(hw2sw_i\.r\.b\), 1'\(hw2sw_i\.r\.a\)\};", mod)
+    assert re.search(r",\.hw_we_i\s+\(1'\(hw2sw_i\.r\.we\)\)", mod)
+    assert re.search(r",\.hw_sw_re_o\s+\(sw2hw_o\.r\.re\)", mod)
+
+#--------------------------------------------
+def sv_files(make_csr, tmp_path, interface):
+    csr = make_csr(dict(TOOLS_DESC, interface=interface))
+    generate_hdl_package(csr, str(tmp_path / "test_csr_pkg.sv"), "systemverilog")
+    generate_hdl_module (csr, str(tmp_path / "test_csr.sv")    , "systemverilog")
+    return sorted(glob.glob(os.path.join(HDL_DIR, "*.v"))) + [str(tmp_path / "test_csr_pkg.sv"), str(tmp_path / "test_csr.sv")]
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
+@pytest.mark.parametrize("enable", ["1", "0"])
+def test_sv_verilator_lint(make_csr, tmp_path, interface, enable):
+    """Lint clean (-Wall), except the unused signals of a disabled register"""
+    verilator = tool("verilator")
+    files     = sv_files(make_csr, tmp_path, interface)
+    run(verilator, "--lint-only", "-Wall", "-Wno-UNUSEDSIGNAL", "--top-module", "test_registers",
+        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", *files, cwd=tmp_path)
+
+#--------------------------------------------
+@pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
+def test_sv_iverilog_compile(make_csr, tmp_path, interface):
+    """Compilation without warning (iverilog 12, -g2012)"""
+    iverilog = tool("iverilog")
+    files    = sv_files(make_csr, tmp_path, interface)
+    output   = run(iverilog, "-g2012", "-Wall", "-s", "test_registers", "-o", "test.vvp",
+                   "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", *files, cwd=tmp_path)
+    assert "warning" not in output, output

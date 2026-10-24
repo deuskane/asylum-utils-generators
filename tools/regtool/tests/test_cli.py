@@ -64,6 +64,15 @@ def test_verilog(monkeypatch, tmp_path):
     assert (tmp_path / "h.vh").exists()
 
 #--------------------------------------------
+def test_systemverilog(monkeypatch, tmp_path):
+    """SystemVerilog outputs only on request"""
+    run(monkeypatch, tmp_path, os.path.join(EXAMPLES_DIR, "example2.hjson"),
+        "--sv_module", "m.sv", "--sv_package", "p.sv")
+
+    assert (tmp_path / "m.sv").read_text().count("module example2_registers") == 1
+    assert "package example2_csr_pkg;" in (tmp_path / "p.sv").read_text()
+
+#--------------------------------------------
 def test_verilog_sbi(monkeypatch, tmp_path):
     """No Verilog for the sbi interface (VHDL records)"""
     with pytest.raises(ValueError):

@@ -2,10 +2,13 @@
 Module gen_hdl.py
 HDL generator of regtool : builds the package and the module of the CSR
 (hdl_model) from the CSR model (csr_model), then writes them with the
-generic writer of the language (gen_vhdl.py or gen_verilog.py).
+generic writer of the language (gen_vhdl.py, gen_verilog.py or
+gen_systemverilog.py).
 
 Verilog : <name>_csr_pkg.vh (`define of the package constants) and
-<name>_csr.v ; interfaces mem, apb, axi4lite (sbi / pbi are VHDL records).
+<name>_csr.v ; SystemVerilog : <name>_csr_pkg.sv (package : constants,
+sw2hw / hw2sw packed structs) and <name>_csr.sv ; interfaces mem, apb,
+axi4lite (sbi / pbi are VHDL records).
 
 Package <name>_csr_pkg : widths, register addresses, sw2hw / hw2sw records,
                          enum constants, component <name>_registers
@@ -21,8 +24,16 @@ from   csr_model import parse_value, parse_init_value
 from   hdl_model import *
 import gen_vhdl
 import gen_verilog
+import gen_systemverilog
 
-LANGUAGES          = ['vhdl','verilog']
+# Writers of each language : (package, module)
+WRITERS            = {
+    'vhdl'          : (gen_vhdl.write_vhdl_package       , gen_vhdl.write_vhdl_module       ),
+    'verilog'       : (gen_verilog.write_verilog_header  , gen_verilog.write_verilog_module ),
+    'systemverilog' : (gen_systemverilog.write_sv_package, gen_systemverilog.write_sv_module),
+}
+
+LANGUAGES          = list(WRITERS.keys())
 
 # Interfaces of the bus types defined in a VHDL package (no Verilog)
 RECORD_INTERFACES  = ['sbi','pbi']
@@ -571,10 +582,7 @@ def generate_hdl_package(csr, output_path, language='vhdl'):
     """Package of the csr in the language"""
     check_language(csr, language)
     package = build_package(csr, language)
-    if language == 'vhdl':
-        gen_vhdl.write_vhdl_package(package, output_path)
-    else:
-        gen_verilog.write_verilog_header(package, output_path)
+    WRITERS[language][0](package, output_path)
 
 #--------------------------------------------
 def generate_hdl_module(csr, output_path, language='vhdl'):
@@ -582,7 +590,4 @@ def generate_hdl_module(csr, output_path, language='vhdl'):
     check_language(csr, language)
     package = build_package(csr, language)
     module  = build_module(csr, package, language)
-    if language == 'vhdl':
-        gen_vhdl.write_vhdl_module(module, output_path)
-    else:
-        gen_verilog.write_verilog_module(module, output_path)
+    WRITERS[language][1](module, output_path)

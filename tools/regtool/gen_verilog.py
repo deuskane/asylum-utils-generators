@@ -280,7 +280,7 @@ class VerilogWriter:
         if isinstance(d, Constant):
             keyword, t = self.decl_type(d)
             return [f"{indent}{keyword:<10} {t:<{width}}{d.name:<{name}} = {self.expr(d.value)};{self.comment_tail(d.comment)}"]
-        if isinstance(d, (RecordType, Component)):
+        if isinstance(d, (RecordType, Component, Use)):
             return []                           # Package items (VHDL)
         if d is None or d == "":
             return [""]
