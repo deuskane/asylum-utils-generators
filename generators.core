@@ -61,7 +61,7 @@ CAPI=2:
 #                                              gen_hdl (CSR) -> hdl_model -> generic writers gen_vhdl / gen_verilog
 #                                              memory interface only, buses through the bridges
 #                                              sbi2mem, pbi2mem, apb2mem, axi4lite2mem (interface "reg" = "mem")
-#                                              Verilog output (parameter language), parameter interface
+#                                              Verilog and SystemVerilog outputs (parameter language), parameter interface
 #                                              pytest unit tests, sim_regtool_<interface>_<scenario> targets
 #-----------------------------------------------------------------------------
 

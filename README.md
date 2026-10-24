@@ -59,7 +59,7 @@ VLNV: `asylum:utils:generators:2.9.0`
 
 This repository provides the code generators used by the other Asylum cores through the FuseSoC `generate:` mechanism. It declares three generators in [generators.core](generators.core):
 
-- **`regtool`**: reads a register description (`hdl/csr/<X>.hjson`) and produces a CSR bank (`<X>_registers`, VHDL or Verilog) with its package / header, a C header and a Markdown documentation. The CSR logic has a memory interface; a bus (`sbi`, `pbi`, `apb`, `axi4lite`) is connected through a bridge `<bus>2mem`. Used by every IP with registers (`gen_csr` in their core).
+- **`regtool`**: reads a register description (`hdl/csr/<X>.hjson`) and produces a CSR bank (`<X>_registers`, VHDL, Verilog or SystemVerilog) with its package / header, a C header and a Markdown documentation. The CSR logic has a memory interface; a bus (`sbi`, `pbi`, `apb`, `axi4lite`) is connected through a bridge `<bus>2mem`. Used by every IP with registers (`gen_csr` in their core).
 - **`pbcc_gen`**: compiles a C file with the PicoBlaze port of SDCC (pbcc) or takes a KCPSM3 / PBlazeIDE assembler file, assembles it with picoasm and produces a ROM entity plus its component package (OpenBlaze8 / PicoBlaze-3 processors).
 - **`rvcc_gen`**: compiles C / assembler with a RISC-V GCC toolchain (`rv32i`) and produces a ROM entity plus its component package (WardRV processor).
 
@@ -67,12 +67,12 @@ Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the 
 
 ### Key Features
 
-- regtool: hjson schema validation, 10 software access models, `reg` / `ext` / `fifo` hardware types, hjson parameters mapped to VHDL generics / Verilog parameters, conditional registers (`enable`), write aliases, shared addresses, enumerated field values
+- regtool: hjson schema validation, 10 software access models, `reg` / `ext` / `fifo` hardware types, hjson parameters mapped to VHDL generics / Verilog / SystemVerilog parameters, conditional registers (`enable`), write aliases, shared addresses, enumerated field values
 - regtool interfaces: `mem` (memory interface of the CSR logic, `reg` is its former name), and the buses `sbi`, `pbi`, `apb` (APB3), `axi4lite` through the bridges `<bus>2mem` (`interface` in the hjson or in the generator parameters)
-- regtool outputs: VHDL (`<X>_csr.vhd`, `<X>_csr_pkg.vhd`) or Verilog (`<X>_csr.v`, `<X>_csr_pkg.vh`, interfaces `mem`, `apb`, `axi4lite`), `<X>_csr.h`, `<X>_csr.md`, optionally copied back into the source tree (`copy`)
-- regtool code: the CSR model ([csr_model.py](tools/regtool/csr_model.py)) is separated from the generators; [gen_hdl.py](tools/regtool/gen_hdl.py) builds the CSR package and module as a generic HDL description ([hdl_model.py](tools/regtool/hdl_model.py)), written by the generic writers [gen_vhdl.py](tools/regtool/gen_vhdl.py) and [gen_verilog.py](tools/regtool/gen_verilog.py) (no CSR knowledge); `gen_c.py`, `gen_markdown.py` for the C header and the documentation
+- regtool outputs: VHDL (`<X>_csr.vhd`, `<X>_csr_pkg.vhd`), Verilog 2005 (`<X>_csr.v`, `<X>_csr_pkg.vh`, records flattened in ports) or SystemVerilog (`<X>_csr.sv`, `<X>_csr_pkg.sv`, records as packed structs; Verilog / SystemVerilog : interfaces `mem`, `apb`, `axi4lite`), `<X>_csr.h`, `<X>_csr.md`, optionally copied back into the source tree (`copy`)
+- regtool code: the CSR model ([csr_model.py](tools/regtool/csr_model.py)) is separated from the generators; [gen_hdl.py](tools/regtool/gen_hdl.py) builds the CSR package and module as a generic HDL description ([hdl_model.py](tools/regtool/hdl_model.py)), written by the generic writers [gen_vhdl.py](tools/regtool/gen_vhdl.py), [gen_verilog.py](tools/regtool/gen_verilog.py) and [gen_systemverilog.py](tools/regtool/gen_systemverilog.py) (no CSR knowledge); `gen_c.py`, `gen_markdown.py` for the C header and the documentation
 - CSR building blocks in VHDL and Verilog: `csr_reg`, `csr_ext`, `csr_fifo` (with optional FIFOs and blocking access), `csr_pkg` (VHDL), bridges `sbi2mem`, `pbi2mem` (VHDL), `apb2mem`, `axi4lite2mem`
-- Verification: pytest unit tests of regtool, one FuseSoC simulation target per interface and scenario (VHDL), iverilog simulations of the Verilog output (pytest)
+- Verification: pytest unit tests of regtool, one FuseSoC simulation target per interface and scenario (VHDL), iverilog simulations of the Verilog and SystemVerilog outputs (pytest)
 - pbcc_gen: C (`c`) or assembler (`kcpsm3`, `pblazeide`) input, `generic` or `xilinx` ROM model, user `cflags` (relative `-I` paths resolved from the calling core)
 - rvcc_gen: C / assembler input, `start.S` and `link.ld` templates, stack size check, listing / map / size reports, `rv32i_zicsr` used when the compiler supports it
 - Generated `*-gen_csr_*` directories automatically added to the include path of pbcc / rvcc (C code can include `<X>_csr.h`)
@@ -82,7 +82,7 @@ Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the 
 ## Block Diagram
 
 - `regtool` (FuseSoC wrapper, [generators/regtool/regtool.py](generators/regtool/regtool.py)) calls the standalone tool [tools/regtool/regtool.py](tools/regtool/regtool.py) once per output file, then adds the building blocks (`csr_pkg` / `csr_reg` / `csr_ext` / `csr_fifo`, `.vhd` or `.v`), the bridge `<interface>2mem` (if the interface is not `mem`) and the generated files to the calling core.
-- [tools/regtool/regtool.py](tools/regtool/regtool.py): `csr_model.py` (hjson -> checked CSR model) -> `gen_hdl.py` (CSR model -> package and module in `hdl_model`) -> `gen_vhdl.py` or `gen_verilog.py` (generic writers); `csr_model.py` -> `gen_c.py` / `gen_markdown.py`.
+- [tools/regtool/regtool.py](tools/regtool/regtool.py): `csr_model.py` (hjson -> checked CSR model) -> `gen_hdl.py` (CSR model -> package and module in `hdl_model`) -> `gen_vhdl.py`, `gen_verilog.py` or `gen_systemverilog.py` (generic writers); `csr_model.py` -> `gen_c.py` / `gen_markdown.py`.
 - Generated `<X>_registers`: bus -> `<bus>2mem` -> memory interface (`cs` / `re` / `we` / `addr` / `wdata` / `rdata` / `busy`) -> address decode, read multiplexer, one building block per register -> `sw2hw` / `hw2sw`.
 - `csr_fifo` instantiates `fifo_sync` from `asylum:component:fifo` (grey, external core).
 - `pbcc_gen`: `.c` -> sdcc (`$PBCC_HOME/bin/sdcc`) -> `.psm` -> picoasm (`$PICOASM_HOME/bin/picoasm`) -> ROM `.vhd`; `gen_rom.py` writes the `_pkg.vhd`.
@@ -99,8 +99,8 @@ Library IP: there is no HDL top-level. Content of the repository:
 | `pbcc_gen` | FuseSoC generator | [generators/pbcc/pbcc.py](generators/pbcc/pbcc.py) + [templates/Makefile.j2](generators/pbcc/templates/Makefile.j2) | PicoBlaze ROM generator |
 | `rvcc_gen` | FuseSoC generator | [generators/rvcc/rvcc.py](generators/rvcc/rvcc.py) + [templates/](generators/rvcc/templates/) | RISC-V ROM generator (`Makefile.j2`, `start.S`, `link.ld`) |
 | regtool | Python tool | [tools/regtool/regtool.py](tools/regtool/regtool.py) (command line), [csr_model.py](tools/regtool/csr_model.py), [addrmap.py](tools/regtool/addrmap.py), [regtool_schema.hjson](tools/regtool/regtool_schema.hjson) | hjson parser / checker (CSR model) |
-| regtool HDL generator | Python tool | [gen_hdl.py](tools/regtool/gen_hdl.py) | CSR model -> package / module of the CSR (`hdl_model`), calls the VHDL or Verilog writer |
-| HDL model and writers | Python tool | [hdl_model.py](tools/regtool/hdl_model.py), [gen_vhdl.py](tools/regtool/gen_vhdl.py), [gen_verilog.py](tools/regtool/gen_verilog.py) | Generic description of a package / module (types, records, expressions, signals, assignments, instances, generate) and its VHDL / Verilog writers, independent of the CSR |
+| regtool HDL generator | Python tool | [gen_hdl.py](tools/regtool/gen_hdl.py) | CSR model -> package / module of the CSR (`hdl_model`), calls the VHDL, Verilog or SystemVerilog writer |
+| HDL model and writers | Python tool | [hdl_model.py](tools/regtool/hdl_model.py), [gen_vhdl.py](tools/regtool/gen_vhdl.py), [gen_verilog.py](tools/regtool/gen_verilog.py), [gen_systemverilog.py](tools/regtool/gen_systemverilog.py) | Generic description of a package / module (types, records, expressions, signals, assignments, instances, generate) and its VHDL / Verilog / SystemVerilog writers (the SystemVerilog writer derives the Verilog one), independent of the CSR |
 | regtool documentation generators | Python tool | [gen_c.py](tools/regtool/gen_c.py), [gen_markdown.py](tools/regtool/gen_markdown.py) | C header, Markdown |
 | `csr_pkg`, `csr_reg`, `csr_ext`, `csr_fifo` | VHDL, Verilog | [tools/regtool/hdl/](tools/regtool/hdl/) | CSR building blocks instantiated by generated banks |
 | `sbi2mem`, `pbi2mem`, `apb2mem`, `axi4lite2mem` | VHDL (+ Verilog for apb, axi4lite) | [tools/regtool/hdl/](tools/regtool/hdl/) | Bridges from a bus to the memory interface of the CSR |
@@ -125,7 +125,7 @@ Generator parameters (`parameters:` of a `generate:` entry in the calling core).
 | `copy` | string | *(none)* | Directory of the calling core where the 4 outputs are copied (must exist), e.g. `hdl/csr` |
 | `logical_name` | string | `work` | VHDL library of the generated and building-block files |
 | `interface` | string | *(hjson `interface`)* | Replaces the interface of the hjson file: `mem`, `sbi`, `pbi`, `apb`, `axi4lite` |
-| `language` | string | `vhdl` | `vhdl` (`<name>_csr_pkg.vhd`, `<name>_csr.vhd`) or `verilog` (`<name>_csr_pkg.vh`, `<name>_csr.v`; interfaces `mem`, `apb`, `axi4lite`) |
+| `language` | string | `vhdl` | `vhdl` (`<name>_csr_pkg.vhd`, `<name>_csr.vhd`), `verilog` (`<name>_csr_pkg.vh`, `<name>_csr.v`) or `systemverilog` (`<name>_csr_pkg.sv`, `<name>_csr.sv`, `systemVerilogSource`: compile as SystemVerilog, e.g. `iverilog -g2012`); Verilog / SystemVerilog : interfaces `mem`, `apb`, `axi4lite` |
 
 #### pbcc_gen
 
@@ -154,7 +154,7 @@ Environment: `pbcc_gen` needs `PICOASM_HOME` (and `PBCC_HOME` for C input); `rvc
 
 ### Ports
 
-The main reusable unit is the CSR bank generated by regtool, `<X>_registers` (`<X>_csr.vhd`; the Verilog module `<X>_csr.v` has the same ports, with the `sw2hw` / `hw2sw` records flattened in `sw2hw_<reg>_<item>_o` / `hw2sw_<reg>_<item>_i` and the hjson parameters as module parameters, default 0):
+The main reusable unit is the CSR bank generated by regtool, `<X>_registers` (`<X>_csr.vhd`; the Verilog module `<X>_csr.v` has the same ports, with the `sw2hw` / `hw2sw` records flattened in `sw2hw_<reg>_<item>_o` / `hw2sw_<reg>_<item>_i` and the hjson parameters as module parameters, default 0; the SystemVerilog module `<X>_csr.sv` keeps the records as packed structs `<X>_sw2hw_t` / `<X>_hw2sw_t` of `<X>_csr_pkg`):
 
 #### Generics
 
@@ -361,6 +361,7 @@ Generated files, all named after the generator `name`:
 - `<X>_csr.vhd`: entity `<X>_registers` (address decode, read multiplexer returning 0 on unmapped addresses, busy handling, one building block per register).
 - `<X>_csr.v` (`language: verilog`): module `<X>_registers`, same architecture as the VHDL entity.
 - `<X>_csr_pkg.vh` (`language: verilog`): `` `define `` of the package constants (`<X>_ADDR_WIDTH`, `<X>_DATA_WIDTH`, the register addresses and the enum values); the module copies the constants it uses as `localparam`.
+- `<X>_csr_pkg.sv` / `<X>_csr.sv` (`language: systemverilog`): package `<X>_csr_pkg` (constants as `localparam`, `typedef struct packed` of the `sw2hw` / `hw2sw` records, same items as VHDL) and module `<X>_registers` importing it (ports `output <X>_sw2hw_t sw2hw_o`, `input <X>_hw2sw_t hw2sw_i`).
 - `<X>_csr.h`: register addresses, field position / mask, enum values, a `<X>_t` struct with padding (one member per address, named `<reg1>_<reg2>` for a shared address).
 - `<X>_csr.md`: address table and per-register / per-field descriptions.
 
@@ -370,10 +371,10 @@ Generated files, all named after the generator `name`:
 
 | File | DUT | Description |
 |------|-----|-------------|
-| [tools/regtool/tests/](tools/regtool/tests/) | regtool (Python) | pytest unit tests: parsers, CSR model checks, generic VHDL / Verilog writers (`test_gen_vhdl.py`, `test_gen_verilog.py`, on a module without CSR), CSR package / module (`test_gen_hdl.py`), C / Markdown, command line, golden files of the examples; GHDL analysis / elaboration, verilator lint and iverilog compilation / simulation when the tools are in the `PATH` |
+| [tools/regtool/tests/](tools/regtool/tests/) | regtool (Python) | pytest unit tests: parsers, CSR model checks, generic VHDL / Verilog / SystemVerilog writers (`test_gen_vhdl.py`, `test_gen_verilog.py`, `test_gen_systemverilog.py`, on a module without CSR), CSR package / module (`test_gen_hdl.py`), C / Markdown, command line, golden files of the examples; GHDL analysis / elaboration, verilator lint and iverilog compilation / simulation when the tools are in the `PATH` |
 | [tools/regtool/sim/tb_regtool_scenario.vhd](tools/regtool/sim/tb_regtool_scenario.vhd) | `tbcsr_registers` | Scenarios (generic `TEST`), clock, reset, hardware side and monitors, independent of the bus |
 | [tools/regtool/sim/tb_regtool_&lt;interface&gt;.vhd](tools/regtool/sim/) | `tbcsr_registers` + bridge | One top per interface (`mem`, `sbi`, `pbi`, `apb`, `axi4lite`): DUT, bus master `tb_<interface>_master.vhd`, scenario |
-| [tools/regtool/sim/tb_regtool.v](tools/regtool/sim/tb_regtool.v) | `tbcsr_registers` (Verilog) | Same scenarios for the Verilog output (`mem`, `apb`, `axi4lite`) plus `axi_concurrent`, run by [test_sim_verilog.py](tools/regtool/tests/test_sim_verilog.py) |
+| [tools/regtool/sim/tb_regtool.v](tools/regtool/sim/tb_regtool.v) | `tbcsr_registers` (Verilog, SystemVerilog with `TB_SV`) | Same scenarios for the Verilog and SystemVerilog outputs (`mem`, `apb`, `axi4lite`) plus `axi_concurrent`, run by [test_sim_verilog.py](tools/regtool/tests/test_sim_verilog.py) (44 simulations) |
 | [tools/regtool/sim/tbcsr.hjson](tools/regtool/sim/tbcsr.hjson) | | CSR of the testbenches: `rw`, `ro` written by the hardware, `rw1c`, `wo`, `ext`, FIFO with blocking read (depth 2), FIFO with blocking write (depth 1) |
 
 Scenarios (one per simulation, each one starts from reset):
@@ -387,7 +388,7 @@ Scenarios (one per simulation, each one starts from reset):
 | `fifo_read` | Blocking read of an empty FIFO (bus wait states), FIFO order, full / empty flags |
 | `fifo_write` | Blocking write of a full FIFO (bus wait states), data popped in order |
 | `unmapped` | Unmapped address: reads 0, write without effect |
-| `axi_concurrent` | Verilog `axi4lite` only: read and write requested together (round robin) |
+| `axi_concurrent` | Verilog / SystemVerilog `axi4lite` only: read and write requested together (round robin) |
 
 The bus masters check the protocols: APB setup / access phases and `pslverr`, AXI4-Lite W one cycle after AW, `bready` / `rready` two cycles after `bvalid` / `rvalid` (the response must be held, OKAY). Mutants of the bridges and of the Verilog building blocks are detected by these scenarios. The generators are also exercised by the cores that use them (every target of an IP with a `gen_csr` entry; `pbcc_gen`, `rvcc_gen`: targets of `asylum-soc-picosoc`).
 
@@ -439,9 +440,10 @@ regtool can also be run standalone (Python 3 with `hjson`, `jsonschema`, `pretty
 python3 tools/regtool/regtool.py tools/regtool/examples/example1.hjson --logical_name asylum \
         --vhdl_package example1_csr_pkg.vhd --vhdl_module example1_csr.vhd \
         --c_header example1_csr.h --doc_markdown example1_csr.md
-# Verilog (only if requested), with another interface
+# Verilog / SystemVerilog (only if requested), with another interface
 python3 tools/regtool/regtool.py tools/regtool/examples/example1.hjson --interface axi4lite \
-        --verilog_module example1_csr.v --verilog_header example1_csr_pkg.vh
+        --verilog_module example1_csr.v --verilog_header example1_csr_pkg.vh \
+        --sv_module example1_csr.sv --sv_package example1_csr_pkg.sv
 ```
 
 Building the PicoBlaze tools (installs into `tools/install` by default, run from the repository root):
@@ -452,7 +454,7 @@ scripts/build_toolchain.sh -s -p          # -s: sdcc (pbccv2-src-20111024), -p: 
 
 ## Synthesis
 
-No dedicated synthesis target. `csr_reg`, `csr_ext`, `csr_fifo`, the bridges and the generated `<X>_registers` (VHDL and Verilog) are plain synthesizable RTL (no simulation-only code); `apb2mem` and `axi4lite2mem` pass `ghdl --synth`, the Verilog files are verilator `-Wall` lint clean. The ROM templates provide an `rtl` architecture (synchronous `case` on the address) and a `rom` architecture (constant array). Resource usage of a CSR bank depends on the register widths and on the FIFO depths given to `csr_fifo`.
+No dedicated synthesis target. `csr_reg`, `csr_ext`, `csr_fifo`, the bridges and the generated `<X>_registers` (VHDL, Verilog and SystemVerilog) are plain synthesizable RTL (no simulation-only code); `apb2mem` and `axi4lite2mem` pass `ghdl --synth`, the Verilog / SystemVerilog files are verilator `-Wall` lint clean. The ROM templates provide an `rtl` architecture (synchronous `case` on the address) and a `rom` architecture (constant array). Resource usage of a CSR bank depends on the register widths and on the FIFO depths given to `csr_fifo`.
 
 ## Design Notes
 
@@ -491,7 +493,8 @@ The memory interface holds an access until `busy = 0`; the read data is combinat
 - The generators serialize `run` and `write` with a lock file in the work directory (`.regtool.lock`, `.pbcc.lock`, `.rvcc.lock`).
 - The regtool `Makefile` regenerates an output when it is older than the hjson or than the regtool sources (`REGTOOL_FILES`: `*.py` and `*.hjson` of `tools/regtool/`).
 - `tools/regtool/regtool.py` writes `<name>_dump1.hjson`, `_dump2.hjson`, `_dump3.hjson` (raw, defaults filled, after checks) in the current directory (`csr_model.check_csr(csr, dump=False)` does not).
-- `regtool.py` always writes the VHDL, C and Markdown outputs (default names if not set), the Verilog outputs only if `--verilog_module` / `--verilog_header` are set.
+- `regtool.py` always writes the VHDL, C and Markdown outputs (default names if not set), the Verilog / SystemVerilog outputs only if `--verilog_module` / `--verilog_header` / `--sv_module` / `--sv_package` are set.
+- SystemVerilog: an element of the struct input port `hw2sw_i` is read with a size cast (`8'(hw2sw_i.<reg>.<field>)`): iverilog 12 gets the width of a struct member wrong in a concatenation or a port connection.
 - `pbcc_gen` builds the ROM package with `gen_rom.py ... --data-width 18` (PicoBlaze 18-bit instructions, default 10-bit address); the ROM entity itself comes from picoasm.
 - `rvcc_gen` calls `gen_rom.py` with its defaults (32-bit data, 10-bit address = 1024 words = 4 KB), while `link.ld` declares a 32 KB ROM. A program between 4 KB and 32 KB links, then `gen_rom.py` rejects the hex file and exits with status 1, which stops the generator `make`. Which size is intended (a 4 KB `link.ld`, or an `--addr-width` parameter for the ROM) is not decided by the code, so both are left unchanged.
 - `gen_rom.py` exits with status 1 on any error (hex file larger than the ROM, unreadable hex or template file).
