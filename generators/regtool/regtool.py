@@ -91,6 +91,8 @@ class regtool(Generator):
         file_vhdl_csr = os.path.join(dir_work,name+'_csr.vhd')    
         file_v_pkg    = os.path.join(dir_work,name+'_csr_pkg.vh')
         file_v_csr    = os.path.join(dir_work,name+'_csr.v')
+        file_sv_pkg   = os.path.join(dir_work,name+'_csr_pkg.sv')
+        file_sv_csr   = os.path.join(dir_work,name+'_csr.sv')
         file_h        = os.path.join(dir_work,name+'_csr.h')    
         file_md       = os.path.join(dir_work,name+'_csr.md')    
         copy          = self.config.get("copy",None)
@@ -105,8 +107,12 @@ class regtool(Generator):
             ext       = ".v"
             files_hdl = ["csr_reg.v","csr_ext.v","csr_fifo.v","csr_fifo_sync.v"]
             outputs   = [(file_v_pkg,"--verilog_header"),(file_v_csr,"--verilog_module")]
+        elif language == "systemverilog":
+            ext       = ".v"
+            files_hdl = ["csr_reg.v","csr_ext.v","csr_fifo.v","csr_fifo_sync.v"]
+            outputs   = [(file_sv_pkg,"--sv_package"),(file_sv_csr,"--sv_module")]
         else:
-            logger.error(f"Invalid language \"{language}\" (vhdl or verilog)")
+            logger.error(f"Invalid language \"{language}\" (vhdl, verilog or systemverilog)")
             raise RuntimeError
         outputs      += [(file_md,"--doc_markdown"),(file_h,"--c_header")]
 
@@ -195,6 +201,11 @@ class regtool(Generator):
                 outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'verilogSource'}})
             outfiles.append({file_v_pkg    : {'file_type' : 'verilogSource', 'is_include_file' : True}})
             outfiles.append({file_v_csr    : {'file_type' : 'verilogSource'}})
+        elif language == "systemverilog":
+            for f in files_hdl:
+                outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'verilogSource'}})
+            outfiles.append({file_sv_pkg   : {'file_type' : 'systemVerilogSource'}})
+            outfiles.append({file_sv_csr   : {'file_type' : 'systemVerilogSource'}})
         elif (logical_name == None):
             for f in files_hdl:
                 outfiles.append({os.path.join(dir_hdl,f)  : {'file_type' : 'vhdlSource'}})

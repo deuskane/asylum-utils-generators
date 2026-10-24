@@ -188,6 +188,7 @@ generators:
         language     : (Optional)
                        "vhdl"      : <name>_csr_pkg.vhd and <name>_csr.vhd
                        "verilog"   : <name>_csr_pkg.vh  and <name>_csr.v  (mem, apb, axi4lite)
+                       "systemverilog" : <name>_csr_pkg.sv and <name>_csr.sv (mem, apb, axi4lite)
                        Default : vhdl
 
 #=========================================
