@@ -1,4 +1,6 @@
-default         : Default Target
-lint_ghdl       : Lint with GHDL (-Wall analysis and elaboration of csr_synth_top)
-lint_ghdl_synth : Synthesis check, ghdl --synth -Wall of csr_synth_top (5 configurations)
+default              : Default Target
+lint_ghdl            : Lint with GHDL (-Wall analysis and elaboration of csr_synth_top)
+lint_ghdl_synth      : Synthesis check, ghdl --synth -Wall of csr_synth_top (5 configurations)
+sim                  : default run rule
+sim_regtool_example1 : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
 

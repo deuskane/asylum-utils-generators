@@ -327,7 +327,7 @@ With a depth of 0 the corresponding path is combinational: `hw_rx_valid_o = sw_w
 This repository provides regtool; the register map of each IP is documented in its own generated `hdl/csr/<X>_csr.md` (e.g. [asylum-communication-spi](https://github.com/deuskane/asylum-communication-spi) `hdl/csr/SPI_csr.md`). The hjson format accepted by regtool ([tools/regtool/regtool_schema.hjson](tools/regtool/regtool_schema.hjson), checks in [tools/regtool/regtool.py](tools/regtool/regtool.py)):
 
 - **Top level**: `name` (mandatory), `desc`, `width` (data width, default 32, power of 2 and >= 8), `interface` (`reg` default, `pbi`, `sbi`), `parameters` (list of `name` / `type` / `desc`, become generics), `registers` (mandatory).
-- **Register**: `name`, `fields` (mandatory), `desc`, `address` (default: previous address + width/8; must be unique and aligned on width/8), `enable` (`True`, `False` or the name of a boolean parameter: register inside an `if generate`), `alias_write` (this register's address becomes an extra write address of the named register; its own write path is removed), `hwtype`, `hwaccess`, `swaccess`, `params` (free key / value pairs passed as generics to `csr_fifo`: `BLOCKING_READ`, `BLOCKING_WRITE`, `DEPTH_SW2HW`, `DEPTH_HW2SW`).
+- **Register**: `name`, `fields` (mandatory), `desc`, `address` (default: previous address + width/8; aligned on width/8; an address can be shared by several registers if the software reads at most one of them and writes at most one of them at this address, e.g. a `wo` command register and a `ro` status register), `enable` (`True`, `False` or the name of a boolean parameter: register inside an `if generate`), `alias_write` (this register's address becomes an extra write address of the named register; its own write path is removed), `hwtype`, `hwaccess`, `swaccess`, `params` (free key / value pairs passed as generics to `csr_fifo`: `BLOCKING_READ`, `BLOCKING_WRITE`, `DEPTH_SW2HW`, `DEPTH_HW2SW`).
 - **Field**: `name`, `bits` (`"n"` or `"msb:lsb"`, mandatory, no overlap), `desc`, `init` (reset value, prefix `b`, `o`, `x`, `d` or none), `expr` (VHDL expression replacing `init`, e.g. a generic), `enum` (list of `name` / `value` / `desc`).
 - **`hwtype`**: `reg` (default, `csr_reg`), `ext` (`csr_ext`), `fifo` (`csr_fifo`).
 - **`hwaccess`**: `rw` (default), `ro` (hardware reads), `wo` (hardware writes), `none`.
@@ -337,7 +337,7 @@ Generated files, all named after the generator `name`:
 
 - `<X>_csr_pkg.vhd`: `<X>_ADDR_WIDTH` (ceil(log2(highest address + 1))), `<X>_DATA_WIDTH`, one address constant per register, `sw2hw` / `hw2sw` records, enum constants (`<X>_<REG>_<FIELD>_<ENUM>` and `..._RAW` shifted to the field position), component `<X>_registers`.
 - `<X>_csr.vhd`: entity `<X>_registers` (address decode, read multiplexer returning 0 on unmapped addresses, busy handling, one building block per register).
-- `<X>_csr.h`: register addresses, field position / mask, enum values, a `<X>_t` struct with padding.
+- `<X>_csr.h`: register addresses, field position / mask, enum values, a `<X>_t` struct with padding (one member per address, named `<reg1>_<reg2>` for a shared address).
 - `<X>_csr.md`: address table and per-register / per-field descriptions.
 
 ## Verification

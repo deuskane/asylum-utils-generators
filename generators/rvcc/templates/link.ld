@@ -1,9 +1,12 @@
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
+/* ROM size in bytes (given by --defsym=_rom_size=<bytes> from the addr_width parameter) */
+_rom_size = DEFINED(_rom_size) ? _rom_size : 4K;
+
 MEMORY
 {
-  ROM (rx)      : ORIGIN = 0x00000000, LENGTH = 32K
+  ROM (rx)      : ORIGIN = 0x00000000, LENGTH = _rom_size
   RAM_GLB (rw)  : ORIGIN = 0x80000040, LENGTH = 64
   RAM_LOC (rw)  : ORIGIN = 0x80000080, LENGTH = 128
 }
@@ -26,6 +29,8 @@ SECTIONS
     . = ALIGN(4);
     *(.rodata)
     *(.rodata.*)
+    *(.srodata)
+    *(.srodata.*)
     . = ALIGN(4);
     _erodata = .;
     ASSERT(SIZEOF(.rodata) == 0 , "Error: .rodata section is not empty");
@@ -53,16 +58,20 @@ SECTIONS
     _bss_start = .;
     *(.bss)
     *(.bss.*)
+    *(.sbss)
+    *(.sbss.*)
+    *(.scommon)
+    *(COMMON)
     . = ALIGN(4);
     _ebss = .;
     _bss_size = _ebss - _bss_start;
   } > RAM_LOC
 
-  /* Stack area for function calls */
-  .stack :
-  {
-    . = ORIGIN(RAM_LOC) + LENGTH(RAM_LOC);
-    . = . & ~0xF;
-    _estack = .; /* Top of stack (used by start.S to initialize sp) */
-  } > RAM_LOC
+  /* Stack area for function calls : from the top of RAM_LOC down to _ebss */
+  /* (absolute expression: inside an output section, "." is section relative) */
+  _estack = (ORIGIN(RAM_LOC) + LENGTH(RAM_LOC)) & ~0xF; /* Top of stack (used by start.S to initialize sp) */
+
+  /* Reserve the stack size (given by --defsym=_stack_size=<bytes>) */
+  _stack_size = DEFINED(_stack_size) ? _stack_size : 128;
+  ASSERT(_estack - _ebss >= _stack_size, "Error: not enough space left in RAM_LOC for the stack")
 }

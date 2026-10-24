@@ -62,6 +62,7 @@ architecture rtl of csr_reg is
   signal q_r_next  : std_logic_vector(WIDTH-1 downto 0);
   signal d_hw      : std_logic_vector(WIDTH-1 downto 0);
   signal d_sw      : std_logic_vector(WIDTH-1 downto 0);
+  signal d_rd      : std_logic_vector(WIDTH-1 downto 0);
   
 begin  -- architecture rtl
 
@@ -129,51 +130,49 @@ begin  -- architecture rtl
 
   gen_rsw1c: if MODEL="rsw1c" 
   generate
-    -- Priority: 
-    -- 1. Hardware Write
-    --    Software Write (clear)
-    -- 2. Software Read  (set)
-    -- 3. Previous Value
+    -- Hardware Write, then
+    -- Software Read  (set the bits read at 0, even if hw_we_i = '1'), then
+    -- Software Write (clear)
 
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
-                (others => '1') when sw_re_i = '1' else
                 q_r;
+    d_rd     <= not q_r         when sw_re_i = '1' else
+                (others => '0');
     d_sw     <= not sw_wd_i     when sw_we_i = '1' else
                 (others => '1');
     
-    q_r_next <= d_hw and d_sw;
+    q_r_next <= (d_hw or d_rd) and d_sw;
   end generate gen_rsw1c;
 
   gen_rcw1s: if MODEL="rcw1s" 
   generate
-    -- Priority: 
-    -- 1. Hardware Write
-    --    Software Write (set)
-    -- 2. Software Read  (clear)
-    -- 3. Previous Value
+    -- Hardware Write, then
+    -- Software Read  (clear the bits read at 1, even if hw_we_i = '1' :
+    --                 a bit set by the hardware during the read is kept), then
+    -- Software Write (set)
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
-                (others => '0') when sw_re_i = '1' else
                 q_r;
+    d_rd     <= not q_r         when sw_re_i = '1' else
+                (others => '1');
     d_sw     <= sw_wd_i         when sw_we_i = '1' else
                 (others => '0');
     
-    q_r_next <= d_hw or d_sw;
+    q_r_next <= (d_hw and d_rd) or d_sw;
   end generate gen_rcw1s;
 
   gen_rsw0c: if MODEL="rsw0c" 
   generate
-    -- Priority: 
-    -- 1. Hardware Write
-    --    Software Write (clear)
-    -- 2. Software Read  (set)
-    -- 3. Previous Value
+    -- Hardware Write, then
+    -- Software Read  (set the bits read at 0, even if hw_we_i = '1'), then
+    -- Software Write (clear)
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
-                (others => '1') when sw_re_i = '1' else
                 q_r;
+    d_rd     <= not q_r         when sw_re_i = '1' else
+                (others => '0');
     d_sw     <= sw_wd_i         when sw_we_i = '1' else
                 (others => '1');
     
-    q_r_next <= d_hw and d_sw;
+    q_r_next <= (d_hw or d_rd) and d_sw;
   end generate gen_rsw0c;
 
 process (clk_i, arst_b_i) is

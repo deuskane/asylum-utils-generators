@@ -1,0 +1,62 @@
+{
+  name: example3
+  desc: test
+  width: 32
+  registers:
+  [
+    {
+      name: regA
+      address: 0
+      desc: A
+      hwaccess: ro
+      swaccess: rw
+      fields:
+      [
+        {
+          name: a
+          bits: 7:0
+          init: 0
+          desc: a
+          expr: '''"00000000"'''
+          msb: 7
+          lsb: 0
+          width: 8
+        }
+        {
+          name: b
+          bits: 15:8
+          init: 0
+          desc: b
+          expr: '''"00000000"'''
+          msb: 15
+          lsb: 8
+          width: 8
+        }
+      ]
+      enable: True
+      hwtype: reg
+      address_write:
+      [
+        regA
+      ]
+      alias_write: null
+      sw2hw_re: true
+      sw2hw_we: true
+      hw2sw_re: false
+      hw2sw_we: false
+      hw2sw_data: false
+      sw2hw_data: true
+      sw2hw: true
+      hw2sw: false
+      sw2hw_name_re: re
+      sw2hw_name_we: we
+      hw2sw_name_re: re
+      hw2sw_name_we: we
+      width: 16
+    }
+  ]
+  interface: reg
+  addr_offset: 4
+  parameters: []
+  size_addr: 0
+}

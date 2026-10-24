@@ -1,20 +1,25 @@
 .section .text
 .global _start
 _start:
+    # Clear the registers x1..x31 : a CPU restarted after a fault (lock-step /
+    # TMR) must have the same register file as the other CPUs
+    .irp reg, 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
+    li x\reg, 0
+    .endr
+
     # Initialize stack pointer
     la sp, _estack
 
-//    # Initialize BSS section to zero
-//    la t0, _bss_start
-//    la t1, _bss_size
-//    li t2, 0
-//    blez t1, _bss_done
-//_bss_loop:
-//    sw t2, 0(t0)
-//    addi t0, t0, 4
-//    addi t1, t1, -4
-//    bgtz t1, _bss_loop
-//_bss_done:
+    # Initialize BSS section to zero
+    # (_bss_start and _ebss are 4-byte aligned by link.ld)
+    la t0, _bss_start
+    la t1, _ebss
+    bgeu t0, t1, _bss_done
+_bss_loop:
+    sw zero, 0(t0)
+    addi t0, t0, 4
+    bltu t0, t1, _bss_loop
+_bss_done:
 
 //    # Initialize Data section (copy from ROM to RAM)
 //    la t0, _etext
