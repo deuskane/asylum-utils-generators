@@ -186,6 +186,26 @@ filesets:
       # ghdl_synth.sh / ghdl_synth.mk of the lint_ghdl_synth_* targets
       - asylum:utils:ghdl_synth
 
+  #---------------------------------------
+  # regtool building blocks (added by regtool to the calling core)
+  #---------------------------------------
+  regtool_hdl:
+    files:
+      - tools/regtool/hdl/csr_pkg.vhd
+      - tools/regtool/hdl/csr_reg.vhd
+      - tools/regtool/hdl/csr_ext.vhd
+      - tools/regtool/hdl/csr_fifo.vhd
+    file_type    : vhdlSource
+    logical_name : asylum
+
+  #---------------------------------------
+  syn:
+  #---------------------------------------
+    files        :
+      - syn/csr_wrapper.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+
 #=========================================
 generate:
 #=========================================
@@ -235,6 +255,45 @@ parameters:
     description : Enable the register reg1 of example1
     paramtype   : generic
 
+  #---------------------------------------
+  # Generics of csr_wrapper (lint_ghdl_synth_*)
+  #---------------------------------------
+  WIDTH :
+    description : Register width
+    datatype    : int
+    default     : 8
+    paramtype   : generic
+
+  INIT :
+    description : Register reset value (WIDTH-bit string)
+    datatype    : str
+    default     : "00000000"
+    paramtype   : generic
+
+  BLOCKING_READ :
+    description : csr_fifo, blocking read
+    datatype    : bool
+    default     : false
+    paramtype   : generic
+
+  BLOCKING_WRITE :
+    description : csr_fifo, blocking write
+    datatype    : bool
+    default     : true
+    paramtype   : generic
+
+  DEPTH_SW2HW :
+    description : csr_fifo, depth of the SW to HW FIFO (0 = no FIFO)
+    datatype    : int
+    default     : 0
+    paramtype   : generic
+
+  DEPTH_HW2SW :
+    description : csr_fifo, depth of the HW to SW FIFO (0 = no FIFO)
+    datatype    : int
+    default     : 0
+    paramtype   : generic
+
 #=========================================
 targets:
 #=========================================
@@ -245,6 +304,72 @@ targets:
     description     : Default Target
     filesets        :
       - deps
+
+  #---------------------------------------
+  # Lint : -Wall analysis and elaboration (empty simulation)
+  #---------------------------------------
+  lint_ghdl : &lint_ghdl
+    << : *default
+    description     : Lint with GHDL (-Wall analysis and elaboration of csr_wrapper)
+    toplevel        : asylum.csr_wrapper
+    filesets_append : [regtool_hdl, syn]
+    default_tool    : ghdl
+    tools :
+      ghdl :
+        analyze_options : ["-Wall"]
+
+  #---------------------------------------
+  # Synthesis check : -Wall analysis, ghdl --synth -Wall and elaboration
+  # (no simulation) of csr_wrapper with the generics of the target.
+  # The pre_run hook (ghdl_synth.sh of asylum:utils:generators) adds
+  # ghdl_synth.mk to the edalize Makefile.
+  # FuseSoC merges tools in depth : analyze_options comes from lint_ghdl.
+  #---------------------------------------
+  lint_ghdl_synth_default : &lint_ghdl_synth
+    << : *lint_ghdl
+    description     : Synthesis check of csr_wrapper, default generics
+    tools :
+      ghdl :
+        run_options     : ["--no-run"]
+    hooks :
+      pre_run : [ghdl_synth]
+
+  #---------------------------------------
+  lint_ghdl_synth_width1_init1 :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_wrapper, WIDTH 1, INIT "1"
+    parameters      :
+      - WIDTH=1
+      - INIT=1
+
+  #---------------------------------------
+  lint_ghdl_synth_init_a5 :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_wrapper, INIT x"A5"
+    parameters      :
+      - INIT=10100101
+
+  #---------------------------------------
+  lint_ghdl_synth_fifo_blocking :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_wrapper, csr_fifo with FIFOs, blocking read
+    parameters      :
+      - DEPTH_SW2HW=4
+      - DEPTH_HW2SW=4
+      - BLOCKING_READ=true
+
+  #---------------------------------------
+  lint_ghdl_synth_fifo_nonblocking :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_wrapper, csr_fifo with FIFOs, non-blocking write
+    parameters      :
+      - DEPTH_SW2HW=2
+      - DEPTH_HW2SW=8
+      - BLOCKING_WRITE=false
 
   #---------------------------------------
   sim: &sim
@@ -294,3 +419,13 @@ targets:
 #    generate        :
 #      - gen_csr_example4
 #    toplevel        : asylum.example4_registers
+
+#=========================================
+scripts:
+#=========================================
+
+  #---------------------------------------
+  # pre_run hook of lint_ghdl_synth_* (cwd = work_root)
+  #---------------------------------------
+  ghdl_synth :
+    cmd : [bash, ghdl_synth.sh]
