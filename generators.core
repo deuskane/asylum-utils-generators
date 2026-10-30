@@ -57,9 +57,11 @@ CAPI=2:
 #                               csr_reg      : Add "wo" model
 #                               gen_rom      : Exit with status 1 on error
 # 2026-10-21  2.8.0    mrosiere ghdl         : add script and Makefile to generate ghdl synth option
+# 2026-10-30  2.8.1    mrosiere ghdl         : files moved in the core asylum:utils:ghdl_synth
+#                                              (no dependency), generators depends on it
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.8.0
+name       : asylum:utils:generators:2.8.1
 description: A collection of useful generators
 
 #=========================================
@@ -181,14 +183,8 @@ filesets:
   #---------------------------------------
     depend       :
       - asylum:component:fifo
-
-  #---------------------------------------
-  files_ghdl:
-  #---------------------------------------
-    files:
-      - tools/ghdl/ghdl_synth.sh : {file_type : user, copyto : ghdl_synth.sh}
-      - tools/ghdl/ghdl_synth.mk : {file_type : user, copyto : ghdl_synth.mk}
-    file_type : user
+      # ghdl_synth.sh / ghdl_synth.mk of the lint_ghdl_synth_* targets
+      - asylum:utils:ghdl_synth
 
 #=========================================
 generate:
@@ -249,7 +245,6 @@ targets:
     description     : Default Target
     filesets        :
       - deps
-      - "tool_ghdl?(files_ghdl)"
 
   #---------------------------------------
   sim: &sim
