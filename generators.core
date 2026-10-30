@@ -321,8 +321,8 @@ targets:
   #---------------------------------------
   # Synthesis check : -Wall analysis, ghdl --synth -Wall and elaboration
   # (no simulation) of csr_wrapper with the generics of the target.
-  # The pre_run hook (ghdl_synth.sh of asylum:utils:generators) adds
-  # ghdl_synth.mk to the edalize Makefile.
+  # The pre_run hook (ghdl_synth.sh of asylum:utils:ghdl_synth, dependency
+  # of the deps fileset) adds ghdl_synth.mk to the edalize Makefile.
   # FuseSoC merges tools in depth : analyze_options comes from lint_ghdl.
   #---------------------------------------
   lint_ghdl_synth_default : &lint_ghdl_synth
