@@ -63,7 +63,7 @@ This repository provides the code generators used by the other Asylum cores thro
 - **`pbcc_gen`**: compiles a C file with the PicoBlaze port of SDCC (pbcc) or takes a KCPSM3 / PBlazeIDE assembler file, assembles it with picoasm and produces a ROM entity plus its component package (OpenBlaze8 / PicoBlaze-3 processors).
 - **`rvcc_gen`**: compiles C / assembler with a RISC-V GCC toolchain (`rv32i`) and produces a ROM entity plus its component package (WardRV processor).
 
-Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the FuseSoC generator work directory under an exclusive file lock, and registers the produced files in the calling core. The core itself has no HDL fileset: its `default` target only pulls `asylum:component:fifo`, required by the `csr_fifo` building block that regtool adds to the calling core. The `sim_*` targets verify regtool (see [Verification](#verification)).
+Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the FuseSoC generator work directory under an exclusive file lock, and registers the produced files in the calling core. The core itself has no HDL fileset in its `default` target (the `regtool_hdl` fileset is only used by the lint targets): `default` only pulls `asylum:component:fifo`, required by the `csr_fifo` building block that regtool adds to the calling core, and `asylum:utils:ghdl_synth` (scripts of the `lint_ghdl_synth_*` targets). The `sim_*` targets verify regtool (see [Verification](#verification)).
 
 ### Key Features
 
@@ -107,6 +107,7 @@ Library IP: there is no HDL top-level. Content of the repository:
 | regtool tests | pytest, VHDL, Verilog | [tools/regtool/tests/](tools/regtool/tests/), [tools/regtool/sim/](tools/regtool/sim/) | Unit tests and testbenches (see [Verification](#verification)) |
 | gen_rom | Python tool | [generators/gen_rom/gen_rom.py](generators/gen_rom/gen_rom.py) + [ROM/](generators/gen_rom/ROM/) | Fills ROM / ROM package templates from a hex file |
 | picoasm | C++ tool | [tools/picoasm/](tools/picoasm/) | PicoBlaze assembler with ROM templates |
+| ghdl_synth | Shell + Makefile | [tools/ghdl/ghdl_synth.sh](tools/ghdl/ghdl_synth.sh), [ghdl_synth.mk](tools/ghdl/ghdl_synth.mk) | `pre_run` hook of the `lint_ghdl_synth_*` targets of the Asylum cores (core `asylum:utils:ghdl_synth`, [ghdl_synth.core](ghdl_synth.core), without dependency, also a dependency of generators; copied in the build directory with the GHDL tool): `ghdl --synth` with the options of the target |
 | sdcc | C tool sources | `tools/pbccv2-src-20110901/`, `tools/pbccv2-src-20111024/`, `tools/sdcc-3.1.0/` | SDCC trees for the PicoBlaze C compiler |
 | `component.py` | script | [scripts/component.py](scripts/component.py) | Builds / updates component packages |
 | `build_toolchain.sh` | script | [scripts/build_toolchain.sh](scripts/build_toolchain.sh) | Builds and installs sdcc and picoasm |
@@ -396,12 +397,25 @@ The bus masters check the protocols: APB setup / access phases and `pslverr`, AX
 
 | Target | Toplevel | Description |
 |--------|----------|-------------|
-| `default` | *(none)* | `deps` fileset only (depends on `asylum:component:fifo`); not meant to be run |
+| `default` | *(none)* | `deps` fileset only (depends on `asylum:component:fifo` and `asylum:utils:ghdl_synth`); not meant to be run |
 | `sim_regtool_example1` | `asylum.example1_registers` | Generates the CSR of example1, analyzes and elaborates it with GHDL |
 | `sim_regtool_<interface>_<scenario>` | `asylum.tb_regtool_<interface>` | 35 targets: interface `mem`, `sbi`, `pbi`, `apb`, `axi4lite` x scenario of the table above (`TEST=<scenario>`) |
 | `tb_regtool_<interface>` | `asylum.tb_regtool_<interface>` | Base of the `sim_regtool_<interface>_*` targets (default scenario `reset`) |
+| `lint_ghdl` | `asylum.csr_wrapper` | Lint: GHDL `-Wall` analysis and elaboration (empty simulation) of the regtool building blocks `csr_pkg`, `csr_reg` (one instance per software access model), `csr_ext`, `csr_fifo` in a wrapper with flat ports (`syn/csr_wrapper.vhd`) |
+| `lint_ghdl_synth_default` | `asylum.csr_wrapper` | Synthesis check (see below), default generics |
+| `lint_ghdl_synth_width1_init1` | `asylum.csr_wrapper` | Synthesis check, WIDTH 1, INIT "1": `WIDTH=1`, `INIT=1` |
+| `lint_ghdl_synth_init_a5` | `asylum.csr_wrapper` | Synthesis check, INIT x"A5": `INIT=10100101` |
+| `lint_ghdl_synth_fifo_blocking` | `asylum.csr_wrapper` | Synthesis check, csr_fifo with FIFOs, blocking read: `DEPTH_SW2HW=4`, `DEPTH_HW2SW=4`, `BLOCKING_READ=true` |
+| `lint_ghdl_synth_fifo_nonblocking` | `asylum.csr_wrapper` | Synthesis check, csr_fifo with FIFOs, non-blocking write: `DEPTH_SW2HW=2`, `DEPTH_HW2SW=8`, `BLOCKING_WRITE=false` |
 
 The CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs one job per `sim_*` target (`make ci_generate`) and the job `regtool_pytest`.
+
+A `lint_ghdl_synth_*` target is `lint_ghdl` with the generics of its configuration (FuseSoC `parameters`) and a `pre_run` hook, [tools/ghdl/ghdl_synth.sh](tools/ghdl/ghdl_synth.sh) (core `asylum:utils:ghdl_synth`, dependency of the `deps` fileset, copied in the build directory with the GHDL tool), which adds `include ghdl_synth.mk` to the Makefile generated by edalize. The run step (`make run EXTRA_OPTIONS=<generics>`) then runs, in the build directory:
+
+1. `ghdl --synth` of the toplevel (rule `ghdl_synth` of [tools/ghdl/ghdl_synth.mk](tools/ghdl/ghdl_synth.mk)), with the options of the target: `STD`, `ANALYZE_OPTIONS` (`-Wall`), `TOPLEVEL_LIBS`, `TOPLEVEL` and the generics. It writes `csr_wrapper_synth.vhd` (netlist) and `csr_wrapper_synth.log`, prints the warnings, and fails on a synthesis error (an inferred latch is one);
+2. `ghdl -r --no-run`: elaboration with the same generics, without simulation.
+
+To add a configuration, add a target with its `parameters` (the generics are declared in the `parameters` section of `generators.core`).
 
 ### How to Run
 
@@ -432,6 +446,13 @@ The generators run automatically when FuseSoC executes the setup stage of a targ
 make help                       # in the consuming IP
 make default STEP=setup         # runs its generators (regtool for gen_csr)
 fusesoc --cores-root . run --build-root build --setup --target default asylum:communication:SPI:2.0.0
+```
+
+Lint of the regtool building blocks, from this repository:
+
+```bash
+make lint_ghdl                  # GHDL -Wall lint (make nonreg_lint: every lint_* target)
+make lint_ghdl_synth_default    # GHDL -Wall lint + ghdl --synth -Wall check of one configuration
 ```
 
 regtool can also be run standalone (Python 3 with `hjson`, `jsonschema`, `prettytable`, see [tools/regtool/requirements.txt](tools/regtool/requirements.txt)):
@@ -505,6 +526,13 @@ The memory interface holds an access until `busy = 0`; the read data is combinat
 ```
 asylum-utils-generators/
 ├── generators.core              # FuseSoC core (asylum:utils:generators), generators: section
+├── ghdl_synth.core              # FuseSoC core (asylum:utils:ghdl_synth), tools/ghdl, no dependency
+├── Makefile                     # Common Asylum Makefile (FuseSoC wrapper)
+├── mk/
+│   ├── defs.mk                  # FILE_CORE, default TARGET and TOOL
+│   └── targets.txt              # Target list (generated from the .core)
+├── syn/
+│   └── csr_wrapper.vhd          # Lint / synthesis check wrapper (csr_reg, csr_ext, csr_fifo)
 ├── doc/
 │   └── pbccv2_user_manual.pdf   # PicoBlaze C compiler manual
 ├── generators/
@@ -519,6 +547,7 @@ asylum-utils-generators/
 └── tools/
     ├── regtool/                 # regtool.py, csr_model.py, gen_hdl.py, hdl_model.py, gen_*.py, addrmap.py, schema,
     │                            # hdl/ (VHDL + Verilog), examples/, sim/ (testbenches), tests/ (pytest)
+    ├── ghdl/                    # ghdl_synth.sh, ghdl_synth.mk (pre_run hook of lint_ghdl_synth_*)
     ├── picoasm/                 # PicoBlaze assembler sources + ROM templates
     ├── pbccv2-src-20110901/     # SDCC sources (PicoBlaze port)
     ├── pbccv2-src-20111024/     # SDCC sources (PicoBlaze port, used by build_toolchain.sh)
