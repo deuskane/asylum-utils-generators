@@ -19,9 +19,9 @@
     }              
     "interface"           : {
       "type"              : "string",
-      "description"       : "Interface Type"
-      "default"           : "reg"
-      "enum"              : ["reg","pbi","sbi"]
+      "description"       : "Interface Type (mem, or a bus through the bridge <bus>2mem ; reg : alias of mem)"
+      "default"           : "mem"
+      "enum"              : ["mem","reg","pbi","sbi","apb","axi4lite"]
     }# end of properties "top"
 
    "parameters"           : {

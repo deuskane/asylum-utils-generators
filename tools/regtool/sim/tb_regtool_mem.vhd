@@ -1,0 +1,100 @@
+-------------------------------------------------------------------------------
+-- Title      : tb_regtool_mem
+-- Project    : regtool
+-------------------------------------------------------------------------------
+-- File       : tb_regtool_mem.vhd
+-- Author     : Mathieu Rosiere
+-- Company    : 
+-- Created    : 2026-10-23
+-- Platform   : 
+-- Standard   : VHDL'08
+-------------------------------------------------------------------------------
+-- Description:
+--  Testbench of the CSR tbcsr generated with the interface "mem" :
+--  tb_mem_master -> tbcsr_registers, scenario TEST (tb_regtool_scenario)
+-------------------------------------------------------------------------------
+-- Copyright (c) 2026 
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author   Description
+-- 2026-10-23  1.0      mrosiere Created
+-------------------------------------------------------------------------------
+
+library ieee;
+use     ieee.std_logic_1164.all;
+
+library asylum;
+use     asylum.tbcsr_csr_pkg.all;
+use     asylum.tb_regtool_pkg.all;
+
+entity tb_regtool_mem is
+  generic (
+    TEST       : string := "reset"
+    );
+end entity tb_regtool_mem;
+
+architecture tb of tb_regtool_mem is
+
+  signal clk        : std_logic;
+  signal arst_b     : std_logic;
+  signal req        : tb_req_t;
+  signal rsp        : tb_rsp_t;
+  signal sw2hw      : tbcsr_sw2hw_t;
+  signal hw2sw      : tbcsr_hw2sw_t;
+
+  signal cs         : std_logic;
+  signal re         : std_logic;
+  signal we         : std_logic;
+  signal addr       : std_logic_vector(TBCSR_ADDR_WIDTH-1 downto 0);
+  signal wdata      : std_logic_vector(TB_DATA_WIDTH-1 downto 0);
+  signal rdata      : std_logic_vector(TB_DATA_WIDTH-1 downto 0);
+  signal busy       : std_logic;
+
+begin  -- architecture tb
+
+  ins_scenario : entity work.tb_regtool_scenario
+    generic map
+    (TEST       => TEST
+    )
+    port map
+    (clk_o      => clk
+    ,arst_b_o   => arst_b
+    ,req_o      => req
+    ,rsp_i      => rsp
+    ,sw2hw_i    => sw2hw
+    ,hw2sw_o    => hw2sw
+    );
+
+  ins_master : entity work.tb_mem_master
+    generic map
+    (ADDR_WIDTH => TBCSR_ADDR_WIDTH
+    )
+    port map
+    (clk_i      => clk
+    ,req_i      => req
+    ,rsp_o      => rsp
+    ,cs_o       => cs
+    ,re_o       => re
+    ,we_o       => we
+    ,addr_o     => addr
+    ,wdata_o    => wdata
+    ,rdata_i    => rdata
+    ,busy_i     => busy
+    );
+
+  ins_dut : tbcsr_registers
+    port map
+    (clk_i    => clk
+    ,arst_b_i => arst_b
+    ,cs_i     => cs
+    ,re_i     => re
+    ,we_i     => we
+    ,addr_i   => addr
+    ,wdata_i  => wdata
+    ,rdata_o  => rdata
+    ,busy_o   => busy
+    ,sw2hw_o  => sw2hw
+    ,hw2sw_i  => hw2sw
+    );
+
+end architecture tb;

@@ -169,5 +169,5 @@
       enable: True
     }
   ]
-  interface: reg
+  interface: mem
 }

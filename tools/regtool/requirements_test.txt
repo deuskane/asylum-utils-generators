@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=7.0
+# Optional : run the tests in parallel (python3 -m pytest -n auto)
+pytest-xdist>=3.0

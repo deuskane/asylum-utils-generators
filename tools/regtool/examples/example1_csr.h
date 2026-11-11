@@ -122,13 +122,13 @@
 #define EXAMPLE1_FIFO_BIDIR_FIELD2_MASK 255
 
 //----------------------------------
-// Structure {module}_t
+// Structure example1_t
 //----------------------------------
 typedef struct {
   uint32_t reg1; // 0x0
   uint32_t reg2; // 0x4
   uint32_t reg3; // 0x8
-  uint32_t __dummy_0xC__
+  uint32_t __dummy_0xC__;
   uint32_t fifo_sw2hw; // 0x10
   uint32_t fifo_hw2sw; // 0x14
   uint32_t fifo_bidir; // 0x18
