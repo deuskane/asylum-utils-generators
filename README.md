@@ -498,6 +498,8 @@ Next value of the register (`hw` = `hw_wd_i` when `hw_we_i = 1`, else the curren
 
 `wo` stores the software writes exactly like `rw`; regtool does not put a `wo` register in the read data multiplexer (`<reg>_re = '0'`, `<reg>_rdata = 0`), so software reads return 0. `wo` is also used on `fifo` registers (software to hardware FIFO), as in `example1.hjson` and `SPI.hjson`.
 
+`rw1c` / `rw0c` (and the software write of `rsw1c` / `rsw0c`): when the hardware writes a 1 and the software clears the same bit in the same cycle, the software clear wins (`hw and not sw_wd_i`), as in the W1C registers of OpenTitan (`prim_subreg_arb`) and with the default `precedence = sw` of SystemRDL. For an interrupt status register written every cycle with `event or q` (as `GIC_core` does), an event in the cycle of the clear of its bit is not latched: the software writes 1 only on the bits whose event it has handled (typically the bits read and served), since a write of 1 on a bit still at 0 can clear an event not seen yet.
+
 ### Bus Bridges
 
 The memory interface holds an access until `busy = 0`; the read data is combinational; the access (write, read side effect, FIFO push / pop) happens on the rising edge where `busy = 0`.
