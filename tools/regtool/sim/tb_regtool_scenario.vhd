@@ -21,12 +21,21 @@
 --  - fifo_read   : blocking read of an empty FIFO (bus wait states)
 --  - fifo_write  : blocking write of a full FIFO (bus wait states)
 --  - unmapped    : access to an unmapped address
+--  Wait states of csr_reg (rd_wait_state / wr_wait_state of tbcsr.hjson) :
+--  - wait_duration   : duration of the accesses (+ wait states), back to
+--                      back accesses (mem, sbi, pbi)
+--  - wait_write      : write done once in the first cycle, write strobe
+--                      once, during the access
+--  - wait_read       : read data of the last cycle, read strobe once
+--  - wait_read_clear : read side effect once, after the read data
+--  - wait_none       : wait states at 0, same as without them
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-23  1.0      mrosiere Created
+-- 2026-11-16  1.1      mrosiere Wait state scenarios, back to back accesses
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -64,7 +73,17 @@ architecture tb of tb_regtool_scenario is
   constant ADDR_EXT      : natural := to_integer(TBCSR_EXT   );
   constant ADDR_RX       : natural := to_integer(TBCSR_RX    );
   constant ADDR_TX       : natural := to_integer(TBCSR_TX    );
+  constant ADDR_WWAIT    : natural := to_integer(TBCSR_WWAIT );
+  constant ADDR_RCOUNT   : natural := to_integer(TBCSR_RCOUNT);
+  constant ADDR_RCLR     : natural := to_integer(TBCSR_RCLR  );
+  constant ADDR_NOWAIT   : natural := to_integer(TBCSR_NOWAIT);
   constant ADDR_UNMAPPED : natural := 16#1C#;
+
+  -- Wait states of tbcsr.hjson
+  constant WWAIT_WR_WAIT : natural := 2;
+  constant RCOUNT_RD_WAIT: natural := 2;
+  constant RCLR_RD_WAIT  : natural := 2;
+  constant RCLR_WR_WAIT  : natural := 1;
 
   -- Hardware side delay of the FIFO scenarios (a blocking access lasts
   -- more than FIFO_DELAY/2 cycles, an access without wait states less)
@@ -76,6 +95,7 @@ architecture tb of tb_regtool_scenario is
 
   -- Monitors of the hardware side
   signal   ctrl_we_cnt   : natural   := 0;
+  signal   ctrl_re_cnt   : natural   := 0;
   signal   cmd_we_cnt    : natural   := 0;
   signal   cmd_op        : std_logic_vector(7 downto 0);
   signal   ext_we_cnt    : natural   := 0;
@@ -85,6 +105,17 @@ architecture tb of tb_regtool_scenario is
   signal   tx_pop_data0  : std_logic_vector(15 downto 0);
   signal   tx_pop_data1  : std_logic_vector(15 downto 0);
   signal   fifo_go       : boolean   := false;               -- Second step of the FIFO scenarios
+
+  -- Wait state registers
+  signal   cycle_cnt     : unsigned(15 downto 0) := (others => '0'); -- Free running cycle counter
+  signal   wwait_we_cnt  : natural   := 0;
+  signal   wwait_we_data : std_logic_vector(15 downto 0);
+  signal   rcount_re_cnt : natural   := 0;
+  signal   rcount_re_cyc : unsigned(15 downto 0);                    -- cycle_cnt at the read strobe
+  signal   rclr_we_cnt   : natural   := 0;
+  signal   rclr_re_cnt   : natural   := 0;
+  signal   nowait_we_cnt : natural   := 0;
+  signal   nowait_re_cnt : natural   := 0;
 
 begin  -- architecture tb
 
@@ -115,6 +146,9 @@ begin  -- architecture tb
       if sw2hw_i.ctrl.we = '1' then
         ctrl_we_cnt <= ctrl_we_cnt + 1;
       end if;
+      if sw2hw_i.ctrl.re = '1' then
+        ctrl_re_cnt <= ctrl_re_cnt + 1;
+      end if;
       if sw2hw_i.cmd.we = '1' then
         cmd_we_cnt  <= cmd_we_cnt  + 1;
         cmd_op      <= sw2hw_i.cmd.op;
@@ -135,8 +169,48 @@ begin  -- architecture tb
           tx_pop_data1 <= sw2hw_i.tx.data;
         end if;
       end if;
+      -- Wait state registers
+      if sw2hw_i.wwait.we = '1' then
+        wwait_we_cnt  <= wwait_we_cnt  + 1;
+        wwait_we_data <= sw2hw_i.wwait.data;
+      end if;
+      if sw2hw_i.rcount.re = '1' then
+        rcount_re_cnt <= rcount_re_cnt + 1;
+        rcount_re_cyc <= cycle_cnt;
+      end if;
+      if sw2hw_i.rclr.we = '1' then
+        rclr_we_cnt   <= rclr_we_cnt   + 1;
+      end if;
+      if sw2hw_i.rclr.re = '1' then
+        rclr_re_cnt   <= rclr_re_cnt   + 1;
+      end if;
+      if sw2hw_i.nowait.we = '1' then
+        nowait_we_cnt <= nowait_we_cnt + 1;
+      end if;
+      if sw2hw_i.nowait.re = '1' then
+        nowait_re_cnt <= nowait_re_cnt + 1;
+      end if;
     end if;
   end process p_monitor;
+
+  -----------------------------------------------------------------------------
+  -- Hardware side of the wait state registers
+  -----------------------------------------------------------------------------
+  -- rcount : the hardware writes the cycle counter every cycle, the register
+  -- holds the counter of the previous cycle
+  p_cycle : process (clk) is
+  begin
+    if rising_edge(clk) then
+      cycle_cnt <= cycle_cnt + 1;
+    end if;
+  end process p_cycle;
+
+  hw2sw_o.rcount.we   <= '1';
+  hw2sw_o.rcount.data <= std_logic_vector(cycle_cnt);
+
+  -- wwait : the hardware writes the inverted value at the write strobe
+  hw2sw_o.wwait.we    <= sw2hw_i.wwait.we;
+  hw2sw_o.wwait.data  <= not sw2hw_i.wwait.data;
 
   -----------------------------------------------------------------------------
   -- Hardware side of the FIFO (rx push, tx pop)
@@ -191,12 +265,18 @@ begin  -- architecture tb
     variable start  : boolean := false;
     variable rdata  : std_logic_vector(31 downto 0);
     variable cycles : natural;
+    variable ref_wr : natural;                               -- Cycles of a write without wait state
+    variable ref_rd : natural;                               -- Cycles of a read  without wait state
+    variable ref_we : natural;                               -- Write strobes at the end of the write
+    variable ref_re : natural;                               -- Read  strobes at the end of the read
 
     -- Software access through the bus master
-    procedure sw_access (write : boolean; addr : natural; wdata : std_logic_vector(31 downto 0)) is
+    -- b2b : back to back with the previous access (call it right after the
+    -- previous access, without wait), see tb_req_t
+    procedure sw_access (write : boolean; addr : natural; wdata : std_logic_vector(31 downto 0); b2b : boolean := false) is
     begin
       start  := not start;
-      req_o  <= (start => start, write => write,
+      req_o  <= (start => start, write => write, b2b => b2b,
                  addr  => std_logic_vector(to_unsigned(addr, TB_ADDR_WIDTH)),
                  wdata => wdata);
       wait on rsp_i.done;
@@ -204,21 +284,21 @@ begin  -- architecture tb
       cycles := rsp_i.cycles;
     end procedure sw_access;
 
-    procedure sw_write (addr : natural; wdata : std_logic_vector(31 downto 0)) is
+    procedure sw_write (addr : natural; wdata : std_logic_vector(31 downto 0); b2b : boolean := false) is
     begin
       report "[TESTBENCH] Write 0x" & to_hstring(std_logic_vector(to_unsigned(addr, 8))) & " <= 0x" & to_hstring(wdata);
-      sw_access(true, addr, wdata);
+      sw_access(true, addr, wdata, b2b);
     end procedure sw_write;
 
-    procedure sw_read (addr : natural) is
+    procedure sw_read (addr : natural; b2b : boolean := false) is
     begin
-      sw_access(false, addr, (others => '0'));
+      sw_access(false, addr, (others => '0'), b2b);
       report "[TESTBENCH] Read  0x" & to_hstring(std_logic_vector(to_unsigned(addr, 8))) & " => 0x" & to_hstring(rdata);
     end procedure sw_read;
 
-    procedure sw_check (addr : natural; expected : std_logic_vector(31 downto 0); msg : string) is
+    procedure sw_check (addr : natural; expected : std_logic_vector(31 downto 0); msg : string; b2b : boolean := false) is
     begin
-      sw_read(addr);
+      sw_read(addr, b2b);
       tb_check_equal(rdata, expected, msg);
     end procedure sw_check;
 
@@ -374,6 +454,119 @@ begin  -- architecture tb
       sw_check(ADDR_IRQ     , x"0000_0000", "irq after an unmapped write");
       cycle;
       tb_check(ctrl_we_cnt = 0 and cmd_we_cnt = 0 and ext_we_cnt = 0, "no write strobe");
+
+    ---------------------------------------------------------------------------
+    elsif TEST = "wait_duration" then
+      -- Duration of an access : the one of a register without wait state
+      -- (ctrl) plus the wait states. Accesses back to back (mem, sbi, pbi :
+      -- no idle cycle between two accesses), also to the same register :
+      -- the shift register is cleared at the end of each access.
+      sw_write(ADDR_CTRL    , x"0000_0000");
+      ref_wr := cycles;
+      sw_read (ADDR_CTRL);
+      ref_rd := cycles;
+      report "[TESTBENCH] Access without wait state : write " & integer'image(ref_wr) & " cycles, read " & integer'image(ref_rd) & " cycles";
+
+      for i in 1 to 2 loop
+        sw_write(ADDR_WWAIT   , x"0000_1111", b2b => true);
+        tb_check(cycles = ref_wr + WWAIT_WR_WAIT , "wwait write : "  & integer'image(cycles) & " cycles");
+        sw_read (ADDR_WWAIT   , b2b => true);
+        tb_check(cycles = ref_rd                 , "wwait read : "   & integer'image(cycles) & " cycles");
+        sw_read (ADDR_RCOUNT  , b2b => true);
+        tb_check(cycles = ref_rd + RCOUNT_RD_WAIT, "rcount read : "  & integer'image(cycles) & " cycles");
+        sw_write(ADDR_RCOUNT  , x"0000_FFFF", b2b => true);
+        tb_check(cycles = ref_wr                 , "rcount write (read only) : " & integer'image(cycles) & " cycles");
+        sw_write(ADDR_RCLR    , x"0000_0001", b2b => true);
+        tb_check(cycles = ref_wr + RCLR_WR_WAIT  , "rclr write : "   & integer'image(cycles) & " cycles");
+        sw_write(ADDR_RCLR    , x"0000_0002", b2b => true);
+        tb_check(cycles = ref_wr + RCLR_WR_WAIT  , "rclr write : "   & integer'image(cycles) & " cycles");
+        sw_read (ADDR_RCLR    , b2b => true);
+        tb_check(cycles = ref_rd + RCLR_RD_WAIT  , "rclr read : "    & integer'image(cycles) & " cycles");
+        sw_read (ADDR_RCLR    , b2b => true);
+        tb_check(cycles = ref_rd + RCLR_RD_WAIT  , "rclr read : "    & integer'image(cycles) & " cycles");
+      end loop;
+
+    ---------------------------------------------------------------------------
+    elsif TEST = "wait_write" then
+      -- wwait (WR_WAIT_STATE = 2) : the register is written once, in the
+      -- first cycle of the access, the write strobe pulses once, during the
+      -- access. At the strobe, the hardware writes the inverted value : a
+      -- software write applied again in a later cycle would replace it.
+      sw_write(ADDR_WWAIT   , x"FFFF_1234");
+      tb_check(wwait_we_cnt = 1, "wwait write strobe during the access");
+      cycle(WWAIT_WR_WAIT+2);
+      tb_check(wwait_we_cnt = 1, "one wwait write strobe");
+      tb_check_equal(wwait_we_data     , x"1234", "wwait data at the write strobe");
+      tb_check_equal(sw2hw_i.wwait.data, x"EDCB", "wwait written by the hardware during the access");
+      sw_check(ADDR_WWAIT   , x"0000_EDCB", "wwait read after the write");
+
+      -- Next write : the counter is back to 0
+      sw_write(ADDR_WWAIT   , x"0000_00FF");
+      tb_check(wwait_we_cnt = 2, "wwait write strobe during the access");
+      cycle(WWAIT_WR_WAIT+2);
+      tb_check(wwait_we_cnt = 2, "one wwait write strobe");
+      tb_check_equal(wwait_we_data     , x"00FF", "wwait data at the write strobe");
+      sw_check(ADDR_WWAIT   , x"0000_FF00", "wwait read after the write");
+
+    ---------------------------------------------------------------------------
+    elsif TEST = "wait_read" then
+      -- rcount (RD_WAIT_STATE = 2) : the hardware writes the cycle counter
+      -- every cycle, also during the access. The read returns the value of
+      -- the last cycle of the access (counter of the cycle before), the read
+      -- strobe pulses once, the cycle after the access : read data = counter
+      -- at the strobe - 2.
+      for i in 1 to 3 loop
+        sw_read (ADDR_RCOUNT);
+        cycle(RCOUNT_RD_WAIT+2);
+        tb_check(rcount_re_cnt = i, "one rcount read strobe per read");
+        tb_check_equal(rdata, x"0000" & std_logic_vector(rcount_re_cyc - 2), "rcount read data : value of the last cycle of the access");
+      end loop;
+
+    ---------------------------------------------------------------------------
+    elsif TEST = "wait_read_clear" then
+      -- rclr (rcw1s, RD_WAIT_STATE = 2, WR_WAIT_STATE = 1) : the read
+      -- returns the value before the clear, the clear and the read strobe
+      -- are done once, in the last cycle of the access
+      sw_write(ADDR_RCLR    , x"FFFF_FF5A");
+      cycle(RCLR_WR_WAIT+2);
+      tb_check(rclr_we_cnt = 1, "one rclr write strobe");
+      tb_check_equal(sw2hw_i.rclr.flags, x"5A", "rclr set by the software write");
+
+      sw_check(ADDR_RCLR    , x"0000_005A", "rclr read : value before the clear");
+      cycle(RCLR_RD_WAIT+2);
+      tb_check(rclr_re_cnt = 1, "one rclr read strobe");
+      tb_check_equal(sw2hw_i.rclr.flags, x"00", "rclr cleared by the read");
+      sw_check(ADDR_RCLR    , x"0000_0000", "rclr read after the clear");
+      cycle(RCLR_RD_WAIT+2);
+      tb_check(rclr_re_cnt = 2, "one rclr read strobe");
+
+      -- Set again, read, cleared : back to back (mem, sbi, pbi)
+      sw_write(ADDR_RCLR    , x"0000_0081");
+      sw_check(ADDR_RCLR    , x"0000_0081", "rclr read : value before the clear", b2b => true);
+      sw_check(ADDR_RCLR    , x"0000_0000", "rclr read after the clear"         , b2b => true);
+      cycle(RCLR_RD_WAIT+2);
+      tb_check(rclr_we_cnt = 2 and rclr_re_cnt = 4, "one rclr strobe per access");
+
+    ---------------------------------------------------------------------------
+    elsif TEST = "wait_none" then
+      -- nowait (rd_wait_state 0, wr_wait_state "0" : no generic) : same
+      -- access duration and same strobe timing as ctrl (no wait state key)
+      sw_write(ADDR_CTRL    , x"0000_0000");
+      ref_wr := cycles;
+      ref_we := ctrl_we_cnt;
+      sw_read (ADDR_CTRL);
+      ref_rd := cycles;
+      ref_re := ctrl_re_cnt;
+
+      sw_write(ADDR_NOWAIT  , x"FFFF_FFA5");
+      tb_check(cycles        = ref_wr, "nowait write : " & integer'image(cycles) & " cycles");
+      tb_check(nowait_we_cnt = ref_we, "nowait write strobe : same cycle as ctrl");
+      sw_check(ADDR_NOWAIT  , x"0000_00A5", "nowait read back");
+      tb_check(cycles        = ref_rd, "nowait read : "  & integer'image(cycles) & " cycles");
+      tb_check(nowait_re_cnt = ref_re, "nowait read strobe : same cycle as ctrl");
+      cycle(2);
+      tb_check(nowait_we_cnt = 1 and nowait_re_cnt = 1, "one nowait strobe per access");
+      tb_check_equal(sw2hw_i.nowait.data, x"A5", "sw2hw nowait.data");
 
     ---------------------------------------------------------------------------
     else

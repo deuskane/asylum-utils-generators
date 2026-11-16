@@ -61,6 +61,31 @@ jobs:
     with:
       name: sim_regtool_apb_unmapped
 
+  sim_regtool_apb_wait_duration:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_wait_duration
+
+  sim_regtool_apb_wait_none:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_wait_none
+
+  sim_regtool_apb_wait_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_wait_read
+
+  sim_regtool_apb_wait_read_clear:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_wait_read_clear
+
+  sim_regtool_apb_wait_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_apb_wait_write
+
   sim_regtool_apb_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
@@ -95,6 +120,31 @@ jobs:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
       name: sim_regtool_axi4lite_unmapped
+
+  sim_regtool_axi4lite_wait_duration:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_wait_duration
+
+  sim_regtool_axi4lite_wait_none:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_wait_none
+
+  sim_regtool_axi4lite_wait_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_wait_read
+
+  sim_regtool_axi4lite_wait_read_clear:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_wait_read_clear
+
+  sim_regtool_axi4lite_wait_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_axi4lite_wait_write
 
   sim_regtool_axi4lite_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
@@ -136,6 +186,31 @@ jobs:
     with:
       name: sim_regtool_mem_unmapped
 
+  sim_regtool_mem_wait_duration:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_wait_duration
+
+  sim_regtool_mem_wait_none:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_wait_none
+
+  sim_regtool_mem_wait_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_wait_read
+
+  sim_regtool_mem_wait_read_clear:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_wait_read_clear
+
+  sim_regtool_mem_wait_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_mem_wait_write
+
   sim_regtool_mem_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
@@ -171,6 +246,31 @@ jobs:
     with:
       name: sim_regtool_pbi_unmapped
 
+  sim_regtool_pbi_wait_duration:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_wait_duration
+
+  sim_regtool_pbi_wait_none:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_wait_none
+
+  sim_regtool_pbi_wait_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_wait_read
+
+  sim_regtool_pbi_wait_read_clear:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_wait_read_clear
+
+  sim_regtool_pbi_wait_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_pbi_wait_write
+
   sim_regtool_pbi_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
@@ -205,6 +305,31 @@ jobs:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
       name: sim_regtool_sbi_unmapped
+
+  sim_regtool_sbi_wait_duration:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_wait_duration
+
+  sim_regtool_sbi_wait_none:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_wait_none
+
+  sim_regtool_sbi_wait_read:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_wait_read
+
+  sim_regtool_sbi_wait_read_clear:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_wait_read_clear
+
+  sim_regtool_sbi_wait_write:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: sim_regtool_sbi_wait_write
 
   sim_regtool_sbi_write_read:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main

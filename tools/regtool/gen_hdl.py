@@ -45,8 +45,8 @@ RECORD_INTERFACES  = ['sbi','pbi']
 #--------------------------------------------
 def parse_expr(text):
     """
-    Expression of the hjson (field expr, enable, FIFO params, in VHDL
-    syntax) : boolean, bit string "0101", integer, identifier,
+    Expression of the hjson (field expr, enable, FIFO params, wait states,
+    in VHDL syntax) : boolean, bit string "0101", integer, identifier,
     identifier(msb downto lsb), else copied as is (Raw)
     """
     text = str(text).strip()
@@ -422,6 +422,10 @@ def build_register(csr, reg):
     generics = [("WIDTH", IntConst(rw))]
     if reg['hwtype'] in ['reg']:
         generics += [("INIT", Ref(init_name(reg))), ("MODEL", StrConst(reg['swaccess']))]
+        # Wait states : only if set and not 0 (default of csr_reg)
+        for generic, key in [("RD_WAIT_STATE", 'rd_wait_state'), ("WR_WAIT_STATE", 'wr_wait_state')]:
+            if reg.get(key, 0) != 0:
+                generics.append((generic, parse_expr(reg[key])))
     if reg['hwtype'] in ['fifo']:
         generics += [(param, parse_expr(value)) for param, value in reg.get('params', {}).items()]
 

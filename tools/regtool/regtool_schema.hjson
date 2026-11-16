@@ -97,6 +97,16 @@
             "enum"              : ["rw","wo","ro","rw1c", "rw0c", "rw1s", "rw0s","rsw1c","rcw1s", "rsw0c"],
             "default"           : "rw"
           }              
+          # Wait states (hwtype reg only) : 0 when absent (no default here :
+          # the key is not added to the registers without wait states)
+          "rd_wait_state"       : {
+            "type"              : ["integer","string"],
+            "description"       : "Register Software Read Wait States (integer >= 0 or expression, default 0)"
+          }              
+          "wr_wait_state"       : {
+            "type"              : ["integer","string"],
+            "description"       : "Register Software Write Wait States (integer >= 0 or expression, default 0)"
+          }              
 
           "fields"           : {
       

@@ -27,3 +27,17 @@ def test_sections(make_csr, generate):
     assert "## 0x8 ctrl\nControl\n" in text
     assert "### [0:0] en\nEnable\n" in text
     assert "### [15:8] div\n"       in text
+
+#--------------------------------------------
+def test_wait_state(make_csr, generate):
+    """One line for the wait states, only for a register with wait states"""
+    csr  = make_csr(desc([reg("r0", desc="Wait", rd_wait_state=2, wr_wait_state="NB_WAIT"),
+                          reg("r1", desc="Zero", rd_wait_state=0),
+                          reg("r2", desc="Write", wr_wait_state="1"),
+                          reg("r3", desc="None")],
+                         parameters=[{"name": "NB_WAIT", "type": "natural"}]))
+    text = generate(generate_doc_markdown, csr)
+    assert "## 0x0 r0\nWait\n\nWait states: read 2, write NB_WAIT\n\n### [7:0] f\n" in text
+    assert "## 0x4 r1\nZero\n\n### [7:0] f\n"                                in text
+    assert "## 0x8 r2\nWrite\n\nWait states: read 0, write 1\n\n### [7:0] f\n" in text
+    assert text.count("Wait states") == 2

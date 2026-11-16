@@ -32,6 +32,13 @@ def generate_doc_markdown(csr, output_path):
             file.write(f"{reg['desc']}\n")
             file.write( "\n")
 
+            # Wait states of the software accesses (csr_reg), only if set
+            rd_wait = reg.get('rd_wait_state', 0)
+            wr_wait = reg.get('wr_wait_state', 0)
+            if rd_wait != 0 or wr_wait != 0:
+                file.write(f"Wait states: read {rd_wait}, write {wr_wait}\n")
+                file.write( "\n")
+
             for field in reg['fields']:
                 file.write(f"### [{field['msb']}:{field['lsb']}] {field['name']}\n")
                 file.write(f"{field['desc']}\n")

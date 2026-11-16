@@ -18,7 +18,8 @@ from gen_hdl  import generate_hdl_package, generate_hdl_module
 
 SIM_DIR   = os.path.join(REGTOOL_DIR, "sim")
 
-SCENARIOS = ["reset", "write_read", "hw_write", "ext", "fifo_read", "fifo_write", "unmapped"]
+SCENARIOS = ["reset", "write_read", "hw_write", "ext", "fifo_read", "fifo_write", "unmapped",
+             "wait_duration", "wait_write", "wait_read", "wait_read_clear", "wait_none"]
 
 CASES     = [(itf, test) for itf in ["mem", "apb", "axi4lite"] for test in SCENARIOS] + \
             [("axi4lite", "axi_concurrent")]

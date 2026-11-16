@@ -20,6 +20,7 @@
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-23  1.0      mrosiere Created
+-- 2026-11-16  1.1      mrosiere Back to back accesses (tb_req_t.b2b)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -32,10 +33,16 @@ package tb_regtool_pkg is
   constant TB_DATA_WIDTH : natural := 32;
   constant TB_PERIOD     : time    := 10 ns;
 
-  -- Access request : a new access each time start toggles
+  -- Access request : a new access each time start toggles.
+  -- b2b : back to back, the access starts in the cycle that follows the
+  -- previous access, without idle cycle (request given when the previous
+  -- access ends, i.e. right after rsp.done) ; masters mem, sbi and pbi
+  -- (the bridges apb2mem and axi4lite2mem always insert idle cycles on the
+  -- memory interface : their masters ignore b2b)
   type tb_req_t is record
     start        : boolean;
     write        : boolean;
+    b2b          : boolean;
     addr         : std_logic_vector(TB_ADDR_WIDTH-1 downto 0);
     wdata        : std_logic_vector(TB_DATA_WIDTH-1 downto 0);
   end record tb_req_t;
@@ -47,7 +54,7 @@ package tb_regtool_pkg is
     cycles       : natural;                                  -- Clock cycles of the access
   end record tb_rsp_t;
 
-  constant TB_REQ_INIT : tb_req_t := (start => false, write => false, addr => (others => '0'), wdata => (others => '0'));
+  constant TB_REQ_INIT : tb_req_t := (start => false, write => false, b2b => false, addr => (others => '0'), wdata => (others => '0'));
   constant TB_RSP_INIT : tb_rsp_t := (done  => false, rdata => (others => '0'), cycles => 0);
 
   -- Stop the simulation with a failure if the condition is false
