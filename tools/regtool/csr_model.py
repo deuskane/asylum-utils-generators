@@ -11,6 +11,7 @@ from   jsonschema import validate
 import math
 from   addrmap import AddrMap
 import os
+import re
 
 #--------------------------------------------
 #--------------------------------------------
@@ -179,6 +180,50 @@ def check_access(reg):
         reg['sw2hw_name_we']    = "we"
         reg['hw2sw_name_re']    = "re"
         reg['hw2sw_name_we']    = "we"
+
+#--------------------------------------------
+#--------------------------------------------
+def check_wait(reg):
+    """
+    Checks the wait states of a software access (rd_wait_state,
+    wr_wait_state : optional, 0 when absent, passed as RD_WAIT_STATE /
+    WR_WAIT_STATE to csr_reg). The value is an integer >= 0 or an expression
+    (e.g. a parameter), like the values of params. An integer in a string
+    is converted to an integer.
+
+    :param reg: Dictionary of register.
+    :raises KeyError: If the register is not a csr_reg (hwtype reg), or if
+                      the wait state has no effect (wr_wait_state without
+                      software write : swaccess ro ; rd_wait_state without
+                      software read : swaccess wo)
+    :raises ValueError: If the value is a negative integer or an empty string
+    """
+
+    for key in ['rd_wait_state','wr_wait_state']:
+        if key not in reg:
+            continue
+
+        if reg['hwtype'] != 'reg':
+            raise KeyError(f"Register {reg['name']}.{key} : wait states are only supported by hwtype 'reg' (hwtype is '{reg['hwtype']}').")
+
+        access = 'write' if key == 'wr_wait_state' else 'read'
+        if not reg['sw2hw_we' if access == 'write' else 'sw2hw_re']:
+            raise KeyError(f"Register {reg['name']}.{key} : no software {access} with swaccess '{reg['swaccess']}', the wait state has no effect.")
+
+        value = reg[key]
+        if isinstance(value, float):                    # integer for the schema (e.g. 2.0)
+            value = int(value)
+        if isinstance(value, str):
+            value = value.strip()
+            if value == '':
+                raise ValueError(f"Register {reg['name']}.{key} is empty.")
+            if re.fullmatch(r'[+-]?\d+', value):
+                value = int(value)
+
+        if isinstance(value, int) and value < 0:
+            raise ValueError(f"Register {reg['name']}.{key} = {value} must be >= 0.")
+
+        reg[key] = value
 
 #--------------------------------------------
 #--------------------------------------------
@@ -361,6 +406,7 @@ def check_csr(csr, dump=False, source=None):
             addr_max = reg['address']
         check_alias    (csr,reg)
         check_access   (reg)
+        check_wait     (reg)
         check_enable   (csr['parameters'],reg)
 
         regmap = AddrMap()

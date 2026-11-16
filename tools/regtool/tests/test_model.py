@@ -230,6 +230,71 @@ def test_enable_error(make_csr, enable):
         make_csr(desc([reg(enable=enable)], parameters=[{"name": "DEPTH", "type": "natural"}]))
 
 #============================================
+# Wait states
+#============================================
+
+#--------------------------------------------
+def test_wait_state_default(make_csr):
+    """No key : no wait state, the key is not added (dumps unchanged)"""
+    r = make_csr(desc([reg()]))['registers'][0]
+    assert 'rd_wait_state' not in r
+    assert 'wr_wait_state' not in r
+
+#--------------------------------------------
+@pytest.mark.parametrize("value, result", [
+    (0          , 0          ),
+    (2          , 2          ),
+    (2.0        , 2          ),                                # integer for the schema
+    ("3"        , 3          ),                                # integer in a string
+    (" 0 "      , 0          ),
+    ("NB_WAIT"  , "NB_WAIT"  ),                                # expression (parameter)
+    ("NB_WAIT+1", "NB_WAIT+1"),
+])
+def test_wait_state(make_csr, value, result):
+    r = make_csr(desc([reg(rd_wait_state=value, wr_wait_state=value)],
+                      parameters=[{"name": "NB_WAIT", "type": "natural"}]))['registers'][0]
+    assert r['rd_wait_state'] == result
+    assert r['wr_wait_state'] == result
+
+#--------------------------------------------
+@pytest.mark.parametrize("key", ["rd_wait_state", "wr_wait_state"])
+@pytest.mark.parametrize("hwtype", ["ext", "fifo"])
+def test_wait_state_hwtype_error(make_csr, key, hwtype):
+    """Only csr_reg (hwtype reg) has wait states, even 0 : the message names the register and the key"""
+    for value in [0, 1]:
+        with pytest.raises(KeyError, match=rf"Register r1\.{key} .*hwtype is '{hwtype}'"):
+            make_csr(desc([reg("r0"), reg("r1", hwtype=hwtype, **{key: value})]))
+
+#--------------------------------------------
+@pytest.mark.parametrize("key, swaccess", [("wr_wait_state", "ro"), ("rd_wait_state", "wo")])
+def test_wait_state_no_effect_error(make_csr, key, swaccess):
+    """A wait state on an access the register does not have (even 0) : error naming the register and the key"""
+    for value in [0, 1]:
+        with pytest.raises(KeyError, match=rf"Register r1\.{key} .*swaccess '{swaccess}'"):
+            make_csr(desc([reg("r0"), reg("r1", swaccess=swaccess, **{key: value})]))
+
+#--------------------------------------------
+@pytest.mark.parametrize("key, swaccess", [("rd_wait_state", "ro"), ("wr_wait_state", "wo")])
+def test_wait_state_access(make_csr, key, swaccess):
+    """The wait state of the access the register has is accepted"""
+    r = make_csr(desc([reg(swaccess=swaccess, **{key: 1})]))['registers'][0]
+    assert r[key] == 1
+
+#--------------------------------------------
+@pytest.mark.parametrize("key", ["rd_wait_state", "wr_wait_state"])
+@pytest.mark.parametrize("value", [-1, "-2", " "])
+def test_wait_state_value_error(make_csr, key, value):
+    """Negative integer, empty expression"""
+    with pytest.raises(ValueError, match=rf"Register r\.{key} "):
+        make_csr(desc([reg(**{key: value})]))
+
+#--------------------------------------------
+@pytest.mark.parametrize("value", [True, 1.5, [1], None])
+def test_wait_state_schema_error(make_csr, value):
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        make_csr(desc([reg(rd_wait_state=value)]))
+
+#============================================
 # Fields
 #============================================
 

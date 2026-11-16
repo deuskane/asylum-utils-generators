@@ -196,6 +196,35 @@ def test_module_init(make_csr):
     assert re.search(r',MODEL\s+=> "rw1c"$', mod, re.M)
 
 #--------------------------------------------
+def test_module_wait_state(make_csr):
+    """Wait states : generics RD_WAIT_STATE / WR_WAIT_STATE of csr_reg (integer or expression)"""
+    csr    = make_csr(desc([reg(rd_wait_state=2, wr_wait_state="NB_WAIT")], parameters=[{"name": "NB_WAIT", "type": "natural"}]))
+    _, mod = vhdl(csr)
+    assert re.search(r',MODEL\s+=> "rw"\n\s+,RD_WAIT_STATE => 2\n\s+,WR_WAIT_STATE => NB_WAIT\n', mod)
+
+#--------------------------------------------
+@pytest.mark.parametrize("key", ["rd_wait_state", "wr_wait_state"])
+def test_module_wait_state_one(make_csr, key):
+    """Only the generic of the key set"""
+    _, mod = vhdl(make_csr(desc([reg(**{key: "1"})])))
+    assert re.findall(r"^\s+,(\w+_WAIT_STATE)\s+=> 1$", mod, re.M) == [key.upper()]
+
+#--------------------------------------------
+@pytest.mark.parametrize("language", ["vhdl", "verilog", "systemverilog"])
+@pytest.mark.parametrize("value", [0, "0", " 0"])
+def test_module_wait_state_zero(make_csr, generate, language, value):
+    """Wait states at 0 : no generic, same package and module as without the keys"""
+    outputs = [lambda csr, path: generate_hdl_package(csr, path, language),
+               lambda csr, path: generate_hdl_module (csr, path, language)]
+    keys    = {"rd_wait_state": value, "wr_wait_state": value}
+    without = make_csr(desc([reg("r0"), reg("r1", swaccess="rcw1s")]))
+    with_0  = make_csr(desc([reg("r0", **keys), reg("r1", swaccess="rcw1s", **keys)]))
+    for output in outputs:
+        text = generate(output, with_0)
+        assert "WAIT_STATE" not in text
+        assert text == generate(output, without)
+
+#--------------------------------------------
 def test_module_alias_write(make_csr):
     _, mod = vhdl(make_csr(desc([reg("r0"), reg("r1", alias_write="r0")])))
     assert "r0_wcs <= '1' when (sig_waddr = TEST_R0) or (sig_waddr = TEST_R1) else" in mod
@@ -247,7 +276,9 @@ GHDL_DESC = desc([
     reg("cmd"   , swaccess="wo"   , hwaccess="ro", fields=[field("op", "1:0")], address="x10"),
     reg("data"  , swaccess="rw"   , hwaccess="rw", hwtype="ext"),
     reg("opt"   , swaccess="rw"   , hwaccess="ro", enable="OPT_ENABLE", fields=[field("v", "7:0", expr="INIT")]),
-], parameters=[{"name": "OPT_ENABLE", "type": "boolean"}, {"name": "INIT", "type": "std_logic_vector(7 downto 0)"}])
+    reg("slow"  , swaccess="rcw1s", hwaccess="rw", fields=[field("flags", "3:0")], rd_wait_state="NB_WAIT", wr_wait_state=2),
+], parameters=[{"name": "OPT_ENABLE", "type": "boolean"}, {"name": "INIT", "type": "std_logic_vector(7 downto 0)"},
+               {"name": "NB_WAIT", "type": "natural"}])
 
 #--------------------------------------------
 def ghdl(*args, cwd):
@@ -280,7 +311,8 @@ def test_ghdl_elaborate(make_csr, tmp_path, enable, interface):
         return                                  # Unconstrained record ports : analysis only
 
     # The generics of the top are set at run time (elaboration of the generate statements)
-    ghdl("--elab-run", *options, "test_registers", f"-gOPT_ENABLE={enable}", "-gINIT=01011010", "--stop-time=1ns", cwd=tmp_path)
+    ghdl("--elab-run", *options, "test_registers", f"-gOPT_ENABLE={enable}", "-gINIT=01011010", "-gNB_WAIT=1",
+         "--stop-time=1ns", cwd=tmp_path)
 
 #============================================
 # Verilog
@@ -355,6 +387,14 @@ def test_verilog_fifo_params(make_csr):
     assert re.search(r",\.DEPTH_HW2SW\s+\(DEPTH\)$" , mod, re.M)
 
 #--------------------------------------------
+@pytest.mark.parametrize("language", ["verilog", "systemverilog"])
+def test_verilog_wait_state(make_csr, language):
+    """Wait states : parameters RD_WAIT_STATE / WR_WAIT_STATE of csr_reg (integer or expression)"""
+    csr    = make_csr(desc([reg(rd_wait_state="NB_WAIT", wr_wait_state=3)], parameters=[{"name": "NB_WAIT", "type": "natural"}]))
+    _, mod = verilog(csr) if language == "verilog" else systemverilog(csr)
+    assert re.search(r',\.MODEL\s+\("rw"\)\n\s+,\.RD_WAIT_STATE \(NB_WAIT\)\n\s+,\.WR_WAIT_STATE \(3\)\n', mod)
+
+#--------------------------------------------
 def test_verilog_header(make_csr):
     enum   = [{"name": "run", "value": "x2", "desc": "Run"}]
     hdr, _ = verilog(make_csr(desc([reg("r0"), reg("cmd", address="x10", fields=[field("op", "5:4", enum=enum)])], width=8)))
@@ -375,8 +415,9 @@ TOOLS_DESC = desc([
     reg("rx"    , swaccess="ro"   , hwaccess="wo", hwtype="fifo", params={"BLOCKING_READ": "True", "DEPTH_HW2SW": "DEPTH"}),
     reg("tx"    , swaccess="wo"   , hwaccess="ro", hwtype="fifo", params={"DEPTH_SW2HW": "4"}),
     reg("opt"   , swaccess="rw"   , hwaccess="ro", enable="OPT_ENABLE", fields=[field("v", "7:0", expr="INIT")]),
+    reg("slow"  , swaccess="rcw1s", hwaccess="rw", fields=[field("flags", "3:0")], rd_wait_state="NB_WAIT", wr_wait_state=2),
 ], parameters=[{"name": "OPT_ENABLE", "type": "boolean"}, {"name": "DEPTH", "type": "natural"},
-               {"name": "INIT", "type": "std_logic_vector(7 downto 0)"}])
+               {"name": "INIT", "type": "std_logic_vector(7 downto 0)"}, {"name": "NB_WAIT", "type": "natural"}])
 
 #--------------------------------------------
 def verilog_files(make_csr, tmp_path, interface):
@@ -399,7 +440,7 @@ def test_verilator_lint(make_csr, tmp_path, interface, enable):
     verilator = tool("verilator")
     files     = verilog_files(make_csr, tmp_path, interface)
     run(verilator, "--lint-only", "-Wall", "-Wno-UNUSEDSIGNAL", "--top-module", "test_registers",
-        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", *files, cwd=tmp_path)
+        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", "-GNB_WAIT=1", *files, cwd=tmp_path)
 
 #--------------------------------------------
 @pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
@@ -407,7 +448,7 @@ def test_iverilog_compile(make_csr, tmp_path, interface):
     iverilog = tool("iverilog")
     files    = verilog_files(make_csr, tmp_path, interface)
     run(iverilog, "-g2005", "-Wall", "-s", "test_registers", "-o", "test.vvp",
-        "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", *files, cwd=tmp_path)
+        "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", "-Ptest_registers.NB_WAIT=1", *files, cwd=tmp_path)
 
 #============================================
 # SystemVerilog
@@ -476,7 +517,7 @@ def test_sv_verilator_lint(make_csr, tmp_path, interface, enable):
     verilator = tool("verilator")
     files     = sv_files(make_csr, tmp_path, interface)
     run(verilator, "--lint-only", "-Wall", "-Wno-UNUSEDSIGNAL", "--top-module", "test_registers",
-        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", *files, cwd=tmp_path)
+        f"-GOPT_ENABLE={enable}", "-GDEPTH=2", "-GINIT=8'h5A", "-GNB_WAIT=1", *files, cwd=tmp_path)
 
 #--------------------------------------------
 @pytest.mark.parametrize("interface", ["mem", "apb", "axi4lite"])
@@ -485,5 +526,6 @@ def test_sv_iverilog_compile(make_csr, tmp_path, interface):
     iverilog = tool("iverilog")
     files    = sv_files(make_csr, tmp_path, interface)
     output   = run(iverilog, "-g2012", "-Wall", "-s", "test_registers", "-o", "test.vvp",
-                   "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", *files, cwd=tmp_path)
+                   "-Ptest_registers.OPT_ENABLE=1", "-Ptest_registers.DEPTH=2", "-Ptest_registers.NB_WAIT=1",
+                   *files, cwd=tmp_path)
     assert "warning" not in output, output
