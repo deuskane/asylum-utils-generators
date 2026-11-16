@@ -65,9 +65,11 @@ CAPI=2:
 #                                              sbi2mem, pbi2mem, apb2mem, axi4lite2mem (interface "reg" = "mem")
 #                                              Verilog and SystemVerilog outputs (parameter language), parameter interface
 #                                              pytest unit tests, sim_regtool_<interface>_<scenario> targets
+# 2026-11-16  2.10.0   mrosiere regtool      : csr_reg wait states (generics RD_WAIT_STATE / WR_WAIT_STATE,
+#                                              hjson rd_wait_state / wr_wait_state, hwtype reg only)
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.9.0
+name       : asylum:utils:generators:2.10.0
 description: A collection of useful generators
 
 #=========================================
