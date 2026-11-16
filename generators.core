@@ -400,6 +400,18 @@ parameters:
     default     : "00000000"
     paramtype   : generic
 
+  RD_WAIT_STATE :
+    description : csr_reg, wait states of a software read
+    datatype    : int
+    default     : 0
+    paramtype   : generic
+
+  WR_WAIT_STATE :
+    description : csr_reg, wait states of a software write
+    datatype    : int
+    default     : 0
+    paramtype   : generic
+
   BLOCKING_READ :
     description : csr_fifo, blocking read
     datatype    : bool
@@ -480,6 +492,15 @@ targets:
     description     : Synthesis check of csr_wrapper, INIT x"A5"
     parameters      :
       - INIT=10100101
+
+  #---------------------------------------
+  lint_ghdl_synth_wait_state :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_wrapper, csr_reg with read and write wait states
+    parameters      :
+      - RD_WAIT_STATE=2
+      - WR_WAIT_STATE=3
 
   #---------------------------------------
   lint_ghdl_synth_fifo_blocking :

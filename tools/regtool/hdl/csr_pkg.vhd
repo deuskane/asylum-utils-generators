@@ -75,9 +75,11 @@ end component csr_fifo;
 component csr_reg is
   
   generic (
-    WIDTH : positive := 1;                              -- Register Width
-    INIT  : std_logic_vector;                           -- Reset
-    MODEL : string                                      -- "rw", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
+    WIDTH         : positive := 1;                      -- Register Width
+    INIT          : std_logic_vector;                   -- Reset
+    MODEL         : string;                             -- "ro", "rw", "wo", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
+    RD_WAIT_STATE : natural  := 0;                      -- Software read  : wait states (access of 1+RD_WAIT_STATE cycles)
+    WR_WAIT_STATE : natural  := 0                       -- Software write : wait states (access of 1+WR_WAIT_STATE cycles)
                               
     ); 
 

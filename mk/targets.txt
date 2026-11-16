@@ -4,6 +4,7 @@ lint_ghdl_synth_default          : Synthesis check of csr_wrapper, default gener
 lint_ghdl_synth_fifo_blocking    : Synthesis check of csr_wrapper, csr_fifo with FIFOs, blocking read
 lint_ghdl_synth_fifo_nonblocking : Synthesis check of csr_wrapper, csr_fifo with FIFOs, non-blocking write
 lint_ghdl_synth_init_a5          : Synthesis check of csr_wrapper, INIT x"A5"
+lint_ghdl_synth_wait_state       : Synthesis check of csr_wrapper, csr_reg with read and write wait states
 lint_ghdl_synth_width1_init1     : Synthesis check of csr_wrapper, WIDTH 1, INIT "1"
 sim                              : default run rule
 sim_regtool_apb_ext              : regtool testbench, interface apb, external register

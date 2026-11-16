@@ -11,6 +11,12 @@
 -------------------------------------------------------------------------------
 -- Description:
 --  Macro from https://opentitan.org/book/util/reggen/index.html
+--  Wait states (RD_WAIT_STATE, WR_WAIT_STATE) : a software access lasts
+--  1+<N> cycles, held by the bus while sw_rbusy_o / sw_wbusy_o = '1'.
+--  The write is done once, in the first cycle of the access (hw_sw_we_o
+--  the cycle after it, during the access if WR_WAIT_STATE > 0) ; the read
+--  data and the read side effects are those of the last cycle (hw_sw_re_o
+--  the cycle after the access).
 -------------------------------------------------------------------------------
 -- Copyright (c) 2017 
 -------------------------------------------------------------------------------
@@ -19,6 +25,8 @@
 -- 2025-02-09  1.0      mrosiere Created
 -- 2026-10-05  1.1      mrosiere Add "wo" model (same storage as "rw",
 --                               software read data masked by regtool)
+-- 2026-11-16  1.2      mrosiere Add RD_WAIT_STATE / WR_WAIT_STATE (thermometer
+--                               shift register per direction)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -28,9 +36,11 @@ use ieee.numeric_std.all;
 entity csr_reg is
   
   generic (
-    WIDTH : positive := 1;                              -- Register Width
-    INIT  : std_logic_vector;                           -- Reset
-    MODEL : string                                      -- "ro", "rw", "wo", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
+    WIDTH         : positive := 1;                      -- Register Width
+    INIT          : std_logic_vector;                   -- Reset
+    MODEL         : string;                             -- "ro", "rw", "wo", "rw1c", "rw0c", "rw1s", "rw0s", "rsw1c", "rcw1s", "rsw0c"
+    RD_WAIT_STATE : natural  := 0;                      -- Software read  : wait states (access of 1+RD_WAIT_STATE cycles)
+    WR_WAIT_STATE : natural  := 0                       -- Software write : wait states (access of 1+WR_WAIT_STATE cycles)
                               
     ); 
 
@@ -63,8 +73,69 @@ architecture rtl of csr_reg is
   signal d_hw      : std_logic_vector(WIDTH-1 downto 0);
   signal d_sw      : std_logic_vector(WIDTH-1 downto 0);
   signal d_rd      : std_logic_vector(WIDTH-1 downto 0);
+  signal wr_first  : std_logic;                         -- Software write, first cycle of the access
+  signal rd_last   : std_logic;                         -- Software read , last  cycle of the access
   
 begin  -- architecture rtl
+
+  -- Wait states : the bus holds sw_we_i / sw_re_i while busy = '1'.
+  -- One thermometer shift register per direction : bit i = '1' when the
+  -- cycle i of the access is done. It is cleared after the last cycle
+  -- (back to back accesses) or when the access is aborted.
+  -- WAIT_STATE = 0 : no register, no busy.
+  gen_wr_wait: if WR_WAIT_STATE > 0
+  generate
+    signal wsr_r : std_logic_vector(WR_WAIT_STATE-1 downto 0); -- Software write, cycles of the access done
+  begin
+    process (clk_i, arst_b_i) is
+    begin  -- process
+      if arst_b_i = '0' then              -- asynchronous reset (active low)
+        wsr_r <= (others => '0');
+      elsif clk_i'event and clk_i = '1' then  -- rising clock edge
+        if sw_we_i = '1' and wsr_r(WR_WAIT_STATE-1) = '0' then
+          wsr_r <= wsr_r(WR_WAIT_STATE-2 downto 0) & '1';   -- WR_WAIT_STATE = 1 : "1"
+        else
+          wsr_r <= (others => '0');
+        end if;
+      end if;
+    end process;
+
+    wr_first   <= sw_we_i and not wsr_r(0);
+    sw_wbusy_o <= sw_we_i and not wsr_r(WR_WAIT_STATE-1);
+  end generate gen_wr_wait;
+
+  gen_wr_wait_b: if WR_WAIT_STATE = 0
+  generate
+    wr_first   <= sw_we_i;
+    sw_wbusy_o <= '0';
+  end generate gen_wr_wait_b;
+
+  gen_rd_wait: if RD_WAIT_STATE > 0
+  generate
+    signal rsr_r : std_logic_vector(RD_WAIT_STATE-1 downto 0); -- Software read, cycles of the access done
+  begin
+    process (clk_i, arst_b_i) is
+    begin  -- process
+      if arst_b_i = '0' then              -- asynchronous reset (active low)
+        rsr_r <= (others => '0');
+      elsif clk_i'event and clk_i = '1' then  -- rising clock edge
+        if sw_re_i = '1' and rsr_r(RD_WAIT_STATE-1) = '0' then
+          rsr_r <= rsr_r(RD_WAIT_STATE-2 downto 0) & '1';   -- RD_WAIT_STATE = 1 : "1"
+        else
+          rsr_r <= (others => '0');
+        end if;
+      end if;
+    end process;
+
+    rd_last    <= sw_re_i and     rsr_r(RD_WAIT_STATE-1);
+    sw_rbusy_o <= sw_re_i and not rsr_r(RD_WAIT_STATE-1);
+  end generate gen_rd_wait;
+
+  gen_rd_wait_b: if RD_WAIT_STATE = 0
+  generate
+    rd_last    <= sw_re_i;
+    sw_rbusy_o <= '0';
+  end generate gen_rd_wait_b;
 
   gen_ro: if MODEL="ro" 
   generate
@@ -74,8 +145,8 @@ begin  -- architecture rtl
 
   gen_rw: if MODEL="rw" 
   generate
-    q_r_next <= sw_wd_i         when sw_we_i = '1' else
-                hw_wd_i         when hw_we_i = '1' else
+    q_r_next <= sw_wd_i         when wr_first = '1' else
+                hw_wd_i         when hw_we_i  = '1' else
                 q_r;
   end generate gen_rw;
 
@@ -83,8 +154,8 @@ begin  -- architecture rtl
   -- regtool does not connect sw_rd_o to the read data bus (reads return 0)
   gen_wo: if MODEL="wo" 
   generate
-    q_r_next <= sw_wd_i         when sw_we_i = '1' else
-                hw_wd_i         when hw_we_i = '1' else
+    q_r_next <= sw_wd_i         when wr_first = '1' else
+                hw_wd_i         when hw_we_i  = '1' else
                 q_r;
   end generate gen_wo;
 
@@ -92,7 +163,7 @@ begin  -- architecture rtl
   generate
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= not sw_wd_i     when sw_we_i = '1' else
+    d_sw     <= not sw_wd_i     when wr_first = '1' else
                 (others => '1');
     
     q_r_next <= d_hw and d_sw;
@@ -102,7 +173,7 @@ begin  -- architecture rtl
   generate
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= sw_wd_i         when sw_we_i = '1' else
+    d_sw     <= sw_wd_i         when wr_first = '1' else
                 (others => '1');
     
     q_r_next <= d_hw and d_sw;
@@ -112,7 +183,7 @@ begin  -- architecture rtl
   generate
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= sw_wd_i         when sw_we_i = '1' else
+    d_sw     <= sw_wd_i         when wr_first = '1' else
                 (others => '0');
     
     q_r_next <= d_hw or d_sw;
@@ -122,7 +193,7 @@ begin  -- architecture rtl
   generate
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_sw     <= not sw_wd_i     when sw_we_i = '1' else
+    d_sw     <= not sw_wd_i     when wr_first = '1' else
                 (others => '0');
     
     q_r_next <= d_hw or d_sw;
@@ -136,9 +207,9 @@ begin  -- architecture rtl
 
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_rd     <= not q_r         when sw_re_i = '1' else
+    d_rd     <= not q_r         when rd_last = '1' else
                 (others => '0');
-    d_sw     <= not sw_wd_i     when sw_we_i = '1' else
+    d_sw     <= not sw_wd_i     when wr_first = '1' else
                 (others => '1');
     
     q_r_next <= (d_hw or d_rd) and d_sw;
@@ -152,9 +223,9 @@ begin  -- architecture rtl
     -- Software Write (set)
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_rd     <= not q_r         when sw_re_i = '1' else
+    d_rd     <= not q_r         when rd_last = '1' else
                 (others => '1');
-    d_sw     <= sw_wd_i         when sw_we_i = '1' else
+    d_sw     <= sw_wd_i         when wr_first = '1' else
                 (others => '0');
     
     q_r_next <= (d_hw and d_rd) or d_sw;
@@ -167,9 +238,9 @@ begin  -- architecture rtl
     -- Software Write (clear)
     d_hw     <= hw_wd_i         when hw_we_i = '1' else
                 q_r;
-    d_rd     <= not q_r         when sw_re_i = '1' else
+    d_rd     <= not q_r         when rd_last = '1' else
                 (others => '0');
-    d_sw     <= sw_wd_i         when sw_we_i = '1' else
+    d_sw     <= sw_wd_i         when wr_first = '1' else
                 (others => '1');
     
     q_r_next <= (d_hw or d_rd) and d_sw;
@@ -183,8 +254,8 @@ process (clk_i, arst_b_i) is
       q_sw_re_r <= '0';
     elsif clk_i'event and clk_i = '1' then  -- rising clock edge
       q_r       <= q_r_next;
-      q_sw_we_r <= sw_we_i;
-      q_sw_re_r <= sw_re_i;
+      q_sw_we_r <= wr_first;
+      q_sw_re_r <= rd_last;
     end if;
   end process;
 
@@ -192,7 +263,5 @@ process (clk_i, arst_b_i) is
   hw_sw_we_o <= q_sw_we_r;
   hw_rd_o    <= q_r      ;
   sw_rd_o    <= q_r      ;
-  sw_rbusy_o <= '0';
-  sw_wbusy_o <= '0';
   
 end architecture rtl;
