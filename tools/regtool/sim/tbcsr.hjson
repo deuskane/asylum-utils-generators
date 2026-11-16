@@ -83,6 +83,52 @@
             fields: [
                 { name: "data" , bits: "15:0", desc: "Data" }
             ]
+        },
+        {
+            name       : "wwait",
+            address    : "x20",
+            desc       : "Write wait states, the hardware writes the inverted value at the write strobe",
+            swaccess   : "rw",
+            hwaccess   : "rw",
+            wr_wait_state : 2,
+            fields: [
+                { name: "data" , bits: "15:0", desc: "Data" }
+            ]
+        },
+        {
+            name       : "rcount",
+            address    : "x24",
+            desc       : "Read wait states, cycle counter written by the hardware every cycle",
+            swaccess   : "ro",
+            hwaccess   : "wo",
+            rd_wait_state : 2,
+            fields: [
+                { name: "data" , bits: "15:0", desc: "Data" }
+            ]
+        },
+        {
+            name       : "rclr",
+            address    : "x28",
+            desc       : "Read and write wait states, cleared by a read, set by writing 1",
+            swaccess   : "rcw1s",
+            hwaccess   : "ro",
+            rd_wait_state : "2",
+            wr_wait_state : 1,
+            fields: [
+                { name: "flags", bits: "7:0" , desc: "Flags" }
+            ]
+        },
+        {
+            name       : "nowait",
+            address    : "x2C",
+            desc       : "Wait states at 0 : same as a register without them",
+            swaccess   : "rw",
+            hwaccess   : "ro",
+            rd_wait_state : 0,
+            wr_wait_state : "0",
+            fields: [
+                { name: "data" , bits: "7:0" , desc: "Data" }
+            ]
         }
     ]
 }

@@ -11,12 +11,14 @@
 -------------------------------------------------------------------------------
 -- Description:
 --  Bus master of the memory interface : the access is held until busy = '0'
+--  b2b : the access starts in the cycle that follows the previous one
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-23  1.0      mrosiere Created
+-- 2026-11-16  1.1      mrosiere Back to back accesses (req_i.b2b)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -49,8 +51,9 @@ architecture tb of tb_mem_master is
 begin  -- architecture tb
 
   process is
-    variable done   : boolean := false;
-    variable cycles : natural;
+    variable done     : boolean := false;
+    variable cycles   : natural;
+    variable last_end : time    := 0 ns;                    -- End of the previous access
   begin  -- process
     cs_o    <= '0';
     re_o    <= '0';
@@ -61,7 +64,13 @@ begin  -- architecture tb
 
     loop
       wait on req_i.start;
-      wait until rising_edge(clk_i);
+      -- Back to back : the request is given at the rising edge that ends
+      -- the previous access, the access starts now (no idle cycle)
+      if req_i.b2b then
+        tb_check(now = last_end, "back to back request after the end of the previous access");
+      else
+        wait until rising_edge(clk_i);
+      end if;
 
       cs_o    <= '1';
       re_o    <= '0' when req_i.write else '1';
@@ -77,11 +86,12 @@ begin  -- architecture tb
         exit when busy_i = '0';
       end loop;
 
-      done    := not done;
-      rsp_o   <= (done => done, rdata => rdata_i, cycles => cycles);
-      cs_o    <= '0';
-      re_o    <= '0';
-      we_o    <= '0';
+      done     := not done;
+      last_end := now;
+      rsp_o    <= (done => done, rdata => rdata_i, cycles => cycles);
+      cs_o     <= '0';
+      re_o     <= '0';
+      we_o     <= '0';
     end loop;
   end process;
 

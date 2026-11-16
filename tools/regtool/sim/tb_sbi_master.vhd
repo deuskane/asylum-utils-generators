@@ -11,12 +11,14 @@
 -------------------------------------------------------------------------------
 -- Description:
 --  Bus master of the SBI : the access is held until ready = '1'
+--  b2b : the access starts in the cycle that follows the previous one
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author   Description
 -- 2026-10-23  1.0      mrosiere Created
+-- 2026-11-16  1.1      mrosiere Back to back accesses (req_i.b2b)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -42,8 +44,9 @@ architecture tb of tb_sbi_master is
 begin  -- architecture tb
 
   process is
-    variable done   : boolean := false;
-    variable cycles : natural;
+    variable done     : boolean := false;
+    variable cycles   : natural;
+    variable last_end : time    := 0 ns;                    -- End of the previous access
   begin  -- process
     sbi_ini_o.cs    <= '0';
     sbi_ini_o.re    <= '0';
@@ -54,7 +57,13 @@ begin  -- architecture tb
 
     loop
       wait on req_i.start;
-      wait until rising_edge(clk_i);
+      -- Back to back : the request is given at the rising edge that ends
+      -- the previous access, the access starts now (no idle cycle)
+      if req_i.b2b then
+        tb_check(now = last_end, "back to back request after the end of the previous access");
+      else
+        wait until rising_edge(clk_i);
+      end if;
 
       sbi_ini_o.cs    <= '1';
       sbi_ini_o.re    <= '0' when req_i.write else '1';
@@ -70,8 +79,9 @@ begin  -- architecture tb
         exit when sbi_tgt_i.ready = '1';
       end loop;
 
-      done    := not done;
-      rsp_o   <= (done => done, rdata => sbi_tgt_i.rdata, cycles => cycles);
+      done     := not done;
+      last_end := now;
+      rsp_o    <= (done => done, rdata => sbi_tgt_i.rdata, cycles => cycles);
       sbi_ini_o.cs    <= '0';
       sbi_ini_o.re    <= '0';
       sbi_ini_o.we    <= '0';

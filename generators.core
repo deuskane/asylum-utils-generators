@@ -592,6 +592,31 @@ targets:
     description     : regtool testbench, interface mem, access to an unmapped address
     parameters      : [TEST=unmapped]
 
+  sim_regtool_mem_wait_duration:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, wait states, duration of the accesses
+    parameters      : [TEST=wait_duration]
+
+  sim_regtool_mem_wait_write:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, write wait states, write and write strobe once, during the access
+    parameters      : [TEST=wait_write]
+
+  sim_regtool_mem_wait_read:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, read wait states, read data of the last cycle, read strobe once
+    parameters      : [TEST=wait_read]
+
+  sim_regtool_mem_wait_read_clear:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, read wait states, read side effect once, value before the clear
+    parameters      : [TEST=wait_read_clear]
+
+  sim_regtool_mem_wait_none:
+    << : *tb_regtool_mem
+    description     : regtool testbench, interface mem, wait states at 0, same as without them
+    parameters      : [TEST=wait_none]
+
   #---------------------------------------
   tb_regtool_sbi: &tb_regtool_sbi
   #---------------------------------------
@@ -639,6 +664,31 @@ targets:
     << : *tb_regtool_sbi
     description     : regtool testbench, interface sbi, access to an unmapped address
     parameters      : [TEST=unmapped]
+
+  sim_regtool_sbi_wait_duration:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, wait states, duration of the accesses
+    parameters      : [TEST=wait_duration]
+
+  sim_regtool_sbi_wait_write:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, write wait states, write and write strobe once, during the access
+    parameters      : [TEST=wait_write]
+
+  sim_regtool_sbi_wait_read:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, read wait states, read data of the last cycle, read strobe once
+    parameters      : [TEST=wait_read]
+
+  sim_regtool_sbi_wait_read_clear:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, read wait states, read side effect once, value before the clear
+    parameters      : [TEST=wait_read_clear]
+
+  sim_regtool_sbi_wait_none:
+    << : *tb_regtool_sbi
+    description     : regtool testbench, interface sbi, wait states at 0, same as without them
+    parameters      : [TEST=wait_none]
 
   #---------------------------------------
   tb_regtool_pbi: &tb_regtool_pbi
@@ -688,6 +738,31 @@ targets:
     description     : regtool testbench, interface pbi, access to an unmapped address
     parameters      : [TEST=unmapped]
 
+  sim_regtool_pbi_wait_duration:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, wait states, duration of the accesses
+    parameters      : [TEST=wait_duration]
+
+  sim_regtool_pbi_wait_write:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, write wait states, write and write strobe once, during the access
+    parameters      : [TEST=wait_write]
+
+  sim_regtool_pbi_wait_read:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, read wait states, read data of the last cycle, read strobe once
+    parameters      : [TEST=wait_read]
+
+  sim_regtool_pbi_wait_read_clear:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, read wait states, read side effect once, value before the clear
+    parameters      : [TEST=wait_read_clear]
+
+  sim_regtool_pbi_wait_none:
+    << : *tb_regtool_pbi
+    description     : regtool testbench, interface pbi, wait states at 0, same as without them
+    parameters      : [TEST=wait_none]
+
   #---------------------------------------
   tb_regtool_apb: &tb_regtool_apb
   #---------------------------------------
@@ -736,6 +811,31 @@ targets:
     description     : regtool testbench, interface apb, access to an unmapped address
     parameters      : [TEST=unmapped]
 
+  sim_regtool_apb_wait_duration:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, wait states, duration of the accesses
+    parameters      : [TEST=wait_duration]
+
+  sim_regtool_apb_wait_write:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, write wait states, write and write strobe once, during the access
+    parameters      : [TEST=wait_write]
+
+  sim_regtool_apb_wait_read:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, read wait states, read data of the last cycle, read strobe once
+    parameters      : [TEST=wait_read]
+
+  sim_regtool_apb_wait_read_clear:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, read wait states, read side effect once, value before the clear
+    parameters      : [TEST=wait_read_clear]
+
+  sim_regtool_apb_wait_none:
+    << : *tb_regtool_apb
+    description     : regtool testbench, interface apb, wait states at 0, same as without them
+    parameters      : [TEST=wait_none]
+
   #---------------------------------------
   tb_regtool_axi4lite: &tb_regtool_axi4lite
   #---------------------------------------
@@ -783,6 +883,31 @@ targets:
     << : *tb_regtool_axi4lite
     description     : regtool testbench, interface axi4lite, access to an unmapped address
     parameters      : [TEST=unmapped]
+
+  sim_regtool_axi4lite_wait_duration:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, wait states, duration of the accesses
+    parameters      : [TEST=wait_duration]
+
+  sim_regtool_axi4lite_wait_write:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, write wait states, write and write strobe once, during the access
+    parameters      : [TEST=wait_write]
+
+  sim_regtool_axi4lite_wait_read:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, read wait states, read data of the last cycle, read strobe once
+    parameters      : [TEST=wait_read]
+
+  sim_regtool_axi4lite_wait_read_clear:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, read wait states, read side effect once, value before the clear
+    parameters      : [TEST=wait_read_clear]
+
+  sim_regtool_axi4lite_wait_none:
+    << : *tb_regtool_axi4lite
+    description     : regtool testbench, interface axi4lite, wait states at 0, same as without them
+    parameters      : [TEST=wait_none]
 
 #  #---------------------------------------
 #  sim_regtool_example2:
