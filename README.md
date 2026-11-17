@@ -72,7 +72,7 @@ Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the 
 - regtool outputs: VHDL (`<X>_csr.vhd`, `<X>_csr_pkg.vhd`), Verilog 2005 (`<X>_csr.v`, `<X>_csr_pkg.vh`, records flattened in ports) or SystemVerilog (`<X>_csr.sv`, `<X>_csr_pkg.sv`, records as packed structs; Verilog / SystemVerilog : interfaces `mem`, `apb`, `axi4lite`), `<X>_csr.h`, `<X>_csr.md`, optionally copied back into the source tree (`copy`)
 - regtool code: the CSR model ([csr_model.py](tools/regtool/csr_model.py)) is separated from the generators; [gen_hdl.py](tools/regtool/gen_hdl.py) builds the CSR package and module as a generic HDL description ([hdl_model.py](tools/regtool/hdl_model.py)), written by the generic writers [gen_vhdl.py](tools/regtool/gen_vhdl.py), [gen_verilog.py](tools/regtool/gen_verilog.py) and [gen_systemverilog.py](tools/regtool/gen_systemverilog.py) (no CSR knowledge); `gen_c.py`, `gen_markdown.py` for the C header and the documentation
 - CSR building blocks in VHDL and Verilog: `csr_reg`, `csr_ext`, `csr_fifo` (with optional FIFOs and blocking access), `csr_pkg` (VHDL), bridges `sbi2mem`, `pbi2mem` (VHDL), `apb2mem`, `axi4lite2mem`
-- Verification: pytest unit tests of regtool, one FuseSoC simulation target per interface and scenario (VHDL), iverilog simulations of the Verilog and SystemVerilog outputs (pytest)
+- Verification: pytest unit tests of regtool, one FuseSoC simulation target per interface and scenario (VHDL, UVVM, scenario chosen at run time), iverilog simulations of the Verilog and SystemVerilog outputs (pytest)
 - pbcc_gen: C (`c`) or assembler (`kcpsm3`, `pblazeide`) input, `generic` or `xilinx` ROM model, user `cflags` (relative `-I` paths resolved from the calling core)
 - rvcc_gen: C / assembler input, `start.S` and `link.ld` templates, stack size check, listing / map / size reports, `rv32i_zicsr` used when the compiler supports it
 - Generated `*-gen_csr_*` directories automatically added to the include path of pbcc / rvcc (C code can include `<X>_csr.h`)
@@ -375,8 +375,10 @@ Generated files, all named after the generator `name`:
 | File | DUT | Description |
 |------|-----|-------------|
 | [tools/regtool/tests/](tools/regtool/tests/) | regtool (Python) | pytest unit tests: parsers, CSR model checks, generic VHDL / Verilog / SystemVerilog writers (`test_gen_vhdl.py`, `test_gen_verilog.py`, `test_gen_systemverilog.py`, on a module without CSR), CSR package / module (`test_gen_hdl.py`), C / Markdown, command line, golden files of the examples; GHDL analysis / elaboration, verilator lint and iverilog compilation / simulation when the tools are in the `PATH` |
-| [tools/regtool/sim/tb_regtool_scenario.vhd](tools/regtool/sim/tb_regtool_scenario.vhd) | `tbcsr_registers` | Scenarios (generic `TEST`), clock, reset, hardware side and monitors, independent of the bus |
-| [tools/regtool/sim/tb_regtool_&lt;interface&gt;.vhd](tools/regtool/sim/) | `tbcsr_registers` + bridge | One top per interface (`mem`, `sbi`, `pbi`, `apb`, `axi4lite`): DUT, bus master `tb_<interface>_master.vhd`, scenario; the masters `mem`, `sbi` and `pbi` can start an access back to back with the previous one, without idle cycle (`b2b` of the request; `apb2mem` and `axi4lite2mem` always insert idle cycles on the memory interface, their masters ignore it) |
+| [tools/regtool/sim/tb_regtool_&lt;interface&gt;.vhd](tools/regtool/sim/) | `tbcsr_registers` + bridge | One UVVM testbench per interface (`mem`, `sbi`, `pbi`, `apb`, `axi4lite`), generic `TEST` (the scenario, set at run time): `clock_generator`, reset, DUT, BFM interface connected to the bus, `tb_regtool_hw`, sequencer (BFM configuration, `run_test`, `report_alert_counters(FINAL)`). BFMs: `mem`, `sbi`, `pbi`: `bitvis_vip_sbi` (the memory interface and `pbi` have the protocol of `sbi`: access held while busy, `ready = not busy`); `apb`: `apb_bfm_pkg`; `axi4lite`: `bitvis_vip_axilite` (W one cycle after AW, `bready` / `rready` 3 cycles after the address phase) and an AXI4-Lite protocol monitor |
+| [tools/regtool/sim/tb_regtool_pkg.vhd](tools/regtool/sim/tb_regtool_pkg.vhd) | | Scenarios, independent of the bus: one procedure per `TEST` (BFM interface, BFM configuration, clock and hardware side as parameters), called by `run_test`; software accesses `tb_write` / `tb_read` / `tb_check` through the BFM of the interface of the testbench (duration of the access in cycles, back to back accesses); types of the hardware side |
+| [tools/regtool/sim/tb_regtool_hw.vhd](tools/regtool/sim/tb_regtool_hw.vhd) | | Hardware side of `tbcsr`: registers written by the scenario, rx FIFO pushes and tx FIFO pops requested by the scenario, `wwait` and `rcount` hardware, monitors of the strobes and data, watchdog |
+| [tools/regtool/sim/apb_bfm_pkg.vhd](tools/regtool/sim/apb_bfm_pkg.vhd) | | APB3 master BFM in the style of the UVVM BFMs (UVVM has no APB VIP): `apb_write` / `apb_read` / `apb_check`, `t_apb_if`, `t_apb_bfm_config`; setup phase, access phase until `pready`, `pslverr` checked |
 | [tools/regtool/sim/tb_regtool.v](tools/regtool/sim/tb_regtool.v) | `tbcsr_registers` (Verilog, SystemVerilog with `TB_SV`) | Same scenarios for the Verilog and SystemVerilog outputs (`mem`, `apb`, `axi4lite`) plus `axi_concurrent`, run by [test_sim_verilog.py](tools/regtool/tests/test_sim_verilog.py) (74 simulations); with `mem`, consecutive accesses are back to back |
 | [tools/regtool/sim/tbcsr.hjson](tools/regtool/sim/tbcsr.hjson) | | CSR of the testbenches: `rw`, `ro` written by the hardware, `rw1c`, `wo`, `ext`, FIFO with blocking read (depth 2), FIFO with blocking write (depth 1), wait states: `wwait` (`rw`, 2 write wait states, the hardware writes the inverted value at the write strobe), `rcount` (`ro`, 2 read wait states, cycle counter written by the hardware every cycle), `rclr` (`rcw1s`, 2 read and 1 write wait states), `nowait` (`rd_wait_state` / `wr_wait_state` at 0) |
 
@@ -391,14 +393,14 @@ Scenarios (one per simulation, each one starts from reset):
 | `fifo_read` | Blocking read of an empty FIFO (bus wait states), FIFO order, full / empty flags |
 | `fifo_write` | Blocking write of a full FIFO (bus wait states), data popped in order |
 | `unmapped` | Unmapped address: reads 0, write without effect |
-| `wait_duration` | Duration of the accesses with wait states: the one of a register without wait state plus the wait states, consecutive accesses to the same register, back to back (`mem`, `sbi`, `pbi`) |
+| `wait_duration` | Duration of the accesses with wait states: the one of a register without wait state plus the wait states, consecutive accesses to the same register, back to back |
 | `wait_write` | Write wait states: register written once in the first cycle, write strobe once and before the end of the access (the hardware write at the strobe is kept) |
 | `wait_read` | Read wait states: read data of the last cycle of the access (register written by the hardware every cycle), read strobe once, after the access |
 | `wait_read_clear` | Read wait states, `rcw1s`: the read returns the value before the clear, clear and read strobe once |
 | `wait_none` | Wait states at 0 in the hjson: same duration and strobe timing as a register without them |
 | `axi_concurrent` | Verilog / SystemVerilog `axi4lite` only: read and write requested together (round robin) |
 
-The bus masters check the protocols: APB setup / access phases and `pslverr`, AXI4-Lite W one cycle after AW, `bready` / `rready` two cycles after `bvalid` / `rvalid` (the response must be held, OKAY). Mutants of the bridges and of the Verilog building blocks are detected by these scenarios, as well as mutants of the wait state logic of `csr_reg` (VHDL and Verilog: write or read side effect in every cycle, strobes in every cycle, no busy, wrong cycle, shift register not cleared at the end of the access: back to back accesses, VHDL `mem` / `sbi` / `pbi` and Verilog `mem`). The generators are also exercised by the cores that use them (every target of an IP with a `gen_csr` entry; `pbcc_gen`, `rvcc_gen`: targets of `asylum-soc-picosoc`).
+The checks use `uvvm_util` (`check_value`, `await_value`, BFM checks); a simulation passes when it ends with `Simulation SUCCESS` (the first alert stops it with an error status). Back to back accesses: a BFM returns a quarter of a period after the rising edge that ends the access, so an access requested right after the previous one (`b2b => true`) is on the bus at the next rising edge, without idle cycle; otherwise `tb_write` / `tb_read` / `tb_check` leave the bus idle at one rising edge first (`apb2mem` and `axi4lite2mem` always insert idle cycles on the memory interface). The BFMs and the monitor check the protocols: APB `pslverr`; AXI4-Lite: no `awready` before `wvalid` (`axi4lite2mem` accepts AW and W together), a response held and stable until it is accepted (the response of an access without wait state is held 2 cycles), OKAY responses; a timeout of 100 cycles in every BFM. In `wait_duration`, `axi4lite` accepts the responses one cycle after the address phase (after a first write / read with the response held), so that the duration of the access follows the memory access. Mutants of the bridges and of the Verilog building blocks are detected by these scenarios, as well as mutants of the wait state logic of `csr_reg` (VHDL and Verilog: write or read side effect in every cycle, strobes in every cycle, no busy, wrong cycle, shift register not cleared at the end of the access: back to back accesses, VHDL `mem` / `sbi` / `pbi` and Verilog `mem`). The generators are also exercised by the cores that use them (every target of an IP with a `gen_csr` entry; `pbcc_gen`, `rvcc_gen`: targets of `asylum-soc-picosoc`).
 
 ### Targets
 
@@ -407,7 +409,7 @@ The bus masters check the protocols: APB setup / access phases and `pslverr`, AX
 | `default` | *(none)* | `deps` fileset only (depends on `asylum:component:fifo` and `asylum:utils:ghdl_synth`); not meant to be run |
 | `sim_regtool_example1` | `asylum.example1_registers` | Generates the CSR of example1, analyzes and elaborates it with GHDL |
 | `sim_regtool_<interface>_<scenario>` | `asylum.tb_regtool_<interface>` | 60 targets: interface `mem`, `sbi`, `pbi`, `apb`, `axi4lite` x scenario of the table above except `axi_concurrent` (`TEST=<scenario>`) |
-| `tb_regtool_<interface>` | `asylum.tb_regtool_<interface>` | Base of the `sim_regtool_<interface>_*` targets (default scenario `reset`) |
+| `tb_regtool_<interface>` | `asylum.tb_regtool_<interface>` | Base of the `sim_regtool_<interface>_*` targets (`TEST=reset`): compiled once, any scenario at run time (see [How to Run](#how-to-run)) |
 | `lint_ghdl` | `asylum.csr_wrapper` | Lint: GHDL `-Wall` analysis and elaboration (empty simulation) of the regtool building blocks `csr_pkg`, `csr_reg` (one instance per software access model, wait states `RD_WAIT_STATE` / `WR_WAIT_STATE`), `csr_ext`, `csr_fifo` in a wrapper with flat ports (`syn/csr_wrapper.vhd`) |
 | `lint_ghdl_synth_default` | `asylum.csr_wrapper` | Synthesis check (see below), default generics |
 | `lint_ghdl_synth_width1_init1` | `asylum.csr_wrapper` | Synthesis check, WIDTH 1, INIT "1": `WIDTH=1`, `INIT=1` |
@@ -433,6 +435,14 @@ The FuseSoC targets (GHDL, `asylum-cores` library):
 make help                                     # list of the targets
 make sim_regtool_axi4lite_fifo_read           # one scenario
 make nonreg_sim TARGETS_FILTER=^sim_regtool_apb   # every scenario of the apb interface
+```
+
+The scenario is a generic set at run time: compile the testbench of an interface once, then run any scenario without recompiling (the run step only analyses the files that changed):
+
+```bash
+make tb_regtool_apb                           # compiled in build/asylum_utils_generators_2.10.0/tb_regtool_apb-ghdl, scenario reset
+fusesoc --cores-root . run --build-root build --no-export --run --target tb_regtool_apb asylum:utils:generators:2.10.0 --TEST=wait_read
+make -C build/asylum_utils_generators_2.10.0/tb_regtool_apb-ghdl run EXTRA_OPTIONS=-gTEST=wait_read   # same, in the build directory
 ```
 
 The pytest unit tests (Python 3; GHDL, iverilog and verilator are optional, the tests that need them are skipped otherwise):
@@ -588,5 +598,6 @@ asylum-utils-generators/
 |------|-------------------|---------|
 | `asylum:component:fifo` | `deps` | `fifo_sync` / `fifo_pkg` used by `csr_fifo` |
 | `asylum:utils:pkg` | `files_regtool_sim` | `sbi_pkg` / `pbi_pkg` of the testbenches (and of `sbi2mem` / `pbi2mem` in the calling cores) |
+| `bitvis:verification:uvvm` | `files_regtool_sim`, `files_regtool_sim_<interface>` | UVVM of the testbenches: `uvvm_util`, `bitvis_vip_sbi`, `bitvis_vip_axilite` |
 
 Python modules: `fusesoc`, `jinja2`, `hjson` (generators), `hjson`, `jsonschema`, `prettytable` (regtool), `pytest`, `pytest-xdist` (tests). Optional test tools: GHDL, iverilog, verilator. External tools: GNU make, sdcc / picoasm (`PBCC_HOME`, `PICOASM_HOME`), RISC-V GCC binutils (`RISCV_PREFIX`), `hexdump`.
