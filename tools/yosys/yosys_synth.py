@@ -152,7 +152,7 @@ def main():
         file.write("\n")
 
     print("yosys_synth : xc7  : " + ", ".join(f"{resource} {count:g}" for resource, count in summary["xc7"].items()))
-    print(f"yosys_synth : asic : {summary['asic']['area_um2']:g} um2, {summary['asic']['kge']:g} kGE, {summary['asic']['cells']} cells")
+    print(f"yosys_synth : asic : {summary['asic']['area_um2']:g} um2, {summary['asic']['kge']:.3f} kGE, {summary['asic']['cells']} cells")
     print(f"yosys_synth : PASS (reports {args.toplevel}_syn.json, {args.toplevel}_xc7.log, {args.toplevel}_asic.log)")
 
 #--------------------------------------------
