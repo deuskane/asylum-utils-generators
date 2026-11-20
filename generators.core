@@ -220,10 +220,33 @@ filesets:
     logical_name : asylum
 
   #---------------------------------------
+  # regtool bridges (added by regtool to the calling core for its interface)
+  #---------------------------------------
+  regtool_bridges:
+    files:
+      - tools/regtool/hdl/sbi2mem.vhd
+      - tools/regtool/hdl/pbi2mem.vhd
+      - tools/regtool/hdl/apb2mem.vhd
+      - tools/regtool/hdl/axi4lite2mem.vhd
+    file_type    : vhdlSource-2008
+    logical_name : asylum
+    depend       :
+      # sbi_pkg / pbi_pkg
+      - asylum:utils:pkg
+
+  #---------------------------------------
+  # Wrappers of the lint and synthesis targets : every block at once
+  # (csr_wrapper, lint only), one block (csr_reg, sbi2mem, pbi2mem : generics
+  # without default or unconstrained records). csr_ext, csr_fifo, apb2mem and
+  # axi4lite2mem are their own top.
+  #---------------------------------------
   syn:
   #---------------------------------------
     files        :
       - syn/csr_wrapper.vhd
+      - syn/csr_reg_wrapper.vhd
+      - syn/sbi2mem_wrapper.vhd
+      - syn/pbi2mem_wrapper.vhd
     file_type    : vhdlSource-2008
     logical_name : asylum
 
@@ -419,8 +442,15 @@ parameters:
     paramtype   : generic
 
   #---------------------------------------
-  # Generics of csr_wrapper (lint_ghdl_synth_*)
+  # Generics of csr_wrapper, csr_reg_wrapper, csr_ext, csr_fifo
+  # (lint_ghdl_synth_*, syn_*)
   #---------------------------------------
+  MODEL :
+    description : csr_reg_wrapper, software access model of csr_reg
+    datatype    : str
+    default     : rw
+    paramtype   : generic
+
   WIDTH :
     description : Register width
     datatype    : int
@@ -485,9 +515,9 @@ targets:
   #---------------------------------------
   lint_ghdl : &lint_ghdl
     << : *default
-    description     : Lint with GHDL (-Wall analysis and elaboration of csr_wrapper)
+    description     : Lint with GHDL (-Wall analysis of the building blocks, the bridges and the wrappers, elaboration of csr_wrapper)
     toplevel        : asylum.csr_wrapper
-    filesets_append : [regtool_hdl, syn]
+    filesets_append : [regtool_hdl, regtool_bridges, syn]
     default_tool    : ghdl
     tools :
       ghdl :
@@ -495,14 +525,19 @@ targets:
 
   #---------------------------------------
   # Synthesis check : -Wall analysis, ghdl --synth -Wall and elaboration
-  # (no simulation) of csr_wrapper with the generics of the target.
+  # (no simulation) of one building block (or of csr_wrapper : every block,
+  # every access model of csr_reg) with the generics of the target.
   # The pre_run hook (ghdl_synth.sh of asylum:utils:ghdl_synth, dependency
   # of the deps fileset) adds ghdl_synth.mk to the edalize Makefile.
   # FuseSoC merges tools in depth : analyze_options comes from lint_ghdl.
   #---------------------------------------
-  lint_ghdl_synth_default : &lint_ghdl_synth
+  lint_ghdl_synth_csr_reg_rw : &lint_ghdl_synth
     << : *lint_ghdl
-    description     : Synthesis check of csr_wrapper, default generics
+    description     : Synthesis check of csr_reg (csr_reg_wrapper), rw, 8 bits
+    toplevel        : asylum.csr_reg_wrapper
+    parameters      :
+      - WIDTH=8
+      - MODEL=rw
     tools :
       ghdl :
         run_options     : ["--no-run"]
@@ -510,10 +545,88 @@ targets:
       pre_run : [ghdl_synth]
 
   #---------------------------------------
+  lint_ghdl_synth_csr_reg_rw_wait_state :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_reg (csr_reg_wrapper), rw, 8 bits, 2 read and 3 write wait states
+    toplevel        : asylum.csr_reg_wrapper
+    parameters      :
+      - WIDTH=8
+      - MODEL=rw
+      - RD_WAIT_STATE=2
+      - WR_WAIT_STATE=3
+
+  #---------------------------------------
+  lint_ghdl_synth_csr_ext :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_ext, 8 bits
+    toplevel        : asylum.csr_ext
+    parameters      :
+      - WIDTH=8
+
+  #---------------------------------------
+  lint_ghdl_synth_csr_fifo_blocking :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_fifo, 8 bits, FIFOs of depth 4 / 4, blocking read and write
+    toplevel        : asylum.csr_fifo
+    parameters      :
+      - WIDTH=8
+      - DEPTH_SW2HW=4
+      - DEPTH_HW2SW=4
+      - BLOCKING_READ=true
+
+  #---------------------------------------
+  lint_ghdl_synth_csr_fifo_nonblocking :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of csr_fifo, 8 bits, FIFOs of depth 2 / 8, non-blocking write
+    toplevel        : asylum.csr_fifo
+    parameters      :
+      - WIDTH=8
+      - DEPTH_SW2HW=2
+      - DEPTH_HW2SW=8
+      - BLOCKING_WRITE=false
+
+  #---------------------------------------
+  lint_ghdl_synth_sbi2mem :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of sbi2mem (sbi2mem_wrapper), 8-bit address and data
+    toplevel        : asylum.sbi2mem_wrapper
+    parameters      : []
+
+  #---------------------------------------
+  lint_ghdl_synth_pbi2mem :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of pbi2mem (pbi2mem_wrapper), 8-bit address and data
+    toplevel        : asylum.pbi2mem_wrapper
+    parameters      : []
+
+  #---------------------------------------
+  lint_ghdl_synth_apb2mem :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of apb2mem, 8-bit address, 32-bit data
+    toplevel        : asylum.apb2mem
+    parameters      : []
+
+  #---------------------------------------
+  lint_ghdl_synth_axi4lite2mem :
+  #---------------------------------------
+    << : *lint_ghdl_synth
+    description     : Synthesis check of axi4lite2mem, 8-bit address, 32-bit data
+    toplevel        : asylum.axi4lite2mem
+    parameters      : []
+
+  #---------------------------------------
   lint_ghdl_synth_width1_init1 :
   #---------------------------------------
     << : *lint_ghdl_synth
-    description     : Synthesis check of csr_wrapper, WIDTH 1, INIT "1"
+    description     : Synthesis check of csr_wrapper (every block, every access model), WIDTH 1, INIT "1"
+    toplevel        : asylum.csr_wrapper
     parameters      :
       - WIDTH=1
       - INIT=1
@@ -522,51 +635,26 @@ targets:
   lint_ghdl_synth_init_a5 :
   #---------------------------------------
     << : *lint_ghdl_synth
-    description     : Synthesis check of csr_wrapper, INIT x"A5"
+    description     : Synthesis check of csr_wrapper (every block, every access model), INIT x"A5"
+    toplevel        : asylum.csr_wrapper
     parameters      :
       - INIT=10100101
 
   #---------------------------------------
-  lint_ghdl_synth_wait_state :
-  #---------------------------------------
-    << : *lint_ghdl_synth
-    description     : Synthesis check of csr_wrapper, csr_reg with read and write wait states
-    parameters      :
-      - RD_WAIT_STATE=2
-      - WR_WAIT_STATE=3
-
-  #---------------------------------------
-  lint_ghdl_synth_fifo_blocking :
-  #---------------------------------------
-    << : *lint_ghdl_synth
-    description     : Synthesis check of csr_wrapper, csr_fifo with FIFOs, blocking read
-    parameters      :
-      - DEPTH_SW2HW=4
-      - DEPTH_HW2SW=4
-      - BLOCKING_READ=true
-
-  #---------------------------------------
-  lint_ghdl_synth_fifo_nonblocking :
-  #---------------------------------------
-    << : *lint_ghdl_synth
-    description     : Synthesis check of csr_wrapper, csr_fifo with FIFOs, non-blocking write
-    parameters      :
-      - DEPTH_SW2HW=2
-      - DEPTH_HW2SW=8
-      - BLOCKING_WRITE=false
-
-  #---------------------------------------
   # Synthesis : -Wall analysis, then Yosys with the GHDL plugin : size on
-  # Xilinx Artix-7 (LUT, FF, BRAM, DSP) and area on sky130 of csr_wrapper
-  # (10 csr_reg, one per software access model, csr_ext and csr_fifo).
-  # Configurations of lint_ghdl_synth_* : default, wait states, FIFOs.
+  # Xilinx Artix-7 (LUT, FF, BRAM, DSP) and area on sky130 of one building
+  # block, same configurations as lint_ghdl_synth_<block>_<config>.
   # The pre_run hook (yosys_synth.sh of asylum:utils:yosys_synth) adds
   # yosys_synth.mk to the edalize Makefile.
   #---------------------------------------
-  syn_default : &syn
+  syn_csr_reg_rw : &syn
     << : *lint_ghdl
-    description     : Synthesis (Artix-7, sky130) of csr_wrapper, default generics
-    filesets_append : [syn, syn_yosys]
+    description     : Synthesis (Artix-7, sky130) of csr_reg (csr_reg_wrapper), rw, 8 bits
+    toplevel        : asylum.csr_reg_wrapper
+    parameters      :
+      - WIDTH=8
+      - MODEL=rw
+    filesets_append : [regtool_hdl, regtool_bridges, syn, syn_yosys]
     tools :
       ghdl :
         run_options     : ["--no-run"]
@@ -574,23 +662,81 @@ targets:
       pre_run : [yosys_synth]
 
   #---------------------------------------
-  syn_wait_state :
+  syn_csr_reg_rw_wait_state :
   #---------------------------------------
     << : *syn
-    description     : Synthesis (Artix-7, sky130) of csr_wrapper, csr_reg with read and write wait states
+    description     : Synthesis (Artix-7, sky130) of csr_reg (csr_reg_wrapper), rw, 8 bits, 2 read and 3 write wait states
+    toplevel        : asylum.csr_reg_wrapper
     parameters      :
+      - WIDTH=8
+      - MODEL=rw
       - RD_WAIT_STATE=2
       - WR_WAIT_STATE=3
 
   #---------------------------------------
-  syn_fifo_blocking :
+  syn_csr_ext :
   #---------------------------------------
     << : *syn
-    description     : Synthesis (Artix-7, sky130) of csr_wrapper, csr_fifo with FIFOs, blocking read
+    description     : Synthesis (Artix-7, sky130) of csr_ext, 8 bits
+    toplevel        : asylum.csr_ext
     parameters      :
+      - WIDTH=8
+
+  #---------------------------------------
+  syn_csr_fifo_blocking :
+  #---------------------------------------
+    << : *syn
+    description     : Synthesis (Artix-7, sky130) of csr_fifo, 8 bits, FIFOs of depth 4 / 4, blocking read and write
+    toplevel        : asylum.csr_fifo
+    parameters      :
+      - WIDTH=8
       - DEPTH_SW2HW=4
       - DEPTH_HW2SW=4
       - BLOCKING_READ=true
+
+  #---------------------------------------
+  syn_csr_fifo_nonblocking :
+  #---------------------------------------
+    << : *syn
+    description     : Synthesis (Artix-7, sky130) of csr_fifo, 8 bits, FIFOs of depth 2 / 8, non-blocking write
+    toplevel        : asylum.csr_fifo
+    parameters      :
+      - WIDTH=8
+      - DEPTH_SW2HW=2
+      - DEPTH_HW2SW=8
+      - BLOCKING_WRITE=false
+
+  #---------------------------------------
+  syn_sbi2mem :
+  #---------------------------------------
+    << : *syn
+    description     : Synthesis (Artix-7, sky130) of sbi2mem (sbi2mem_wrapper), 8-bit address and data
+    toplevel        : asylum.sbi2mem_wrapper
+    parameters      : []
+
+  #---------------------------------------
+  syn_pbi2mem :
+  #---------------------------------------
+    << : *syn
+    description     : Synthesis (Artix-7, sky130) of pbi2mem (pbi2mem_wrapper), 8-bit address and data
+    toplevel        : asylum.pbi2mem_wrapper
+    parameters      : []
+
+  #---------------------------------------
+  syn_apb2mem :
+  #---------------------------------------
+    << : *syn
+    description     : Synthesis (Artix-7, sky130) of apb2mem, 8-bit address, 32-bit data
+    toplevel        : asylum.apb2mem
+    parameters      : []
+
+  #---------------------------------------
+  syn_axi4lite2mem :
+  #---------------------------------------
+    << : *syn
+    description     : Synthesis (Artix-7, sky130) of axi4lite2mem, 8-bit address, 32-bit data
+    toplevel        : asylum.axi4lite2mem
+    parameters      : []
 
   #---------------------------------------
   sim: &sim
