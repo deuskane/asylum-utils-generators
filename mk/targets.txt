@@ -25,4 +25,7 @@ sim_regtool_sbi_wait_read        : regtool testbench, interface sbi, read wait s
 sim_regtool_sbi_wait_read_clear  : regtool testbench, interface sbi, read wait states, read side effect once, value before the clear
 sim_regtool_sbi_wait_write       : regtool testbench, interface sbi, write wait states, write and write strobe once, during the access
 sim_regtool_sbi_write_read       : regtool testbench, interface sbi, software write / read back, write only register
+syn_default                      : Synthesis (Artix-7, sky130) of csr_wrapper, default generics
+syn_fifo_blocking                : Synthesis (Artix-7, sky130) of csr_wrapper, csr_fifo with FIFOs, blocking read
+syn_wait_state                   : Synthesis (Artix-7, sky130) of csr_wrapper, csr_reg with read and write wait states
 
