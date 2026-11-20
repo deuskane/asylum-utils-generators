@@ -502,17 +502,17 @@ A `syn_<config>` target of an IP has the same configuration as its `lint_ghdl_sy
 
 | Flow | Yosys commands | Resources |
 |------|----------------|-----------|
-| `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf` | Xilinx Artix-7: `LUT` (`LUT1`..`LUT6` and the `INV` that need a LUT, see below), `LUTRAM` (LUTs used as memory or shift register), `FF`, `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`) |
+| `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf` | Xilinx Artix-7, every cell of the netlist: `LUT` (`LUT1`..`LUT6`, an `INV` counts as a `LUT1`), `LUTRAM` (LUTs used as memory or shift register), `FF`, `CARRY4`, `MUXF7/F8` (`MUXF7` + `MUXF8`), `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`) |
 | `asic` | `synth -flatten`, `dfflibmap` / `abc` / `stat -liberty $ASIC_LIBERTY` | Area in µm², in kGE (thousands of NAND2 gate equivalents: area / area of `ASIC_NAND2`, default `sky130_fd_sc_hd__nand2_1`, 3.7536 µm², read in the liberty) and number of cells on the SkyWater `sky130_fd_sc_hd` library, typical corner (`sky130_fd_sc_hd__tt_025C_1v80.lib`, `ASIC_LIBERTY` of the asylum-env image) |
 
-Each flow writes `<toplevel>_<flow>.log` (Yosys log) and `<toplevel>_<flow>.json` (`stat -json`), the `xc7` flow also `<toplevel>_xc7_inv.txt` (`select -count` of the `INV` that need a LUT); [tools/yosys/yosys_synth.py](tools/yosys/yosys_synth.py) then writes the summary `<toplevel>_syn.json` and prints it in the log of the target:
+Each flow writes `<toplevel>_<flow>.log` (Yosys log) and `<toplevel>_<flow>.json` (`stat -json`); [tools/yosys/yosys_synth.py](tools/yosys/yosys_synth.py) then writes the summary `<toplevel>_syn.json` and prints it in the log of the target:
 
 ```
-yosys_synth : xc7  : LUT 7, LUTRAM 0, FF 5, BRAM 0, DSP 0
+yosys_synth : xc7  : LUT 12, LUTRAM 0, FF 5, CARRY4 1, MUXF7/F8 0, BRAM 0, DSP 0
 yosys_synth : asic : 197.69 um2, 0.053 kGE, 17 cells
 ```
 
-The figures are Yosys estimates, not a vendor implementation. The other Artix-7 cells are not counted (`CARRY4`, `MUXF7`, `MUXF8`). `synth_xilinx` (Yosys 0.33) maps a flip-flop with an active-low asynchronous reset to an `FDCE` / `FDPE` with an `INV` on its `CLR` / `PRE` pin (one per flip-flop, no `IS_CLR_INVERTED`): an `INV` that only drives flip-flop control pins (`C`, `CE`, `R`, `S`, `CLR`, `PRE`) is not counted, as Vivado absorbs it; any other `INV` (on a flip-flop `D`, a LUT, a `CARRY4` `S` input or an output) counts as a LUT. The ASIC flow has no SRAM macro: the memories become flip-flops. The Yosys 0.33 `abc` cannot exclude cells, so it may use any cell of the library (`lpflow_*` included).
+The figures are Yosys estimates before place and route, not a vendor implementation: every cell of the `xc7` netlist is counted, with no assumption on what Vivado would optimize, and a cell type that `yosys_synth.py` does not classify is an error. `synth_xilinx` (Yosys 0.33) maps a flip-flop with an active-low asynchronous reset to an `FDCE` / `FDPE` with an `INV` on its `CLR` / `PRE` pin (one per flip-flop, no `IS_CLR_INVERTED`): these `INV` count as LUTs. The ASIC flow has no SRAM macro: the memories become flip-flops. The Yosys 0.33 `abc` cannot exclude cells, so it may use any cell of the library (`lpflow_*` included).
 
 ## Design Notes
 
