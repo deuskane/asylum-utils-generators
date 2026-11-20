@@ -11,7 +11,9 @@
 #              <toplevel>_xc7.json and <toplevel>_asic.json, writes the
 #              summary <toplevel>_syn.json and prints it:
 #              - xc7  : LUT, LUTRAM, FF, BRAM (36 Kb blocks), DSP
-#              - asic : area (um2) and number of cells
+#              - asic : area (um2), area in kGE (NAND2 equivalents, area of
+#                       the reference cell read in the liberty) and
+#                       number of cells
 #-----------------------------------------------------------------------------
 # Copyright (c) 2026
 #-----------------------------------------------------------------------------
@@ -22,6 +24,7 @@
 
 import argparse
 import json
+import re
 
 # Artix-7 cells of synth_xilinx counted in each resource, with their weight.
 # The other cells are not counted (CARRY4, MUXF7, MUXF8, and the INV that
@@ -74,14 +77,38 @@ def summary_xc7(stat):
 
 #--------------------------------------------
 #--------------------------------------------
-def summary_asic(stat):
+def cell_area(liberty, cell):
+    """
+    Area of a cell in a liberty file.
+
+    :param liberty: liberty file
+    :param cell: cell name (e.g. sky130_fd_sc_hd__nand2_1)
+    :return: area of the cell (um2)
+    :raises ValueError: cell or area not found
+    """
+    with open(liberty) as file:
+        text = file.read()
+
+    match = re.search(r'cell\s*\(\s*"?' + re.escape(cell) + r'"?\s*\).*?\barea\s*:\s*([0-9.]+)', text, re.S)
+    if not match:
+        raise ValueError(f"{liberty} : no area for the cell {cell}")
+
+    return float(match.group(1))
+
+#--------------------------------------------
+#--------------------------------------------
+def summary_asic(stat, nand2_area):
     """
     Standard cell area of a design.
 
     :param stat: statistics of the design (read_stat, stat -liberty)
-    :return: dictionary with area_um2 and cells
+    :param nand2_area: area of the NAND2 reference cell (um2)
+    :return: dictionary with area_um2, kge (area in thousands of NAND2) and cells
     """
-    return {"area_um2" : round(stat.get("area", 0), 2),
+    area = stat.get("area", 0)
+
+    return {"area_um2" : round(area, 2),
+            "kge"      : round(area / nand2_area / 1000, 3),
             "cells"    : stat["num_cells"]}
 
 #--------------------------------------------
@@ -89,17 +116,19 @@ def summary_asic(stat):
 def main():
     parser = argparse.ArgumentParser(description="Summary of the Yosys synthesis reports of yosys_synth.mk")
     parser.add_argument("toplevel", help="toplevel : reads <toplevel>_xc7.json and <toplevel>_asic.json, writes <toplevel>_syn.json")
+    parser.add_argument("--liberty", required=True, help="liberty file of the asic flow")
+    parser.add_argument("--nand2", required=True, help="NAND2 reference cell of the gate equivalent")
     args   = parser.parse_args()
 
     summary = {"xc7"  : summary_xc7 (read_stat(f"{args.toplevel}_xc7.json")),
-               "asic" : summary_asic(read_stat(f"{args.toplevel}_asic.json"))}
+               "asic" : summary_asic(read_stat(f"{args.toplevel}_asic.json"), cell_area(args.liberty, args.nand2))}
 
     with open(f"{args.toplevel}_syn.json", "w") as file:
         json.dump(summary, file, indent=2)
         file.write("\n")
 
     print("yosys_synth : xc7  : " + ", ".join(f"{resource} {count:g}" for resource, count in summary["xc7"].items()))
-    print(f"yosys_synth : asic : {summary['asic']['area_um2']:g} um2, {summary['asic']['cells']} cells")
+    print(f"yosys_synth : asic : {summary['asic']['area_um2']:g} um2, {summary['asic']['kge']:g} kGE, {summary['asic']['cells']} cells")
     print(f"yosys_synth : PASS (reports {args.toplevel}_syn.json, {args.toplevel}_xc7.log, {args.toplevel}_asic.log)")
 
 #--------------------------------------------

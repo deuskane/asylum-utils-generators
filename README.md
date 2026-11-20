@@ -503,13 +503,13 @@ A `syn_<config>` target of an IP has the same configuration as its `lint_ghdl_sy
 | Flow | Yosys commands | Resources |
 |------|----------------|-----------|
 | `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf` | Xilinx Artix-7: `LUT` (`LUT1`..`LUT6`), `LUTRAM` (LUTs used as memory or shift register), `FF`, `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`) |
-| `asic` | `synth -flatten`, `dfflibmap` / `abc` / `stat -liberty $ASIC_LIBERTY` | Area in µm² and number of cells on the SkyWater `sky130_fd_sc_hd` library, typical corner (`sky130_fd_sc_hd__tt_025C_1v80.lib`, `ASIC_LIBERTY` of the asylum-env image) |
+| `asic` | `synth -flatten`, `dfflibmap` / `abc` / `stat -liberty $ASIC_LIBERTY` | Area in µm², in kGE (thousands of NAND2 gate equivalents: area / area of `ASIC_NAND2`, default `sky130_fd_sc_hd__nand2_1`, 3.7536 µm², read in the liberty) and number of cells on the SkyWater `sky130_fd_sc_hd` library, typical corner (`sky130_fd_sc_hd__tt_025C_1v80.lib`, `ASIC_LIBERTY` of the asylum-env image) |
 
 Each flow writes `<toplevel>_<flow>.log` (Yosys log) and `<toplevel>_<flow>.json` (`stat -json`); [tools/yosys/yosys_synth.py](tools/yosys/yosys_synth.py) then writes the summary `<toplevel>_syn.json` and prints it in the log of the target:
 
 ```
 yosys_synth : xc7  : LUT 5, LUTRAM 0, FF 5, BRAM 0, DSP 0
-yosys_synth : asic : 197.69 um2, 17 cells
+yosys_synth : asic : 197.69 um2, 0.053 kGE, 17 cells
 ```
 
 The figures are Yosys estimates, not a vendor implementation. The other Artix-7 cells are not counted (`CARRY4`, `MUXF7`, `MUXF8`, and the `INV` that `synth_xilinx` leaves on the flip-flop pins). The ASIC flow has no SRAM macro: the memories become flip-flops. The Yosys 0.33 `abc` cannot exclude cells, so it may use any cell of the library (`lpflow_*` included).

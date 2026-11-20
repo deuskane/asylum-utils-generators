@@ -20,7 +20,8 @@
 #              Each flow writes $(TOPLEVEL)_<flow>.log (yosys log) and
 #              $(TOPLEVEL)_<flow>.json (stat -json), then yosys_synth.py
 #              writes the summary $(TOPLEVEL)_syn.json and prints it
-#              (LUT, LUTRAM, FF, BRAM, DSP ; area in um2).
+#              (LUT, LUTRAM, FF, BRAM, DSP ; area in um2 and in kGE, the
+#              area in NAND2 equivalents of ASIC_NAND2).
 #-----------------------------------------------------------------------------
 # Copyright (c) 2026
 #-----------------------------------------------------------------------------
@@ -45,6 +46,9 @@ YOSYS_STAT_xc7     =
 YOSYS_SYNTH_asic   = synth -flatten -top $(TOPLEVEL); dfflibmap -liberty $(ASIC_LIBERTY); abc -liberty $(ASIC_LIBERTY); opt_clean
 YOSYS_STAT_asic    = -liberty $(ASIC_LIBERTY)
 
+# Reference cell of the gate equivalent (kGE = area / area of 1000 NAND2)
+ASIC_NAND2        ?= sky130_fd_sc_hd__nand2_1
+
 # Warnings of the liberty parser (scan flip-flops), not about the design
 YOSYS_NOWARN       = -w "unsupported expression"
 
@@ -57,7 +61,7 @@ run : yosys_synth
 # Summary of the two flows
 yosys_synth : yosys_xc7 yosys_asic
 #--------------------------------------------------------
-	@python3 yosys_synth.py $(TOPLEVEL)
+	@python3 yosys_synth.py $(TOPLEVEL) --liberty $(ASIC_LIBERTY) --nand2 $(ASIC_NAND2)
 
 #--------------------------------------------------------
 # One flow : yosys_xc7 or yosys_asic
