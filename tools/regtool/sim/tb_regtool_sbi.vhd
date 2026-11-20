@@ -12,8 +12,9 @@
 -- Description:
 --  Testbench of the CSR tbcsr generated with the interface "sbi" :
 --  BFM bitvis_vip_sbi -> tbcsr_registers (bridge sbi2mem).
---  One scenario per simulation (generic TEST, scenarios of tb_regtool_pkg,
---  chosen at run time), each one from reset. Hardware side : tb_regtool_hw.
+--  TESTS_LIST : scenarios run in sequence, separated by ',' (names in
+--  tb_regtool_tests_pkg), each one after a reset pulse ; "" : build and
+--  elaboration only. Hardware side : tb_regtool_hw.
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
@@ -21,6 +22,7 @@
 -- Date        Version  Author   Description
 -- 2026-10-23  1.0      mrosiere Created
 -- 2026-11-16  2.0      mrosiere UVVM : bitvis_vip_sbi, scenarios of tb_regtool_pkg
+-- 2026-11-20  3.0      mrosiere TESTS_LIST, reset pulse before each scenario
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -35,11 +37,13 @@ use     bitvis_vip_sbi.sbi_bfm_pkg.all;
 library asylum;
 use     asylum.sbi_pkg.all;
 use     asylum.tbcsr_csr_pkg.all;
-use     asylum.tb_regtool_pkg.all;
+use     asylum.string_pkg.all;
+use     asylum.tb_regtool_bfm_pkg.all;
+use     asylum.tb_regtool_tests_pkg.all;
 
 entity tb_regtool_sbi is
   generic (
-    TEST            : string := "reset"                    -- Scenario (tb_regtool_pkg)
+    TESTS_LIST      : string := ""                         -- Scenarios, e.g. "reset,ext" (tb_regtool_tests_pkg)
   );
 end entity tb_regtool_sbi;
 
@@ -63,7 +67,7 @@ architecture sim of tb_regtool_sbi is
   -- Hardware side
   signal   sw2hw      : tbcsr_sw2hw_t;
   signal   hw2sw      : tbcsr_hw2sw_t;
-  signal   hw_ctrl    : t_tb_hw_ctrl;
+  signal   hw_ctrl    : t_tb_hw_ctrl := C_TB_HW_CTRL_INIT;
   signal   hw_mon     : t_tb_hw_mon;
 
 begin  -- architecture sim
@@ -72,8 +76,6 @@ begin  -- architecture sim
   -- Clock and Reset
   -----------------------------------------------------------------------------
   clock_generator(clk_i, clk_ena, C_CLK_PERIOD, "TB Clock");
-
-  arst_b_i <= '0', '1' after 100 ns;
 
   -----------------------------------------------------------------------------
   -- DUT
@@ -103,6 +105,7 @@ begin  -- architecture sim
   ins_hw : entity work.tb_regtool_hw
     port map
     (clk_i           => clk_i
+    ,arst_b_i        => arst_b_i
     ,ctrl_i          => hw_ctrl
     ,mon_o           => hw_mon
     ,sw2hw_i         => sw2hw
@@ -115,15 +118,28 @@ begin  -- architecture sim
   p_main : process is
     variable v_config : t_tb_bus_config := tb_bus_config(ITF_SBI);
   begin
-    bus_if  <= init_tb_bus_if;
-    hw_ctrl <= C_TB_HW_CTRL_INIT;
-    wait until arst_b_i = '1';
-    wait_num_rising_edge(clk_i, 2);
+    log(ID_LOG_HDR, "Interface sbi, TESTS_LIST : " & TESTS_LIST, C_SCOPE);
 
-    run_test(TEST, clk_i, bus_if, v_config, sw2hw, hw_ctrl, hw_mon);
+    -- Every name is checked before the first scenario
+    for i in 1 to list_length(TESTS_LIST) loop
+      if not list_contains(C_TESTS, list_item(TESTS_LIST, i))
+      then
+        alert(TB_ERROR, "Unknown test """ & list_item(TESTS_LIST, i) & """ (tests : " & C_TESTS & ")", C_SCOPE);
+      end if;
+    end loop;
 
-    wait_num_rising_edge(clk_i, 2);
-    log(ID_LOG_HDR, "Simulation finished", C_SCOPE);
+    for i in 1 to list_length(TESTS_LIST) loop
+      -- Reset pulse, bus and hardware side idle : each scenario starts from reset
+      bus_if <= init_tb_bus_if;
+      hw_init(hw_ctrl);
+      do_reset(clk_i, arst_b_i);
+      wait_num_rising_edge(clk_i, 2);
+
+      log(ID_LOG_HDR, "TEST " & integer'image(i) & "/" & integer'image(list_length(TESTS_LIST)) & " : " & list_item(TESTS_LIST, i), C_SCOPE);
+      run_test(list_item(TESTS_LIST, i), clk_i, bus_if, v_config, sw2hw, hw_ctrl, hw_mon);
+      wait_num_rising_edge(clk_i, 2);
+    end loop;
+
     report_alert_counters(FINAL);
     std.env.stop;
     wait;

@@ -16,7 +16,9 @@
 --  - rx FIFO pushes / tx FIFO pops requested by the scenario (ctrl_i)
 --  - wwait : the hardware writes the inverted value at the write strobe
 --  - rcount : the hardware writes a cycle counter every cycle
---  - monitors of the strobes and data (mon_o), watchdog
+--  - monitors of the strobes and data (mon_o), watchdog of a scenario
+--  The reset of a scenario (arst_b_i) clears the monitors and the tx FIFO
+--  pop, and restarts the watchdog.
 -------------------------------------------------------------------------------
 -- Copyright (c) 2026
 -------------------------------------------------------------------------------
@@ -26,6 +28,8 @@
 -- 2026-11-16  1.1      mrosiere Wait state scenarios, back to back accesses
 -- 2026-11-16  2.0      mrosiere UVVM : scenarios moved to tb_regtool_pkg,
 --                               hardware side and monitors only
+-- 2026-11-20  2.1      mrosiere arst_b_i : reset of the monitors, of the tx
+--                               pop and of the watchdog (TESTS_LIST)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -37,12 +41,13 @@ context uvvm_util.uvvm_util_context;
 
 library asylum;
 use     asylum.tbcsr_csr_pkg.all;
-use     asylum.tb_regtool_pkg.all;
+use     asylum.tb_regtool_bfm_pkg.all;
 
 entity tb_regtool_hw is
   port (
-    -- Clock
+    -- Clock and Reset
     clk_i         : in  std_logic
+   ;arst_b_i      : in  std_logic
     -- Scenario
    ;ctrl_i        : in  t_tb_hw_ctrl
    ;mon_o         : out t_tb_hw_mon
@@ -61,21 +66,30 @@ architecture sim of tb_regtool_hw is
 begin  -- architecture sim
 
   -----------------------------------------------------------------------------
-  -- Watchdog
+  -- Watchdog : a scenario (from the release of its reset) lasts less than
+  -- C_TIMEOUT
   -----------------------------------------------------------------------------
   p_watchdog : process is
   begin
-    wait for C_TIMEOUT;
-    alert(TB_FAILURE, "Simulation timeout", C_REGTOOL_SCOPE);
-    wait;
+    loop
+      wait until arst_b_i = '1';
+      wait until arst_b_i = '0' for C_TIMEOUT;
+      if arst_b_i = '1'
+      then
+        alert(TB_FAILURE, "Scenario timeout", C_REGTOOL_SCOPE);
+      end if;
+    end loop;
   end process p_watchdog;
 
   -----------------------------------------------------------------------------
   -- Monitors of the hardware side
   -----------------------------------------------------------------------------
-  p_monitor : process (clk_i) is
+  p_monitor : process (clk_i, arst_b_i) is
   begin
-    if rising_edge(clk_i)
+    if arst_b_i = '0'
+    then
+      mon <= C_TB_HW_MON_INIT;
+    elsif rising_edge(clk_i)
     then
       if sw2hw_i.ctrl.we = '1'
       then
@@ -203,18 +217,24 @@ begin  -- architecture sim
 
   -----------------------------------------------------------------------------
   -- FIFO tx (software to hardware) : on a request, the hardware pops from
-  -- ctrl_i.tx_delay cycles later
+  -- ctrl_i.tx_delay cycles later, until the reset
   -----------------------------------------------------------------------------
   p_tx : process is
   begin
     hw2sw.tx.ready <= '0';
 
     loop
-      wait on ctrl_i.tx_pop;
-      for i in 1 to ctrl_i.tx_delay loop
-        wait until rising_edge(clk_i);
-      end loop;
-      hw2sw.tx.ready <= '1';
+      wait on ctrl_i.tx_pop, arst_b_i;
+      if arst_b_i = '0'
+      then
+        hw2sw.tx.ready <= '0';
+      elsif ctrl_i.tx_pop'event
+      then
+        for i in 1 to ctrl_i.tx_delay loop
+          wait until rising_edge(clk_i);
+        end loop;
+        hw2sw.tx.ready <= '1';
+      end if;
     end loop;
   end process p_tx;
 
