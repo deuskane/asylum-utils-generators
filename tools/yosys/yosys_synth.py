@@ -8,9 +8,11 @@
 #-----------------------------------------------------------------------------
 # Description: Called by yosys_synth.mk (syn_* targets) in the fusesoc
 #              work_root. Reads the stat -json reports of the two flows,
-#              <toplevel>_xc7.json and <toplevel>_asic.json, writes the
-#              summary <toplevel>_syn.json and prints it:
-#              - xc7  : LUT, LUTRAM, FF, BRAM (36 Kb blocks), DSP
+#              <toplevel>_xc7.json and <toplevel>_asic.json, and the number
+#              of INV cells that need a LUT, <toplevel>_xc7_inv.txt, writes
+#              the summary <toplevel>_syn.json and prints it:
+#              - xc7  : LUT (INV included), LUTRAM, FF, BRAM (36 Kb blocks),
+#                       DSP
 #              - asic : area (um2), area in kGE (NAND2 equivalents, area of
 #                       the reference cell read in the liberty) and
 #                       number of cells
@@ -27,8 +29,9 @@ import json
 import re
 
 # Artix-7 cells of synth_xilinx counted in each resource, with their weight.
-# The other cells are not counted (CARRY4, MUXF7, MUXF8, and the INV that
-# synth_xilinx leaves on the flip-flop control pins: Vivado absorbs them).
+# The other cells are not counted (CARRY4, MUXF7, MUXF8). The INV are added to
+# LUT by summary_xc7, except the ones that only drive flip-flop control pins
+# (Vivado absorbs them): see read_count and YOSYS_POST_xc7 in yosys_synth.mk.
 XC7_RESOURCES = {
     "LUT"    : {"LUT1" : 1, "LUT2" : 1, "LUT3" : 1, "LUT4" : 1, "LUT5" : 1, "LUT6" : 1},
     # LUTs used as memory or shift register
@@ -63,17 +66,38 @@ def read_stat(path):
 
 #--------------------------------------------
 #--------------------------------------------
-def summary_xc7(stat):
+def read_count(path):
+    """
+    Read a report of "select -count" ("<n> objects.").
+
+    :param path: report file
+    :return: number of selected objects
+    :raises ValueError: no count in the report
+    """
+    with open(path) as file:
+        match = re.search(r"(\d+) objects", file.read())
+
+    if not match:
+        raise ValueError(f"{path} : no \"<n> objects\" line")
+
+    return int(match.group(1))
+
+#--------------------------------------------
+#--------------------------------------------
+def summary_xc7(stat, inv):
     """
     Artix-7 resources of a design.
 
     :param stat: statistics of the design (read_stat)
-    :return: dictionary resource : count (XC7_RESOURCES)
+    :param inv: number of INV cells that need a LUT (read_count)
+    :return: dictionary resource : count (XC7_RESOURCES, LUT includes inv)
     """
-    cells = stat["num_cells_by_type"]
+    cells   = stat["num_cells_by_type"]
+    summary = {resource : sum(count * weights.get(cell, 0) for cell, count in cells.items())
+               for resource, weights in XC7_RESOURCES.items()}
+    summary["LUT"] += inv
 
-    return {resource : sum(count * weights.get(cell, 0) for cell, count in cells.items())
-            for resource, weights in XC7_RESOURCES.items()}
+    return summary
 
 #--------------------------------------------
 #--------------------------------------------
@@ -115,12 +139,12 @@ def summary_asic(stat, nand2_area):
 #--------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="Summary of the Yosys synthesis reports of yosys_synth.mk")
-    parser.add_argument("toplevel", help="toplevel : reads <toplevel>_xc7.json and <toplevel>_asic.json, writes <toplevel>_syn.json")
+    parser.add_argument("toplevel", help="toplevel : reads <toplevel>_xc7.json, <toplevel>_xc7_inv.txt and <toplevel>_asic.json, writes <toplevel>_syn.json")
     parser.add_argument("--liberty", required=True, help="liberty file of the asic flow")
     parser.add_argument("--nand2", required=True, help="NAND2 reference cell of the gate equivalent")
     args   = parser.parse_args()
 
-    summary = {"xc7"  : summary_xc7 (read_stat(f"{args.toplevel}_xc7.json")),
+    summary = {"xc7"  : summary_xc7 (read_stat(f"{args.toplevel}_xc7.json"), read_count(f"{args.toplevel}_xc7_inv.txt")),
                "asic" : summary_asic(read_stat(f"{args.toplevel}_asic.json"), cell_area(args.liberty, args.nand2))}
 
     with open(f"{args.toplevel}_syn.json", "w") as file:

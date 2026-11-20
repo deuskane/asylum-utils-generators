@@ -18,7 +18,9 @@
 #                       image). There is no SRAM macro : the memories
 #                       become flip-flops.
 #              Each flow writes $(TOPLEVEL)_<flow>.log (yosys log) and
-#              $(TOPLEVEL)_<flow>.json (stat -json), then yosys_synth.py
+#              $(TOPLEVEL)_<flow>.json (stat -json), the xc7 flow also
+#              $(TOPLEVEL)_xc7_inv.txt (number of INV cells that need a LUT,
+#              see YOSYS_POST_xc7), then yosys_synth.py
 #              writes the summary $(TOPLEVEL)_syn.json and prints it
 #              (LUT, LUTRAM, FF, BRAM, DSP ; area in um2 and in kGE, the
 #              area in NAND2 equivalents of ASIC_NAND2).
@@ -46,6 +48,18 @@ YOSYS_STAT_xc7     =
 YOSYS_SYNTH_asic   = synth -flatten -top $(TOPLEVEL); dfflibmap -liberty $(ASIC_LIBERTY); abc -liberty $(ASIC_LIBERTY); opt_clean
 YOSYS_STAT_asic    = -liberty $(ASIC_LIBERTY)
 
+# xc7 : count the INV cells that need a LUT. synth_xilinx puts an INV on each
+# flip-flop with an active low reset (no IS_CLR_INVERTED) : Vivado absorbs
+# the INV that only drive flip-flop control pins (XC7_FF_CTRL), not the others
+# (flip-flop D, LUT, CARRY4 S input or output port).
+# Selection : the wires on the inputs of all cells except the control pins of
+# the flip-flops, and the outputs, then the INV that drive them (splitnets :
+# one wire per bit).
+XC7_FF             = FDRE,FDSE,FDCE,FDPE,FDRE_1,FDSE_1,FDCE_1,FDPE_1
+XC7_FF_CTRL        = C,CE,R,S,CLR,PRE
+YOSYS_POST_xc7     = ; splitnets; tee -q -o $(TOPLEVEL)_xc7_inv.txt select -count t:* %ci1:-$(XC7_FF)[$(XC7_FF_CTRL)] o:* %u w:* %i %ci1:+INV[O] t:INV %i
+YOSYS_POST_asic    =
+
 # Reference cell of the gate equivalent (kGE = area / area of 1000 NAND2)
 ASIC_NAND2        ?= sky130_fd_sc_hd__nand2_1
 
@@ -68,6 +82,6 @@ yosys_synth : yosys_xc7 yosys_asic
 yosys_xc7 yosys_asic : yosys_% : $(TOPLEVEL)
 #--------------------------------------------------------
 	$(EDALIZE_LAUNCHER) $(YOSYS) -q $(YOSYS_NOWARN) -l $(TOPLEVEL)_$*.log \
-	  -p '$(YOSYS_GHDL); $(YOSYS_SYNTH_$*); stat $(YOSYS_STAT_$*); tee -q -o $(TOPLEVEL)_$*.json stat -json $(YOSYS_STAT_$*)'
+	  -p '$(YOSYS_GHDL); $(YOSYS_SYNTH_$*); stat $(YOSYS_STAT_$*); tee -q -o $(TOPLEVEL)_$*.json stat -json $(YOSYS_STAT_$*)$(YOSYS_POST_$*)'
 
 .PHONY : yosys_synth yosys_xc7 yosys_asic
