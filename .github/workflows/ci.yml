@@ -31,250 +31,35 @@ jobs:
         run: python3 -m pytest tools/regtool -n auto
 
 #<GENERATE_BEGIN>
-  sim_regtool_apb_ext:
+  sim_regtool_apb:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_regtool_apb_ext
+      name: sim_regtool_apb
 
-  sim_regtool_apb_fifo_read:
+  sim_regtool_axi4lite:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_regtool_apb_fifo_read
-
-  sim_regtool_apb_fifo_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_fifo_write
-
-  sim_regtool_apb_hw_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_hw_write
-
-  sim_regtool_apb_reset:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_reset
-
-  sim_regtool_apb_unmapped:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_unmapped
-
-  sim_regtool_apb_wait_duration:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_wait_duration
-
-  sim_regtool_apb_wait_none:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_wait_none
-
-  sim_regtool_apb_wait_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_wait_read
-
-  sim_regtool_apb_wait_read_clear:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_wait_read_clear
-
-  sim_regtool_apb_wait_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_wait_write
-
-  sim_regtool_apb_write_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_apb_write_read
-
-  sim_regtool_axi4lite_ext:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_ext
-
-  sim_regtool_axi4lite_fifo_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_fifo_read
-
-  sim_regtool_axi4lite_fifo_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_fifo_write
-
-  sim_regtool_axi4lite_hw_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_hw_write
-
-  sim_regtool_axi4lite_reset:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_reset
-
-  sim_regtool_axi4lite_unmapped:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_unmapped
-
-  sim_regtool_axi4lite_wait_duration:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_wait_duration
-
-  sim_regtool_axi4lite_wait_none:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_wait_none
-
-  sim_regtool_axi4lite_wait_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_wait_read
-
-  sim_regtool_axi4lite_wait_read_clear:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_wait_read_clear
-
-  sim_regtool_axi4lite_wait_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_wait_write
-
-  sim_regtool_axi4lite_write_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_axi4lite_write_read
+      name: sim_regtool_axi4lite
 
   sim_regtool_example1:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
       name: sim_regtool_example1
 
-  sim_regtool_mem_ext:
+  sim_regtool_mem:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_regtool_mem_ext
+      name: sim_regtool_mem
 
-  sim_regtool_mem_fifo_read:
+  sim_regtool_pbi:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_regtool_mem_fifo_read
+      name: sim_regtool_pbi
 
-  sim_regtool_mem_fifo_write:
+  sim_regtool_sbi:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
-      name: sim_regtool_mem_fifo_write
-
-  sim_regtool_mem_hw_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_hw_write
-
-  sim_regtool_mem_reset:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_reset
-
-  sim_regtool_mem_unmapped:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_unmapped
-
-  sim_regtool_mem_wait_duration:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_wait_duration
-
-  sim_regtool_mem_wait_none:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_wait_none
-
-  sim_regtool_mem_wait_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_wait_read
-
-  sim_regtool_mem_wait_read_clear:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_wait_read_clear
-
-  sim_regtool_mem_wait_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_wait_write
-
-  sim_regtool_mem_write_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_mem_write_read
-
-  sim_regtool_pbi_ext:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_ext
-
-  sim_regtool_pbi_fifo_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_fifo_read
-
-  sim_regtool_pbi_fifo_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_fifo_write
-
-  sim_regtool_pbi_hw_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_hw_write
-
-  sim_regtool_pbi_reset:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_reset
-
-  sim_regtool_pbi_unmapped:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_unmapped
-
-  sim_regtool_pbi_wait_duration:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_wait_duration
-
-  sim_regtool_pbi_wait_none:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_wait_none
-
-  sim_regtool_pbi_wait_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_wait_read
-
-  sim_regtool_pbi_wait_read_clear:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_wait_read_clear
-
-  sim_regtool_pbi_wait_write:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_wait_write
-
-  sim_regtool_pbi_write_read:
-    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
-    with:
-      name: sim_regtool_pbi_write_read
+      name: sim_regtool_sbi
 
   sim_regtool_sbi_ext:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
@@ -335,5 +120,119 @@ jobs:
     uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
     with:
       name: sim_regtool_sbi_write_read
+
+  lint_ghdl:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl
+
+  lint_ghdl_synth_apb2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_apb2mem
+
+  lint_ghdl_synth_axi4lite2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_axi4lite2mem
+
+  lint_ghdl_synth_csr_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_csr_ext
+
+  lint_ghdl_synth_csr_fifo_blocking:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_csr_fifo_blocking
+
+  lint_ghdl_synth_csr_fifo_nonblocking:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_csr_fifo_nonblocking
+
+  lint_ghdl_synth_csr_reg_rw:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_csr_reg_rw
+
+  lint_ghdl_synth_csr_reg_rw_wait_state:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_csr_reg_rw_wait_state
+
+  lint_ghdl_synth_init_a5:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_init_a5
+
+  lint_ghdl_synth_pbi2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_pbi2mem
+
+  lint_ghdl_synth_sbi2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_sbi2mem
+
+  lint_ghdl_synth_width1_init1:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: lint_ghdl_synth_width1_init1
+
+  syn_apb2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_apb2mem
+
+  syn_axi4lite2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_axi4lite2mem
+
+  syn_csr_ext:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_csr_ext
+
+  syn_csr_fifo_blocking:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_csr_fifo_blocking
+
+  syn_csr_fifo_nonblocking:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_csr_fifo_nonblocking
+
+  syn_csr_reg_rw:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_csr_reg_rw
+
+  syn_csr_reg_rw_wait_state:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_csr_reg_rw_wait_state
+
+  syn_pbi2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_pbi2mem
+
+  syn_sbi2mem:
+    uses: deuskane/asylum-ci/.github/workflows/vhdl-ci.yml@main
+    with:
+      name: syn_sbi2mem
+
+  badges:
+    needs: [sim_regtool_apb, sim_regtool_axi4lite, sim_regtool_example1, sim_regtool_mem, sim_regtool_pbi, sim_regtool_sbi, sim_regtool_sbi_ext, sim_regtool_sbi_fifo_read, sim_regtool_sbi_fifo_write, sim_regtool_sbi_hw_write, sim_regtool_sbi_reset, sim_regtool_sbi_unmapped, sim_regtool_sbi_wait_duration, sim_regtool_sbi_wait_none, sim_regtool_sbi_wait_read, sim_regtool_sbi_wait_read_clear, sim_regtool_sbi_wait_write, sim_regtool_sbi_write_read, lint_ghdl, lint_ghdl_synth_apb2mem, lint_ghdl_synth_axi4lite2mem, lint_ghdl_synth_csr_ext, lint_ghdl_synth_csr_fifo_blocking, lint_ghdl_synth_csr_fifo_nonblocking, lint_ghdl_synth_csr_reg_rw, lint_ghdl_synth_csr_reg_rw_wait_state, lint_ghdl_synth_init_a5, lint_ghdl_synth_pbi2mem, lint_ghdl_synth_sbi2mem, lint_ghdl_synth_width1_init1, syn_apb2mem, syn_axi4lite2mem, syn_csr_ext, syn_csr_fifo_blocking, syn_csr_fifo_nonblocking, syn_csr_reg_rw, syn_csr_reg_rw_wait_state, syn_pbi2mem, syn_sbi2mem]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: deuskane/asylum-ci/.github/workflows/badges.yml@main
+    with:
+      results: ${{ toJSON(needs) }}
 
 #<GENERATE_END>

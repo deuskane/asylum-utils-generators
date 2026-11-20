@@ -1,75 +1,42 @@
-default                              : Default Target
-lint_ghdl                            : Lint with GHDL (-Wall analysis and elaboration of csr_wrapper)
-lint_ghdl_synth_default              : Synthesis check of csr_wrapper, default generics
-lint_ghdl_synth_fifo_blocking        : Synthesis check of csr_wrapper, csr_fifo with FIFOs, blocking read
-lint_ghdl_synth_fifo_nonblocking     : Synthesis check of csr_wrapper, csr_fifo with FIFOs, non-blocking write
-lint_ghdl_synth_init_a5              : Synthesis check of csr_wrapper, INIT x"A5"
-lint_ghdl_synth_wait_state           : Synthesis check of csr_wrapper, csr_reg with read and write wait states
-lint_ghdl_synth_width1_init1         : Synthesis check of csr_wrapper, WIDTH 1, INIT "1"
-sim                                  : default run rule
-sim_regtool_apb_ext                  : regtool testbench, interface apb, external register
-sim_regtool_apb_fifo_read            : regtool testbench, interface apb, blocking read of an empty FIFO
-sim_regtool_apb_fifo_write           : regtool testbench, interface apb, blocking write of a full FIFO
-sim_regtool_apb_hw_write             : regtool testbench, interface apb, registers written by the hardware, rw1c
-sim_regtool_apb_reset                : regtool testbench, interface apb, reset values
-sim_regtool_apb_unmapped             : regtool testbench, interface apb, access to an unmapped address
-sim_regtool_apb_wait_duration        : regtool testbench, interface apb, wait states, duration of the accesses
-sim_regtool_apb_wait_none            : regtool testbench, interface apb, wait states at 0, same as without them
-sim_regtool_apb_wait_read            : regtool testbench, interface apb, read wait states, read data of the last cycle, read strobe once
-sim_regtool_apb_wait_read_clear      : regtool testbench, interface apb, read wait states, read side effect once, value before the clear
-sim_regtool_apb_wait_write           : regtool testbench, interface apb, write wait states, write and write strobe once, during the access
-sim_regtool_apb_write_read           : regtool testbench, interface apb, software write / read back, write only register
-sim_regtool_axi4lite_ext             : regtool testbench, interface axi4lite, external register
-sim_regtool_axi4lite_fifo_read       : regtool testbench, interface axi4lite, blocking read of an empty FIFO
-sim_regtool_axi4lite_fifo_write      : regtool testbench, interface axi4lite, blocking write of a full FIFO
-sim_regtool_axi4lite_hw_write        : regtool testbench, interface axi4lite, registers written by the hardware, rw1c
-sim_regtool_axi4lite_reset           : regtool testbench, interface axi4lite, reset values
-sim_regtool_axi4lite_unmapped        : regtool testbench, interface axi4lite, access to an unmapped address
-sim_regtool_axi4lite_wait_duration   : regtool testbench, interface axi4lite, wait states, duration of the accesses
-sim_regtool_axi4lite_wait_none       : regtool testbench, interface axi4lite, wait states at 0, same as without them
-sim_regtool_axi4lite_wait_read       : regtool testbench, interface axi4lite, read wait states, read data of the last cycle, read strobe once
-sim_regtool_axi4lite_wait_read_clear : regtool testbench, interface axi4lite, read wait states, read side effect once, value before the clear
-sim_regtool_axi4lite_wait_write      : regtool testbench, interface axi4lite, write wait states, write and write strobe once, during the access
-sim_regtool_axi4lite_write_read      : regtool testbench, interface axi4lite, software write / read back, write only register
-sim_regtool_example1                 : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
-sim_regtool_mem_ext                  : regtool testbench, interface mem, external register
-sim_regtool_mem_fifo_read            : regtool testbench, interface mem, blocking read of an empty FIFO
-sim_regtool_mem_fifo_write           : regtool testbench, interface mem, blocking write of a full FIFO
-sim_regtool_mem_hw_write             : regtool testbench, interface mem, registers written by the hardware, rw1c
-sim_regtool_mem_reset                : regtool testbench, interface mem, reset values
-sim_regtool_mem_unmapped             : regtool testbench, interface mem, access to an unmapped address
-sim_regtool_mem_wait_duration        : regtool testbench, interface mem, wait states, duration of the accesses
-sim_regtool_mem_wait_none            : regtool testbench, interface mem, wait states at 0, same as without them
-sim_regtool_mem_wait_read            : regtool testbench, interface mem, read wait states, read data of the last cycle, read strobe once
-sim_regtool_mem_wait_read_clear      : regtool testbench, interface mem, read wait states, read side effect once, value before the clear
-sim_regtool_mem_wait_write           : regtool testbench, interface mem, write wait states, write and write strobe once, during the access
-sim_regtool_mem_write_read           : regtool testbench, interface mem, software write / read back, write only register
-sim_regtool_pbi_ext                  : regtool testbench, interface pbi, external register
-sim_regtool_pbi_fifo_read            : regtool testbench, interface pbi, blocking read of an empty FIFO
-sim_regtool_pbi_fifo_write           : regtool testbench, interface pbi, blocking write of a full FIFO
-sim_regtool_pbi_hw_write             : regtool testbench, interface pbi, registers written by the hardware, rw1c
-sim_regtool_pbi_reset                : regtool testbench, interface pbi, reset values
-sim_regtool_pbi_unmapped             : regtool testbench, interface pbi, access to an unmapped address
-sim_regtool_pbi_wait_duration        : regtool testbench, interface pbi, wait states, duration of the accesses
-sim_regtool_pbi_wait_none            : regtool testbench, interface pbi, wait states at 0, same as without them
-sim_regtool_pbi_wait_read            : regtool testbench, interface pbi, read wait states, read data of the last cycle, read strobe once
-sim_regtool_pbi_wait_read_clear      : regtool testbench, interface pbi, read wait states, read side effect once, value before the clear
-sim_regtool_pbi_wait_write           : regtool testbench, interface pbi, write wait states, write and write strobe once, during the access
-sim_regtool_pbi_write_read           : regtool testbench, interface pbi, software write / read back, write only register
-sim_regtool_sbi_ext                  : regtool testbench, interface sbi, external register
-sim_regtool_sbi_fifo_read            : regtool testbench, interface sbi, blocking read of an empty FIFO
-sim_regtool_sbi_fifo_write           : regtool testbench, interface sbi, blocking write of a full FIFO
-sim_regtool_sbi_hw_write             : regtool testbench, interface sbi, registers written by the hardware, rw1c
-sim_regtool_sbi_reset                : regtool testbench, interface sbi, reset values
-sim_regtool_sbi_unmapped             : regtool testbench, interface sbi, access to an unmapped address
-sim_regtool_sbi_wait_duration        : regtool testbench, interface sbi, wait states, duration of the accesses
-sim_regtool_sbi_wait_none            : regtool testbench, interface sbi, wait states at 0, same as without them
-sim_regtool_sbi_wait_read            : regtool testbench, interface sbi, read wait states, read data of the last cycle, read strobe once
-sim_regtool_sbi_wait_read_clear      : regtool testbench, interface sbi, read wait states, read side effect once, value before the clear
-sim_regtool_sbi_wait_write           : regtool testbench, interface sbi, write wait states, write and write strobe once, during the access
-sim_regtool_sbi_write_read           : regtool testbench, interface sbi, software write / read back, write only register
-tb_regtool_apb                       : regtool testbench, interface apb (base of the sim_regtool_apb_* targets)
-tb_regtool_axi4lite                  : regtool testbench, interface axi4lite (base of the sim_regtool_axi4lite_* targets)
-tb_regtool_mem                       : regtool testbench, interface mem (base of the sim_regtool_mem_* targets)
-tb_regtool_pbi                       : regtool testbench, interface pbi (base of the sim_regtool_pbi_* targets)
-tb_regtool_sbi                       : regtool testbench, interface sbi (base of the sim_regtool_sbi_* targets)
+default                               : Default Target
+lint_ghdl                             : Lint with GHDL (-Wall analysis of the building blocks, the bridges and the wrappers, elaboration of csr_wrapper)
+lint_ghdl_synth_apb2mem               : Synthesis check of apb2mem, 8-bit address, 32-bit data
+lint_ghdl_synth_axi4lite2mem          : Synthesis check of axi4lite2mem, 8-bit address, 32-bit data
+lint_ghdl_synth_csr_ext               : Synthesis check of csr_ext, 8 bits
+lint_ghdl_synth_csr_fifo_blocking     : Synthesis check of csr_fifo, 8 bits, FIFOs of depth 4 / 4, blocking read and write
+lint_ghdl_synth_csr_fifo_nonblocking  : Synthesis check of csr_fifo, 8 bits, FIFOs of depth 2 / 8, non-blocking write
+lint_ghdl_synth_csr_reg_rw            : Synthesis check of csr_reg (csr_reg_wrapper), rw, 8 bits
+lint_ghdl_synth_csr_reg_rw_wait_state : Synthesis check of csr_reg (csr_reg_wrapper), rw, 8 bits, 2 read and 3 write wait states
+lint_ghdl_synth_init_a5               : Synthesis check of csr_wrapper (every block, every access model), INIT x"A5"
+lint_ghdl_synth_pbi2mem               : Synthesis check of pbi2mem (pbi2mem_wrapper), 8-bit address and data
+lint_ghdl_synth_sbi2mem               : Synthesis check of sbi2mem (sbi2mem_wrapper), 8-bit address and data
+lint_ghdl_synth_width1_init1          : Synthesis check of csr_wrapper (every block, every access model), WIDTH 1, INIT "1"
+sim                                   : default run rule
+sim_regtool_apb                       : regtool testbench, interface apb, every scenario
+sim_regtool_axi4lite                  : regtool testbench, interface axi4lite, every scenario
+sim_regtool_example1                  : Generate the CSR of regtool example1, analyze and elaborate them with GHDL
+sim_regtool_mem                       : regtool testbench, interface mem, every scenario
+sim_regtool_pbi                       : regtool testbench, interface pbi, every scenario
+sim_regtool_sbi                       : regtool testbench, interface sbi - build only (scenarios of TESTS_LIST)
+sim_regtool_sbi_ext                   : regtool testbench, interface sbi, external register
+sim_regtool_sbi_fifo_read             : regtool testbench, interface sbi, blocking read of an empty FIFO
+sim_regtool_sbi_fifo_write            : regtool testbench, interface sbi, blocking write of a full FIFO
+sim_regtool_sbi_hw_write              : regtool testbench, interface sbi, registers written by the hardware, rw1c
+sim_regtool_sbi_reset                 : regtool testbench, interface sbi, reset values
+sim_regtool_sbi_unmapped              : regtool testbench, interface sbi, access to an unmapped address
+sim_regtool_sbi_wait_duration         : regtool testbench, interface sbi, wait states, duration of the accesses
+sim_regtool_sbi_wait_none             : regtool testbench, interface sbi, wait states at 0, same as without them
+sim_regtool_sbi_wait_read             : regtool testbench, interface sbi, read wait states, read data of the last cycle, read strobe once
+sim_regtool_sbi_wait_read_clear       : regtool testbench, interface sbi, read wait states, read side effect once, value before the clear
+sim_regtool_sbi_wait_write            : regtool testbench, interface sbi, write wait states, write and write strobe once, during the access
+sim_regtool_sbi_write_read            : regtool testbench, interface sbi, software write / read back, write only register
+syn_apb2mem                           : Synthesis (Artix-7, sky130) of apb2mem, 8-bit address, 32-bit data
+syn_axi4lite2mem                      : Synthesis (Artix-7, sky130) of axi4lite2mem, 8-bit address, 32-bit data
+syn_csr_ext                           : Synthesis (Artix-7, sky130) of csr_ext, 8 bits
+syn_csr_fifo_blocking                 : Synthesis (Artix-7, sky130) of csr_fifo, 8 bits, FIFOs of depth 4 / 4, blocking read and write
+syn_csr_fifo_nonblocking              : Synthesis (Artix-7, sky130) of csr_fifo, 8 bits, FIFOs of depth 2 / 8, non-blocking write
+syn_csr_reg_rw                        : Synthesis (Artix-7, sky130) of csr_reg (csr_reg_wrapper), rw, 8 bits
+syn_csr_reg_rw_wait_state             : Synthesis (Artix-7, sky130) of csr_reg (csr_reg_wrapper), rw, 8 bits, 2 read and 3 write wait states
+syn_pbi2mem                           : Synthesis (Artix-7, sky130) of pbi2mem (pbi2mem_wrapper), 8-bit address and data
+syn_sbi2mem                           : Synthesis (Artix-7, sky130) of sbi2mem (sbi2mem_wrapper), 8-bit address and data
+
