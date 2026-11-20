@@ -101,7 +101,10 @@ asylum-utils-generators/
 │   ├── defs.mk                  # FILE_CORE, default TARGET and TOOL
 │   └── targets.txt              # Target list (generated from the .core)
 ├── syn/
-│   └── csr_wrapper.vhd          # Lint / synthesis wrapper (csr_reg, csr_ext, csr_fifo)
+│   ├── csr_wrapper.vhd          # Lint wrapper: every building block, every access model of csr_reg
+│   ├── csr_reg_wrapper.vhd      # Lint / synthesis wrapper of one csr_reg
+│   ├── sbi2mem_wrapper.vhd      # Lint / synthesis wrapper of sbi2mem (constrained SBI records)
+│   └── pbi2mem_wrapper.vhd      # Lint / synthesis wrapper of pbi2mem (constrained PBI records)
 ├── LICENSE                      # Apache-2.0 (see License for the third-party directories)
 ├── doc/
 │   ├── generators.drawio        # Block diagrams (pages Overview and CSR), exported to generators-<page>.png
@@ -428,13 +431,21 @@ Environment: `pbcc_gen` needs `PICOASM_HOME` (and `PBCC_HOME` for C input); `rvc
 
 ## Resources
 
-Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): [syn/csr_wrapper.vhd](syn/csr_wrapper.vhd), the regtool building blocks with flat ports, synthesized by Yosys and its GHDL plugin; the reports are in the build directory of each target. The wrapper holds 10 `csr_reg` of `WIDTH` = 8 bits (one per software access model), one `csr_ext` and one `csr_fifo`: a figure is the sum of these 12 blocks, a CSR bank costs its own registers plus its address decode and read multiplexer.
+Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): one building block per target, synthesized by Yosys and its GHDL plugin; the reports are in the build directory of each target. Top: the block itself (`csr_ext`, `csr_fifo`, `apb2mem`, `axi4lite2mem`) or its wrapper with flat or constrained ports ([syn/csr_reg_wrapper.vhd](syn/csr_reg_wrapper.vhd), [syn/sbi2mem_wrapper.vhd](syn/sbi2mem_wrapper.vhd), [syn/pbi2mem_wrapper.vhd](syn/pbi2mem_wrapper.vhd)). A CSR bank costs one block per register, its bridge, plus its address decode and read multiplexer.
 
 | Configuration | LUT¹ | LUTRAM¹ | FF¹ | CARRY4¹ | MUXF7/F8¹ | BRAM¹ | DSP¹ | Area² (µm²) | kGE³ |
 |---|---|---|---|---|---|---|---|---|---|
-| `syn_default` (no wait state, `csr_fifo` without FIFO) | 174 | 0 | 100 | 0 | 0 | 0 | 0 | 4105.19 | 1.094 |
-| `syn_wait_state` (`RD_WAIT_STATE` 2, `WR_WAIT_STATE` 3 on each `csr_reg`) | 366 | 0 | 150 | 0 | 72 | 0 | 0 | 5686.70 | 1.515 |
-| `syn_fifo_blocking` (`csr_fifo` with FIFOs of depth 4 / 4, blocking read) | 198 | 16 | 112 | 4 | 4 | 0 | 0 | 6972.94 | 1.858 |
+| `syn_csr_reg_rw` (`csr_reg`, `rw`, 8 bits) | 18 | 0 | 10 | 0 | 0 | 0 | 0 | 416.65 | 0.111 |
+| `syn_csr_reg_rw_wait_state` (`csr_reg`, `rw`, 8 bits, `RD_WAIT_STATE` 2, `WR_WAIT_STATE` 3) | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 585.56 | 0.156 |
+| `syn_csr_ext` (`csr_ext`, 8 bits) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.000 |
+| `syn_csr_fifo_blocking` (`csr_fifo`, 8 bits, FIFOs 4 / 4, blocking read and write) | 26 | 16 | 12 | 4 | 4 | 0 | 0 | 2976.60 | 0.793 |
+| `syn_csr_fifo_nonblocking` (`csr_fifo`, 8 bits, FIFOs 2 / 8, non-blocking write) | 31 | 16 | 12 | 2 | 0 | 0 | 0 | 3689.79 | 0.983 |
+| `syn_sbi2mem` (8-bit address and data) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 3.75 | 0.001 |
+| `syn_pbi2mem` (8-bit address and data) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.000 |
+| `syn_apb2mem` (8-bit address, 32-bit data) | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 25.02 | 0.007 |
+| `syn_axi4lite2mem` (8-bit address, 32-bit data) | 100 | 0 | 76 | 0 | 1 | 0 | 0 | 2939.07 | 0.783 |
+
+`csr_ext` and `pbi2mem` are wires only (no cell); `sbi2mem` is one inverter (`ready = not busy`); a `csr_reg` of `WIDTH` bits has `WIDTH` + 2 flip-flops (register and the two strobes), plus `RD_WAIT_STATE` + `WR_WAIT_STATE` with wait states.
 
 ¹ Xilinx Artix-7 (LUT6), Yosys 0.33 `synth_xilinx -flatten -noiopad -noclkbuf`, before place and route: every cell of the netlist is counted, Vivado may differ. An `INV` counts as a `LUT1`: `synth_xilinx` puts one on the reset pin of each flip-flop with the active-low reset. The FIFO storage of `csr_fifo` (`fifo_sync`) is in LUTRAM, not in BRAM.
 
@@ -442,7 +453,7 @@ Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): [sy
 
 ³ Area in thousands of NAND2 gate equivalents (`sky130_fd_sc_hd__nand2_1` = 3.7536 µm²).
 
-The `lint_ghdl_synth_*` configurations without a `syn_*` target (`width1_init1`, `init_a5`, `fifo_nonblocking`) only check that the configuration synthesizes. Synthesis of the other units:
+The `lint_ghdl_synth_width1_init1` and `lint_ghdl_synth_init_a5` checks of [syn/csr_wrapper.vhd](syn/csr_wrapper.vhd) (every block, one `csr_reg` per access model) have no `syn_*` target: their figures would be a sum. Synthesis of the other units:
 
 `csr_reg`, `csr_ext`, `csr_fifo`, the bridges and the generated `<X>_registers` (VHDL, Verilog and SystemVerilog) are plain synthesizable RTL (no simulation-only code); `apb2mem` and `axi4lite2mem` pass `ghdl --synth`, the Verilog / SystemVerilog files are verilator `-Wall` lint clean. The ROM templates provide an `rtl` architecture (synchronous `case` on the address) and a `rom` architecture (constant array). Resource usage of a CSR bank depends on the register widths and on the FIFO depths given to `csr_fifo`.
 
@@ -535,9 +546,9 @@ The memory interface holds an access until `busy = 0`; the read data is combinat
 
 ### Lint Scripts of the Asylum Cores (`asylum:utils:ghdl_synth`)
 
-A `lint_ghdl_synth_*` target of an Asylum core (here: of `csr_wrapper`) is `lint_ghdl` with the generics of its configuration (FuseSoC `parameters`) and a `pre_run` hook, [tools/ghdl/ghdl_synth.sh](tools/ghdl/ghdl_synth.sh) (core `asylum:utils:ghdl_synth`, dependency of the `deps` fileset, copied in the build directory with the GHDL tool), which adds `include ghdl_synth.mk` to the Makefile generated by edalize. The run step (`make run EXTRA_OPTIONS=<generics>`) then runs, in the build directory:
+A `lint_ghdl_synth_*` target of an Asylum core (here: of one building block or of `csr_wrapper`) is `lint_ghdl` with the generics of its configuration (FuseSoC `parameters`) and a `pre_run` hook, [tools/ghdl/ghdl_synth.sh](tools/ghdl/ghdl_synth.sh) (core `asylum:utils:ghdl_synth`, dependency of the `deps` fileset, copied in the build directory with the GHDL tool), which adds `include ghdl_synth.mk` to the Makefile generated by edalize. The run step (`make run EXTRA_OPTIONS=<generics>`) then runs, in the build directory:
 
-1. `ghdl --synth` of the toplevel (rule `ghdl_synth` of [tools/ghdl/ghdl_synth.mk](tools/ghdl/ghdl_synth.mk)), with the options of the target: `STD`, `ANALYZE_OPTIONS` (`-Wall`), `TOPLEVEL_LIBS`, `TOPLEVEL` and the generics. It writes `csr_wrapper_synth.vhd` (netlist) and `csr_wrapper_synth.log`, prints the warnings, and fails on a synthesis error (an inferred latch is one);
+1. `ghdl --synth` of the toplevel (rule `ghdl_synth` of [tools/ghdl/ghdl_synth.mk](tools/ghdl/ghdl_synth.mk)), with the options of the target: `STD`, `ANALYZE_OPTIONS` (`-Wall`), `TOPLEVEL_LIBS`, `TOPLEVEL` and the generics. It writes `<toplevel>_synth.vhd` (netlist) and `<toplevel>_synth.log`, prints the warnings, and fails on a synthesis error (an inferred latch is one);
 2. `ghdl -r --no-run`: elaboration with the same generics, without simulation.
 
 To add a configuration, add a target with its `parameters` (the generics are declared in the `parameters` section of `generators.core`).
@@ -655,15 +666,17 @@ Validation with 45 mutants of the VHDL building blocks (`csr_reg`: reset value, 
 | `sim_regtool_sbi` | `asylum.tb_regtool_sbi` | Reference configuration (`sbi`, the bus of the Asylum IPs): build and elaboration only (`TESTS_LIST` empty), any scenario at run time (see [How to Run](#how-to-run)) |
 | `sim_regtool_sbi_<scenario>` | `asylum.tb_regtool_sbi` | 12 targets, one per scenario of the table above except `axi_concurrent` (`TESTS_LIST=<scenario>`) |
 | `sim_regtool_mem`, `sim_regtool_pbi`, `sim_regtool_apb`, `sim_regtool_axi4lite` | `asylum.tb_regtool_<interface>` | Every scenario, in one simulation |
-| `lint_ghdl` | `asylum.csr_wrapper` | Lint: GHDL `-Wall` analysis and elaboration (empty simulation) of the regtool building blocks `csr_pkg`, `csr_reg` (one instance per software access model, wait states `RD_WAIT_STATE` / `WR_WAIT_STATE`), `csr_ext`, `csr_fifo` in a wrapper with flat ports (`syn/csr_wrapper.vhd`) |
-
-| `lint_ghdl_synth_default` | `asylum.csr_wrapper` | Synthesis check (see [Lint Scripts](#lint-scripts-of-the-asylum-cores-asylumutilsghdl_synth)), default generics |
-| `lint_ghdl_synth_width1_init1` | `asylum.csr_wrapper` | Synthesis check, WIDTH 1, INIT "1": `WIDTH=1`, `INIT=1` |
-| `lint_ghdl_synth_init_a5` | `asylum.csr_wrapper` | Synthesis check, INIT x"A5": `INIT=10100101` |
-| `lint_ghdl_synth_wait_state` | `asylum.csr_wrapper` | Synthesis check, csr_reg with read and write wait states: `RD_WAIT_STATE=2`, `WR_WAIT_STATE=3` |
-| `lint_ghdl_synth_fifo_blocking` | `asylum.csr_wrapper` | Synthesis check, csr_fifo with FIFOs, blocking read: `DEPTH_SW2HW=4`, `DEPTH_HW2SW=4`, `BLOCKING_READ=true` |
-| `lint_ghdl_synth_fifo_nonblocking` | `asylum.csr_wrapper` | Synthesis check, csr_fifo with FIFOs, non-blocking write: `DEPTH_SW2HW=2`, `DEPTH_HW2SW=8`, `BLOCKING_WRITE=false` |
-| `syn_default`, `syn_wait_state`, `syn_fifo_blocking` | `asylum.csr_wrapper` | Synthesis (Artix-7, sky130) with the generics of `lint_ghdl_synth_default`, `_wait_state`, `_fifo_blocking` (see [Resources](#resources)) |
+| `lint_ghdl` | `asylum.csr_wrapper` | Lint: GHDL `-Wall` analysis of the regtool building blocks (`csr_pkg`, `csr_reg`, `csr_ext`, `csr_fifo`), of the bridges (`sbi2mem`, `pbi2mem`, `apb2mem`, `axi4lite2mem`) and of the wrappers of `syn/`, elaboration (empty simulation) of `csr_wrapper` (one `csr_reg` per software access model, wait states `RD_WAIT_STATE` / `WR_WAIT_STATE`, `csr_ext`, `csr_fifo`, flat ports) |
+| `lint_ghdl_synth_csr_reg_rw` | `asylum.csr_reg_wrapper` | Synthesis check (see [Lint Scripts](#lint-scripts-of-the-asylum-cores-asylumutilsghdl_synth)) of `csr_reg`: `WIDTH=8`, `MODEL=rw` |
+| `lint_ghdl_synth_csr_reg_rw_wait_state` | `asylum.csr_reg_wrapper` | Same with wait states: `RD_WAIT_STATE=2`, `WR_WAIT_STATE=3` |
+| `lint_ghdl_synth_csr_ext` | `asylum.csr_ext` | `WIDTH=8` |
+| `lint_ghdl_synth_csr_fifo_blocking` | `asylum.csr_fifo` | `WIDTH=8`, `DEPTH_SW2HW=4`, `DEPTH_HW2SW=4`, `BLOCKING_READ=true` (and `BLOCKING_WRITE` true by default) |
+| `lint_ghdl_synth_csr_fifo_nonblocking` | `asylum.csr_fifo` | `WIDTH=8`, `DEPTH_SW2HW=2`, `DEPTH_HW2SW=8`, `BLOCKING_WRITE=false` |
+| `lint_ghdl_synth_sbi2mem`, `lint_ghdl_synth_pbi2mem` | `asylum.sbi2mem_wrapper`, `asylum.pbi2mem_wrapper` | Default generics: 8-bit address and data |
+| `lint_ghdl_synth_apb2mem`, `lint_ghdl_synth_axi4lite2mem` | `asylum.apb2mem`, `asylum.axi4lite2mem` | Default generics: 8-bit address, 32-bit data |
+| `lint_ghdl_synth_width1_init1` | `asylum.csr_wrapper` | Every block, every access model: `WIDTH=1`, `INIT=1` |
+| `lint_ghdl_synth_init_a5` | `asylum.csr_wrapper` | Every block, every access model: `INIT=10100101` |
+| `syn_<block>_<config>` | as `lint_ghdl_synth_<block>_<config>` | Synthesis (Artix-7, sky130) of each `lint_ghdl_synth_*` configuration of one block (not of `csr_wrapper`), see [Resources](#resources) |
 
 The CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs one job per `sim_*`, `lint_*` and `syn_*` target (`make ci_generate`), the badges job and the job `regtool_pytest`.
 
@@ -692,8 +705,8 @@ Lint of the regtool building blocks, from this repository:
 
 ```bash
 make lint_ghdl                  # GHDL -Wall lint (make nonreg_lint: every lint_* target)
-make lint_ghdl_synth_default    # GHDL -Wall lint + ghdl --synth -Wall check of one configuration
-make syn_default                # Yosys synthesis of one configuration (make nonreg_syn: every syn_* target)
+make lint_ghdl_synth_csr_reg_rw # GHDL -Wall lint + ghdl --synth -Wall check of one configuration
+make syn_csr_reg_rw             # Yosys synthesis of one configuration (make nonreg_syn: every syn_* target)
 ```
 
 The pytest unit tests (Python 3; GHDL, iverilog and verilator are optional, the tests that need them are skipped otherwise):
