@@ -8,11 +8,11 @@
 #-----------------------------------------------------------------------------
 # Description: Called by yosys_synth.mk (syn_* targets) in the fusesoc
 #              work_root. Reads the stat -json reports of the two flows,
-#              <toplevel>_xc7.json and <toplevel>_asic.json, and the number
-#              of INV cells that need a LUT, <toplevel>_xc7_inv.txt, writes
-#              the summary <toplevel>_syn.json and prints it:
-#              - xc7  : LUT (INV included), LUTRAM, FF, BRAM (36 Kb blocks),
-#                       DSP
+#              <toplevel>_xc7.json and <toplevel>_asic.json, writes the
+#              summary <toplevel>_syn.json and prints it:
+#              - xc7  : every cell of the netlist in LUT (INV included),
+#                       LUTRAM, FF, CARRY4, MUXF7/F8, BRAM (36 Kb blocks),
+#                       DSP ; an unclassified cell type is an error
 #              - asic : area (um2), area in kGE (NAND2 equivalents, area of
 #                       the reference cell read in the liberty) and
 #                       number of cells
@@ -29,11 +29,12 @@ import json
 import re
 
 # Artix-7 cells of synth_xilinx counted in each resource, with their weight.
-# The other cells are not counted (CARRY4, MUXF7, MUXF8). The INV are added to
-# LUT by summary_xc7, except the ones that only drive flip-flop control pins
-# (Vivado absorbs them): see read_count and YOSYS_POST_xc7 in yosys_synth.mk.
+# Every cell of the netlist is counted: a cell type missing here is an error
+# (summary_xc7), so that nothing disappears silently from the count.
 XC7_RESOURCES = {
-    "LUT"    : {"LUT1" : 1, "LUT2" : 1, "LUT3" : 1, "LUT4" : 1, "LUT5" : 1, "LUT6" : 1},
+    # An INV is a LUT1
+    "LUT"    : {"LUT1" : 1, "LUT2" : 1, "LUT3" : 1, "LUT4" : 1, "LUT5" : 1, "LUT6" : 1,
+                "INV"  : 1},
     # LUTs used as memory or shift register
     "LUTRAM" : {"RAM32X1S" : 1, "RAM64X1S" : 1, "RAM128X1S" : 2, "RAM256X1S" : 4,
                 "RAM32X1D" : 2, "RAM64X1D" : 2, "RAM128X1D" : 4,
@@ -41,6 +42,8 @@ XC7_RESOURCES = {
                 "SRL16E"   : 1, "SRLC32E"  : 1},
     "FF"     : {"FDRE" : 1, "FDSE" : 1, "FDCE" : 1, "FDPE" : 1,
                 "FDRE_1" : 1, "FDSE_1" : 1, "FDCE_1" : 1, "FDPE_1" : 1},
+    "CARRY4" : {"CARRY4" : 1},
+    "MUXF7/F8" : {"MUXF7" : 1, "MUXF8" : 1},
     # 36 Kb blocks (a RAMB18E1 is half a block)
     "BRAM"   : {"RAMB36E1" : 1, "RAMB18E1" : 0.5},
     "DSP"    : {"DSP48E1" : 1},
@@ -66,38 +69,21 @@ def read_stat(path):
 
 #--------------------------------------------
 #--------------------------------------------
-def read_count(path):
-    """
-    Read a report of "select -count" ("<n> objects.").
-
-    :param path: report file
-    :return: number of selected objects
-    :raises ValueError: no count in the report
-    """
-    with open(path) as file:
-        match = re.search(r"(\d+) objects", file.read())
-
-    if not match:
-        raise ValueError(f"{path} : no \"<n> objects\" line")
-
-    return int(match.group(1))
-
-#--------------------------------------------
-#--------------------------------------------
-def summary_xc7(stat, inv):
+def summary_xc7(stat):
     """
     Artix-7 resources of a design.
 
     :param stat: statistics of the design (read_stat)
-    :param inv: number of INV cells that need a LUT (read_count)
-    :return: dictionary resource : count (XC7_RESOURCES, LUT includes inv)
+    :return: dictionary resource : count (XC7_RESOURCES)
+    :raises ValueError: cell type not in XC7_RESOURCES
     """
-    cells   = stat["num_cells_by_type"]
-    summary = {resource : sum(count * weights.get(cell, 0) for cell, count in cells.items())
-               for resource, weights in XC7_RESOURCES.items()}
-    summary["LUT"] += inv
+    cells        = stat["num_cells_by_type"]
+    unclassified = [cell for cell in cells if not any(cell in weights for weights in XC7_RESOURCES.values())]
+    if unclassified:
+        raise ValueError(f"xc7 : cell types not counted, to add to XC7_RESOURCES : {', '.join(sorted(unclassified))}")
 
-    return summary
+    return {resource : sum(count * weights.get(cell, 0) for cell, count in cells.items())
+            for resource, weights in XC7_RESOURCES.items()}
 
 #--------------------------------------------
 #--------------------------------------------
@@ -139,12 +125,12 @@ def summary_asic(stat, nand2_area):
 #--------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="Summary of the Yosys synthesis reports of yosys_synth.mk")
-    parser.add_argument("toplevel", help="toplevel : reads <toplevel>_xc7.json, <toplevel>_xc7_inv.txt and <toplevel>_asic.json, writes <toplevel>_syn.json")
+    parser.add_argument("toplevel", help="toplevel : reads <toplevel>_xc7.json and <toplevel>_asic.json, writes <toplevel>_syn.json")
     parser.add_argument("--liberty", required=True, help="liberty file of the asic flow")
     parser.add_argument("--nand2", required=True, help="NAND2 reference cell of the gate equivalent")
     args   = parser.parse_args()
 
-    summary = {"xc7"  : summary_xc7 (read_stat(f"{args.toplevel}_xc7.json"), read_count(f"{args.toplevel}_xc7_inv.txt")),
+    summary = {"xc7"  : summary_xc7 (read_stat(f"{args.toplevel}_xc7.json")),
                "asic" : summary_asic(read_stat(f"{args.toplevel}_asic.json"), cell_area(args.liberty, args.nand2))}
 
     with open(f"{args.toplevel}_syn.json", "w") as file:
