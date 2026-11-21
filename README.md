@@ -87,7 +87,6 @@ Every generator renders a `Makefile` from a Jinja2 template, runs `make` in the 
 | sdcc | C tool sources | `tools/pbccv2-src-20110901/`, `tools/pbccv2-src-20111024/`, `tools/sdcc-3.1.0/` | SDCC trees for the PicoBlaze C compiler |
 | `component.py` | script | [scripts/component.py](scripts/component.py) | Builds / updates component packages |
 | `build_toolchain.sh` | script | [scripts/build_toolchain.sh](scripts/build_toolchain.sh) | Builds and installs sdcc and picoasm |
-| `gen_target.sh` | script | [scripts/gen_target.sh](scripts/gen_target.sh) | Generates pbcc_gen `generate:` / target entries and a Makefile for a set of sources |
 
 ### Repository Layout
 
@@ -117,8 +116,7 @@ asylum-utils-generators/
 │   └── gen_rom/                 # gen_rom.py + ROM/{generic,xilinx,pkg} templates
 ├── scripts/
 │   ├── build_toolchain.sh
-│   ├── component.py
-│   └── gen_target.sh
+│   └── component.py
 └── tools/
     ├── regtool/                 # regtool.py, csr_model.py, gen_hdl.py, hdl_model.py, gen_*.py, addrmap.py, schema,
     │                            # hdl/ (VHDL + Verilog), examples/, sim/ (testbenches), tests/ (pytest)
