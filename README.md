@@ -433,19 +433,19 @@ Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): one
 
 | Configuration | LUT¹ | LUTRAM¹ | FF¹ | CARRY4¹ | MUXF7/F8¹ | BRAM¹ | DSP¹ | Area² (µm²) | kGE³ |
 |---|---|---|---|---|---|---|---|---|---|
-| `syn_csr_reg_rw` (`csr_reg`, `rw`, 8 bits) | 18 | 0 | 10 | 0 | 0 | 0 | 0 | 416.65 | 0.111 |
-| `syn_csr_reg_rw_wait_state` (`csr_reg`, `rw`, 8 bits, `RD_WAIT_STATE` 2, `WR_WAIT_STATE` 3) | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 585.56 | 0.156 |
+| `syn_csr_reg_rw` (`csr_reg`, `rw`, 8 bits) | 9 | 0 | 10 | 0 | 0 | 0 | 0 | 416.65 | 0.111 |
+| `syn_csr_reg_rw_wait_state` (`csr_reg`, `rw`, 8 bits, `RD_WAIT_STATE` 2, `WR_WAIT_STATE` 3) | 16 | 0 | 15 | 0 | 0 | 0 | 0 | 585.56 | 0.156 |
 | `syn_csr_ext` (`csr_ext`, 8 bits) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.000 |
-| `syn_csr_fifo_blocking` (`csr_fifo`, 8 bits, FIFOs 4 / 4, blocking read and write) | 26 | 16 | 12 | 4 | 4 | 0 | 0 | 2976.60 | 0.793 |
-| `syn_csr_fifo_nonblocking` (`csr_fifo`, 8 bits, FIFOs 2 / 8, non-blocking write) | 31 | 16 | 12 | 2 | 0 | 0 | 0 | 3689.79 | 0.983 |
+| `syn_csr_fifo_blocking` (`csr_fifo`, 8 bits, FIFOs 4 / 4, blocking read and write) | 13 | 16 | 12 | 4 | 4 | 0 | 0 | 2976.60 | 0.793 |
+| `syn_csr_fifo_nonblocking` (`csr_fifo`, 8 bits, FIFOs 2 / 8, non-blocking write) | 20 | 16 | 12 | 2 | 0 | 0 | 0 | 3689.79 | 0.983 |
 | `syn_sbi2mem` (8-bit address and data) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 3.75 | 0.001 |
 | `syn_pbi2mem` (8-bit address and data) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.000 |
 | `syn_apb2mem` (8-bit address, 32-bit data) | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 25.02 | 0.007 |
-| `syn_axi4lite2mem` (8-bit address, 32-bit data) | 100 | 0 | 76 | 0 | 1 | 0 | 0 | 2939.07 | 0.783 |
+| `syn_axi4lite2mem` (8-bit address, 32-bit data) | 25 | 0 | 76 | 0 | 1 | 0 | 0 | 2939.07 | 0.783 |
 
 `csr_ext` and `pbi2mem` are wires only (no cell); `sbi2mem` is one inverter (`ready = not busy`); a `csr_reg` of `WIDTH` bits has `WIDTH` + 2 flip-flops (register and the two strobes), plus `RD_WAIT_STATE` + `WR_WAIT_STATE` with wait states.
 
-¹ Xilinx Artix-7 (LUT6), Yosys 0.33 `synth_xilinx -flatten -noiopad -noclkbuf`, before place and route: every cell of the netlist is counted, Vivado may differ. An `INV` counts as a `LUT1`: `synth_xilinx` puts one on the reset pin of each flip-flop with the active-low reset. The FIFO storage of `csr_fifo` (`fifo_sync`) is in LUTRAM, not in BRAM.
+¹ Xilinx Artix-7 (LUT6), Yosys 0.33 `synth_xilinx -flatten -noiopad -noclkbuf`, before place and route: every cell of the netlist is counted, Vivado may differ. Identical cells are merged as a vendor tool does (`opt_merge -share_all`): the inverters of an active-low reset net become one; every remaining cell is counted, an `INV` as a `LUT1`. The FIFO storage of `csr_fifo` (`fifo_sync`) is in LUTRAM, not in BRAM.
 
 ² SkyWater sky130 `sky130_fd_sc_hd`, typical corner (tt, 25 °C, 1.80 V), Yosys 0.33 `synth` + `dfflibmap` + `abc -liberty`: standard-cell area only, no timing constraint, no buffering, clock tree or placement; the FIFO storage becomes flip-flops (no SRAM macro).
 
@@ -557,17 +557,17 @@ A `syn_<config>` target of an IP has the same configuration as its `lint_ghdl_sy
 
 | Flow | Yosys commands | Resources |
 |------|----------------|-----------|
-| `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf` | Xilinx Artix-7, every cell of the netlist: `LUT` (`LUT1`..`LUT6`, an `INV` counts as a `LUT1`), `LUTRAM` (LUTs used as memory or shift register), `FF`, `CARRY4`, `MUXF7/F8` (`MUXF7` + `MUXF8`), `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`) |
+| `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf`, `opt_merge -share_all`, `opt_clean` | Xilinx Artix-7, every cell of the netlist: `LUT` (`LUT1`..`LUT6`, an `INV` counts as a `LUT1`), `LUTRAM` (LUTs used as memory or shift register), `FF`, `CARRY4`, `MUXF7/F8` (`MUXF7` + `MUXF8`), `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`) |
 | `asic` | `synth -flatten`, `dfflibmap` / `abc` / `stat -liberty $ASIC_LIBERTY` | Area in µm², in kGE (thousands of NAND2 gate equivalents: area / area of `ASIC_NAND2`, default `sky130_fd_sc_hd__nand2_1`, 3.7536 µm², read in the liberty) and number of cells on the SkyWater `sky130_fd_sc_hd` library, typical corner (`sky130_fd_sc_hd__tt_025C_1v80.lib`, `ASIC_LIBERTY` of the asylum-env image) |
 
 Each flow writes `<toplevel>_<flow>.log` (Yosys log) and `<toplevel>_<flow>.json` (`stat -json`); [tools/yosys/yosys_synth.py](tools/yosys/yosys_synth.py) then writes the summary `<toplevel>_syn.json` and prints it in the log of the target:
 
 ```
-yosys_synth : xc7  : LUT 12, LUTRAM 0, FF 5, CARRY4 1, MUXF7/F8 0, BRAM 0, DSP 0
+yosys_synth : xc7  : LUT 8, LUTRAM 0, FF 5, CARRY4 1, MUXF7/F8 0, BRAM 0, DSP 0
 yosys_synth : asic : 197.69 um2, 0.053 kGE, 17 cells
 ```
 
-The figures are Yosys estimates before place and route, not a vendor implementation: every cell of the `xc7` netlist is counted, with no assumption on what Vivado would optimize, and a cell type that `yosys_synth.py` does not classify is an error. `synth_xilinx` (Yosys 0.33) maps a flip-flop with an active-low asynchronous reset to an `FDCE` / `FDPE` with an `INV` on its `CLR` / `PRE` pin (one per flip-flop, no `IS_CLR_INVERTED`): these `INV` count as LUTs. The ASIC flow has no SRAM macro: the memories become flip-flops. The Yosys 0.33 `abc` cannot exclude cells, so it may use any cell of the library (`lpflow_*` included).
+The figures are Yosys estimates before place and route, not a vendor implementation: every cell of the `xc7` netlist is counted, and a cell type that `yosys_synth.py` does not classify is an error. `synth_xilinx` (Yosys 0.33) maps a flip-flop with an active-low asynchronous reset to an `FDCE` / `FDPE` with an `INV` on its `CLR` / `PRE` pin (one per flip-flop, never shared, no `IS_CLR_INVERTED`); `opt_merge -share_all` then merges the cells of the same type with the same inputs, as a vendor tool does (the default `opt_merge` skips the mapped Xilinx cells): the `INV` of a reset net become one, and every remaining `INV` counts as a LUT. The ASIC flow has no SRAM macro: the memories become flip-flops. The Yosys 0.33 `abc` cannot exclude cells, so it may use any cell of the library (`lpflow_*` included).
 
 ## Registers
 

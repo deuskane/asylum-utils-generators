@@ -17,9 +17,10 @@ CAPI=2:
 # Revisions  :
 # Date        Version  Author   Description
 # 2026-11-20  1.0.0    mrosiere Created
+# 2026-11-21  1.0.1    mrosiere xc7 : merge identical cells (opt_merge -share_all)
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:yosys_synth:1.0.0
+name       : asylum:utils:yosys_synth:1.0.1
 description: Yosys synthesis (Artix-7 and sky130) of the syn_* targets
 
 #=========================================
