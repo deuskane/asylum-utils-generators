@@ -10,9 +10,11 @@
 #              work_root. Reads the stat -json reports of the two flows,
 #              <toplevel>_xc7.json and <toplevel>_asic.json, writes the
 #              summary <toplevel>_syn.json and prints it:
-#              - xc7  : every cell of the netlist in LUT (INV included),
-#                       LUTRAM, FF, CARRY4, MUXF7/F8, BRAM (36 Kb blocks),
-#                       DSP ; an unclassified cell type is an error
+#              - xc7  : every cell of the netlist in LUT (INV included,
+#                       the identical INV of a reset net already merged by
+#                       yosys_synth.mk), LUTRAM, FF, CARRY4, MUXF7/F8, BRAM
+#                       (36 Kb blocks), DSP ; an unclassified cell type is
+#                       an error
 #              - asic : area (um2), area in kGE (NAND2 equivalents, area of
 #                       the reference cell read in the liberty) and
 #                       number of cells
@@ -22,6 +24,7 @@
 # Revisions  :
 # Date        Version  Author   Description
 # 2026-11-20  1.0      mrosiere Created
+# 2026-11-21  1.1      mrosiere Comments : INV merged by yosys_synth.mk
 #-----------------------------------------------------------------------------
 
 import argparse
@@ -32,7 +35,7 @@ import re
 # Every cell of the netlist is counted: a cell type missing here is an error
 # (summary_xc7), so that nothing disappears silently from the count.
 XC7_RESOURCES = {
-    # An INV is a LUT1
+    # An INV is a LUT1 (one per active-low reset net after opt_merge -share_all)
     "LUT"    : {"LUT1" : 1, "LUT2" : 1, "LUT3" : 1, "LUT4" : 1, "LUT5" : 1, "LUT6" : 1,
                 "INV"  : 1},
     # LUTs used as memory or shift register

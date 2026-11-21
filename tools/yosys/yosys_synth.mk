@@ -12,7 +12,11 @@
 #              options of the fusesoc target (as ghdl_synth.mk : STD,
 #              ANALYZE_OPTIONS, TOPLEVEL_LIBS, TOPLEVEL and the generics in
 #              EXTRA_OPTIONS), in two flows :
-#              - xc7  : Xilinx Artix-7 (synth_xilinx)
+#              - xc7  : Xilinx Artix-7 (synth_xilinx), then identical
+#                       cells merged as a vendor tool does (opt_merge
+#                       -share_all) : synth_xilinx puts one INV on the
+#                       CLR / PRE pin of each flip-flop with an active-low
+#                       asynchronous reset, merged into one per reset net
 #              - asic : standard cells of the liberty ASIC_LIBERTY
 #                       (sky130_fd_sc_hd, typical corner, in the asylum-env
 #                       image). There is no SRAM macro : the memories
@@ -29,6 +33,7 @@
 # Revisions  :
 # Date        Version  Author   Description
 # 2026-11-20  1.0      mrosiere Created
+# 2026-11-21  1.1      mrosiere xc7 : identical cells merged (INV of the resets)
 #-----------------------------------------------------------------------------
 
 ifeq ($(ASIC_LIBERTY),)
@@ -42,7 +47,11 @@ YOSYS             ?= yosys -m ghdl
 YOSYS_GHDL         = ghdl $(STD) $(ANALYZE_OPTIONS) $(TOPLEVEL_LIBS) $(subst ",,$(EXTRA_OPTIONS)) $(TOPLEVEL)
 
 # Synthesis and statistics options of each flow
-YOSYS_SYNTH_xc7    = synth_xilinx -flatten -noiopad -noclkbuf -top $(TOPLEVEL)
+# xc7 : synth_xilinx (Yosys 0.33) inserts one INV per flip-flop on the CLR /
+# PRE pin of an active-low reset and never shares them. opt_merge merges the
+# cells of the same type with the same inputs; -share_all extends it to the
+# mapped cells (INV, LUT, FD*), which the default opt_merge skips.
+YOSYS_SYNTH_xc7    = synth_xilinx -flatten -noiopad -noclkbuf -top $(TOPLEVEL); opt_merge -share_all; opt_clean
 YOSYS_STAT_xc7     =
 YOSYS_SYNTH_asic   = synth -flatten -top $(TOPLEVEL); dfflibmap -liberty $(ASIC_LIBERTY); abc -liberty $(ASIC_LIBERTY); opt_clean
 YOSYS_STAT_asic    = -liberty $(ASIC_LIBERTY)
