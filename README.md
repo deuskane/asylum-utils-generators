@@ -435,15 +435,15 @@ Figures of the `syn_*` targets (`make nonreg_syn`, see [Targets](#targets)): one
 
 | Configuration | LUT¹ | LUTRAM¹ | FF¹ | CARRY4¹ | MUXF7/F8¹ | BRAM¹ | DSP¹ | Area² (µm²) | kGE³ |
 |---|---|---|---|---|---|---|---|---|---|
-| `syn_csr_reg_rw` (`csr_reg`, `rw`, 8 bits) | 18 | 0 | 10 | 0 | 0 | 0 | 0 | 416.65 | 0.111 |
-| `syn_csr_reg_rw_wait_state` (`csr_reg`, `rw`, 8 bits, `RD_WAIT_STATE` 2, `WR_WAIT_STATE` 3) | 30 | 0 | 15 | 0 | 0 | 0 | 0 | 585.56 | 0.156 |
+| `syn_csr_reg_rw` (`csr_reg`, `rw`, 8 bits) | 9 | 0 | 10 | 0 | 0 | 0 | 0 | 416.65 | 0.111 |
+| `syn_csr_reg_rw_wait_state` (`csr_reg`, `rw`, 8 bits, `RD_WAIT_STATE` 2, `WR_WAIT_STATE` 3) | 16 | 0 | 15 | 0 | 0 | 0 | 0 | 585.56 | 0.156 |
 | `syn_csr_ext` (`csr_ext`, 8 bits) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.000 |
-| `syn_csr_fifo_blocking` (`csr_fifo`, 8 bits, FIFOs 4 / 4, blocking read and write) | 26 | 16 | 12 | 4 | 4 | 0 | 0 | 2976.60 | 0.793 |
-| `syn_csr_fifo_nonblocking` (`csr_fifo`, 8 bits, FIFOs 2 / 8, non-blocking write) | 31 | 16 | 12 | 2 | 0 | 0 | 0 | 3689.79 | 0.983 |
+| `syn_csr_fifo_blocking` (`csr_fifo`, 8 bits, FIFOs 4 / 4, blocking read and write) | 13 | 16 | 12 | 4 | 4 | 0 | 0 | 2976.60 | 0.793 |
+| `syn_csr_fifo_nonblocking` (`csr_fifo`, 8 bits, FIFOs 2 / 8, non-blocking write) | 20 | 16 | 12 | 2 | 0 | 0 | 0 | 3689.79 | 0.983 |
 | `syn_sbi2mem` (8-bit address and data) | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 3.75 | 0.001 |
 | `syn_pbi2mem` (8-bit address and data) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0.000 |
 | `syn_apb2mem` (8-bit address, 32-bit data) | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 25.02 | 0.007 |
-| `syn_axi4lite2mem` (8-bit address, 32-bit data) | 100 | 0 | 76 | 0 | 1 | 0 | 0 | 2939.07 | 0.783 |
+| `syn_axi4lite2mem` (8-bit address, 32-bit data) | 25 | 0 | 76 | 0 | 1 | 0 | 0 | 2939.07 | 0.783 |
 
 `csr_ext` and `pbi2mem` are wires only (no cell); `sbi2mem` is one inverter (`ready = not busy`); a `csr_reg` of `WIDTH` bits has `WIDTH` + 2 flip-flops (register and the two strobes), plus `RD_WAIT_STATE` + `WR_WAIT_STATE` with wait states.
 
