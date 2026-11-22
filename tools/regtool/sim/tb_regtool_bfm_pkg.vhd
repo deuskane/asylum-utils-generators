@@ -16,7 +16,8 @@
 --  - mem, sbi, pbi : bitvis_vip_sbi (the memory interface and pbi have the
 --                    protocol of sbi : access held while busy, ready = not
 --                    busy)
---  - apb           : apb_bfm_pkg (UVVM has no APB VIP)
+--  - apb           : apb_bfm_pkg of asylum-verification-uvvm (UVVM has no
+--                    APB VIP)
 --  - axi4lite      : bitvis_vip_axilite
 --  The hardware side of the CSR is tb_regtool_hw : the scenario drives it
 --  with t_tb_hw_ctrl and reads its monitors t_tb_hw_mon.
@@ -33,6 +34,8 @@
 --                               as procedures, BFMs instead of the masters
 -- 2026-11-20  3.0      mrosiere Was tb_regtool_pkg : helpers only (one
 --                               package per scenario), do_reset, hw_init
+-- 2026-11-22  3.1      mrosiere apb_bfm_pkg of asylum-verification-uvvm
+--                               (library asylum_uvvm)
 -------------------------------------------------------------------------------
 
 
@@ -49,8 +52,10 @@ use     bitvis_vip_sbi.sbi_bfm_pkg.all;
 library bitvis_vip_axilite;
 use     bitvis_vip_axilite.axilite_bfm_pkg.all;
 
+library asylum_uvvm;
+use     asylum_uvvm.apb_bfm_pkg.all;
+
 library asylum;
-use     asylum.apb_bfm_pkg.all;
 use     asylum.tbcsr_csr_pkg.all;
 
 package tb_regtool_bfm_pkg is

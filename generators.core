@@ -67,9 +67,11 @@ CAPI=2:
 #                                              pytest unit tests, sim_regtool_<interface>_<scenario> targets
 # 2026-11-16  2.10.0   mrosiere regtool      : csr_reg wait states (generics RD_WAIT_STATE / WR_WAIT_STATE,
 #                                              hjson rd_wait_state / wr_wait_state, hwtype reg only)
+# 2026-11-22  2.11.0   mrosiere regtool      : testbenches use apb_bfm_pkg of asylum:verification:uvvm
+#                                              (library asylum_uvvm), local copy removed
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:generators:2.10.0
+name       : asylum:utils:generators:2.11.0
 description: A collection of useful generators
 
 #=========================================
@@ -258,12 +260,11 @@ filesets:
       - asylum:utils:yosys_synth
 
   #---------------------------------------
-  # regtool testbenches (UVVM) : APB BFM, helpers, hardware side, one
+  # regtool testbenches (UVVM) : helpers, hardware side, one
   # package per scenario, list of the scenarios and dispatch
   #---------------------------------------
   files_regtool_sim:
     files:
-      - tools/regtool/sim/apb_bfm_pkg.vhd
       - tools/regtool/sim/tb_regtool_bfm_pkg.vhd
       - tools/regtool/sim/tb_regtool_hw.vhd
       - tools/regtool/sim/tb_regtool_reset_pkg.vhd
@@ -285,6 +286,8 @@ filesets:
       # string_pkg list_length / list_item / list_contains (TESTS_LIST)
       - ">=asylum:utils:pkg:1.10.0"
       - bitvis:verification:uvvm
+      # apb_bfm_pkg (library asylum_uvvm)
+      - ">=asylum:verification:uvvm:1.0.0"
 
   #---------------------------------------
   files_regtool_sim_mem:
