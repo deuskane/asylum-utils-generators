@@ -693,9 +693,9 @@ make nonreg_sim                               # every sim_* target (nonreg_lint,
 The scenarios are a generic set at run time: compile the testbench of an interface once, then run any list of scenarios without recompiling (the run step only analyses the files that changed):
 
 ```bash
-make sim_regtool_sbi                          # compiled in build/asylum_utils_generators_2.10.0/sim_regtool_sbi-ghdl, no scenario
-fusesoc --cores-root . run --build-root build --no-export --run --target sim_regtool_sbi asylum:utils:generators:2.10.0 --TESTS_LIST=wait_read,reset
-make -C build/asylum_utils_generators_2.10.0/sim_regtool_sbi-ghdl run EXTRA_OPTIONS=-gTESTS_LIST=wait_read   # same, in the build directory
+make sim_regtool_sbi                          # compiled in build/asylum_utils_generators_2.11.0/sim_regtool_sbi-ghdl, no scenario
+fusesoc --cores-root . run --build-root build --no-export --run --target sim_regtool_sbi asylum:utils:generators:2.11.0 --TESTS_LIST=wait_read,reset
+make -C build/asylum_utils_generators_2.11.0/sim_regtool_sbi-ghdl run EXTRA_OPTIONS=-gTESTS_LIST=wait_read   # same, in the build directory
 ```
 
 Lint of the regtool building blocks, from this repository:
