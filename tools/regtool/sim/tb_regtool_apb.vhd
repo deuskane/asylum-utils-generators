@@ -11,7 +11,8 @@
 -------------------------------------------------------------------------------
 -- Description:
 --  Testbench of the CSR tbcsr generated with the interface "apb" :
---  BFM apb_bfm_pkg -> tbcsr_registers (bridge apb2mem).
+--  BFM apb_bfm_pkg (asylum-verification-uvvm) -> tbcsr_registers (bridge
+--  apb2mem).
 --  TESTS_LIST : scenarios run in sequence, separated by ',' (names in
 --  tb_regtool_tests_pkg), each one after a reset pulse ; "" : build and
 --  elaboration only. Hardware side : tb_regtool_hw.

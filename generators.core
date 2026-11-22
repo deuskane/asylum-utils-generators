@@ -258,12 +258,11 @@ filesets:
       - asylum:utils:yosys_synth
 
   #---------------------------------------
-  # regtool testbenches (UVVM) : APB BFM, helpers, hardware side, one
+  # regtool testbenches (UVVM) : helpers, hardware side, one
   # package per scenario, list of the scenarios and dispatch
   #---------------------------------------
   files_regtool_sim:
     files:
-      - tools/regtool/sim/apb_bfm_pkg.vhd
       - tools/regtool/sim/tb_regtool_bfm_pkg.vhd
       - tools/regtool/sim/tb_regtool_hw.vhd
       - tools/regtool/sim/tb_regtool_reset_pkg.vhd
@@ -285,6 +284,8 @@ filesets:
       # string_pkg list_length / list_item / list_contains (TESTS_LIST)
       - ">=asylum:utils:pkg:1.10.0"
       - bitvis:verification:uvvm
+      # apb_bfm_pkg (library asylum_uvvm)
+      - ">=asylum:verification:uvvm:1.0.0"
 
   #---------------------------------------
   files_regtool_sim_mem:
