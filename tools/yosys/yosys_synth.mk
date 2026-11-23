@@ -11,7 +11,9 @@
 #              with Yosys and its GHDL plugin (yosys -m ghdl), with the
 #              options of the fusesoc target (as ghdl_synth.mk : STD,
 #              ANALYZE_OPTIONS, TOPLEVEL_LIBS, TOPLEVEL and the generics in
-#              EXTRA_OPTIONS), in two flows :
+#              EXTRA_OPTIONS), in two flows, each with the pads
+#              reconnected after the flattening (YOSYS_PADS : the logic
+#              that drives a tristate pad is kept) :
 #              - xc7  : Xilinx Artix-7 (synth_xilinx), then identical
 #                       cells merged as a vendor tool does (opt_merge
 #                       -share_all) : synth_xilinx puts one INV on the
@@ -25,8 +27,8 @@
 #              $(TOPLEVEL)_<flow>.json (stat -json), then yosys_synth.py
 #              writes the summary $(TOPLEVEL)_syn.json and prints it
 #              (every xc7 cell : LUT, LUTRAM, FF, CARRY4, MUXF7/F8, BRAM,
-#              DSP ; area in um2 and in kGE, the area in NAND2 equivalents
-#              of ASIC_NAND2).
+#              DSP, TBUF ; area in um2 and in kGE, the area in NAND2
+#              equivalents of ASIC_NAND2).
 #-----------------------------------------------------------------------------
 # Copyright (c) 2026
 #-----------------------------------------------------------------------------
@@ -34,6 +36,8 @@
 # Date        Version  Author   Description
 # 2026-11-20  1.0      mrosiere Created
 # 2026-11-21  1.1      mrosiere xc7 : identical cells merged (INV of the resets)
+# 2026-11-23  1.2      mrosiere Pads reconnected : the logic that drives a
+#                               tristate pad is counted
 #-----------------------------------------------------------------------------
 
 ifeq ($(ASIC_LIBERTY),)
@@ -46,14 +50,30 @@ YOSYS             ?= yosys -m ghdl
 # remove them (the values of the fusesoc parameters have no space)
 YOSYS_GHDL         = ghdl $(STD) $(ANALYZE_OPTIONS) $(TOPLEVEL_LIBS) $(subst ",,$(EXTRA_OPTIONS)) $(TOPLEVEL)
 
+# Pads. GHDL 6.0.0 does not connect an inout port to the inout port of a
+# component instance (iobuf of asylum:target:techmap) : the toplevel port is
+# left 'Z' ("no assignment for port") and the tristate buffer of the instance
+# drives an internal net. synth_xilinx (tribuf -logic) turns such a buffer
+# into logic and removes it with the logic that drives the pad (e.g. TDO).
+# YOSYS_PADS runs inside each synthesis script, after its first label (begin),
+# with the same proc and flatten as the next label (they do nothing when they
+# run again) : each tristate buffer that does not drive a toplevel port gets
+# its own output port pad_tbuf<n>, as if it were connected to its pad (expose
+# skips the nets without a public name : renamed first). A design without
+# tristate buffer is not changed (same cells, same names).
+YOSYS_TBUF_NETS    = t:$$tribuf %co:+[Y] t:$$tribuf %d x:* %d
+YOSYS_PADS         = proc; flatten; tribuf; rename -enumerate -pattern pad_tbuf% $(YOSYS_TBUF_NETS); expose $(YOSYS_TBUF_NETS)
+
 # Synthesis and statistics options of each flow
 # xc7 : synth_xilinx (Yosys 0.33) inserts one INV per flip-flop on the CLR /
 # PRE pin of an active-low reset and never shares them. opt_merge merges the
 # cells of the same type with the same inputs; -share_all extends it to the
 # mapped cells (INV, LUT, FD*), which the default opt_merge skips.
-YOSYS_SYNTH_xc7    = synth_xilinx -flatten -noiopad -noclkbuf -top $(TOPLEVEL); opt_merge -share_all; opt_clean
+YOSYS_XC7          = synth_xilinx -flatten -noiopad -noclkbuf -top $(TOPLEVEL)
+YOSYS_SYNTH_xc7    = $(YOSYS_XC7) -run :prepare; $(YOSYS_PADS); $(YOSYS_XC7) -run prepare:; opt_merge -share_all; opt_clean
 YOSYS_STAT_xc7     =
-YOSYS_SYNTH_asic   = synth -flatten -top $(TOPLEVEL); dfflibmap -liberty $(ASIC_LIBERTY); abc -liberty $(ASIC_LIBERTY); opt_clean
+YOSYS_ASIC         = synth -flatten -top $(TOPLEVEL)
+YOSYS_SYNTH_asic   = $(YOSYS_ASIC) -run :coarse; $(YOSYS_PADS); $(YOSYS_ASIC) -run coarse:; dfflibmap -liberty $(ASIC_LIBERTY); abc -liberty $(ASIC_LIBERTY); opt_clean
 YOSYS_STAT_asic    = -liberty $(ASIC_LIBERTY)
 
 # Reference cell of the gate equivalent (kGE = area / area of 1000 NAND2)

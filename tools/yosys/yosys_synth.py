@@ -13,8 +13,9 @@
 #              - xc7  : every cell of the netlist in LUT (INV included,
 #                       the identical INV of a reset net already merged by
 #                       yosys_synth.mk), LUTRAM, FF, CARRY4, MUXF7/F8, BRAM
-#                       (36 Kb blocks), DSP ; an unclassified cell type is
-#                       an error
+#                       (36 Kb blocks), DSP, TBUF (tristate buffers of the
+#                       pads, not LUTs) ; an unclassified cell type is an
+#                       error
 #              - asic : area (um2), area in kGE (NAND2 equivalents, area of
 #                       the reference cell read in the liberty) and
 #                       number of cells
@@ -25,6 +26,7 @@
 # Date        Version  Author   Description
 # 2026-11-20  1.0      mrosiere Created
 # 2026-11-21  1.1      mrosiere Comments : INV merged by yosys_synth.mk
+# 2026-11-23  1.2      mrosiere xc7 : TBUF (tristate buffers of the pads)
 #-----------------------------------------------------------------------------
 
 import argparse
@@ -50,6 +52,9 @@ XC7_RESOURCES = {
     # 36 Kb blocks (a RAMB18E1 is half a block)
     "BRAM"   : {"RAMB36E1" : 1, "RAMB18E1" : 0.5},
     "DSP"    : {"DSP48E1" : 1},
+    # Tristate buffers of the pads (OBUFT / IOBUF of the I/O blocks, kept as
+    # $_TBUF_ by synth_xilinx -noiopad) : one per pad, not in the LUTs
+    "TBUF"   : {"$_TBUF_" : 1},
 }
 
 #--------------------------------------------
