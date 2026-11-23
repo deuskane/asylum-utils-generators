@@ -18,9 +18,11 @@ CAPI=2:
 # Date        Version  Author   Description
 # 2026-11-20  1.0.0    mrosiere Created
 # 2026-11-21  1.0.1    mrosiere xc7 : merge identical cells (opt_merge -share_all)
+# 2026-11-23  1.1.0    mrosiere Pads : logic that drives a tristate pad counted
+#                               (inout of component instances), xc7 TBUF
 #-----------------------------------------------------------------------------
 
-name       : asylum:utils:yosys_synth:1.0.1
+name       : asylum:utils:yosys_synth:1.1.0
 description: Yosys synthesis (Artix-7 and sky130) of the syn_* targets
 
 #=========================================
