@@ -557,17 +557,19 @@ A `syn_<config>` target of an IP has the same configuration as its `lint_ghdl_sy
 
 | Flow | Yosys commands | Resources |
 |------|----------------|-----------|
-| `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf`, `opt_merge -share_all`, `opt_clean` | Xilinx Artix-7, every cell of the netlist: `LUT` (`LUT1`..`LUT6`, an `INV` counts as a `LUT1`), `LUTRAM` (LUTs used as memory or shift register), `FF`, `CARRY4`, `MUXF7/F8` (`MUXF7` + `MUXF8`), `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`) |
-| `asic` | `synth -flatten`, `dfflibmap` / `abc` / `stat -liberty $ASIC_LIBERTY` | Area in µm², in kGE (thousands of NAND2 gate equivalents: area / area of `ASIC_NAND2`, default `sky130_fd_sc_hd__nand2_1`, 3.7536 µm², read in the liberty) and number of cells on the SkyWater `sky130_fd_sc_hd` library, typical corner (`sky130_fd_sc_hd__tt_025C_1v80.lib`, `ASIC_LIBERTY` of the asylum-env image) |
+| `xc7` | `synth_xilinx -flatten -noiopad -noclkbuf` (pads reconnected after its `begin` label), `opt_merge -share_all`, `opt_clean` | Xilinx Artix-7, every cell of the netlist: `LUT` (`LUT1`..`LUT6`, an `INV` counts as a `LUT1`), `LUTRAM` (LUTs used as memory or shift register), `FF`, `CARRY4`, `MUXF7/F8` (`MUXF7` + `MUXF8`), `BRAM` (36 Kb blocks, a `RAMB18E1` counts 0.5), `DSP` (`DSP48E1`), `TBUF` (tristate buffers of the pads, `$_TBUF_`: the `OBUFT` / `IOBUF` of the I/O blocks, not LUTs) |
+| `asic` | `synth -flatten` (pads reconnected after its `begin` label), `dfflibmap` / `abc` / `stat -liberty $ASIC_LIBERTY` | Area in µm², in kGE (thousands of NAND2 gate equivalents: area / area of `ASIC_NAND2`, default `sky130_fd_sc_hd__nand2_1`, 3.7536 µm², read in the liberty) and number of cells on the SkyWater `sky130_fd_sc_hd` library, typical corner (`sky130_fd_sc_hd__tt_025C_1v80.lib`, `ASIC_LIBERTY` of the asylum-env image) |
 
 Each flow writes `<toplevel>_<flow>.log` (Yosys log) and `<toplevel>_<flow>.json` (`stat -json`); [tools/yosys/yosys_synth.py](tools/yosys/yosys_synth.py) then writes the summary `<toplevel>_syn.json` and prints it in the log of the target:
 
 ```
-yosys_synth : xc7  : LUT 8, LUTRAM 0, FF 5, CARRY4 1, MUXF7/F8 0, BRAM 0, DSP 0
+yosys_synth : xc7  : LUT 8, LUTRAM 0, FF 5, CARRY4 1, MUXF7/F8 0, BRAM 0, DSP 0, TBUF 0
 yosys_synth : asic : 197.69 um2, 0.053 kGE, 17 cells
 ```
 
 The figures are Yosys estimates before place and route, not a vendor implementation: every cell of the `xc7` netlist is counted, and a cell type that `yosys_synth.py` does not classify is an error. `synth_xilinx` (Yosys 0.33) maps a flip-flop with an active-low asynchronous reset to an `FDCE` / `FDPE` with an `INV` on its `CLR` / `PRE` pin (one per flip-flop, never shared, no `IS_CLR_INVERTED`); `opt_merge -share_all` then merges the cells of the same type with the same inputs, as a vendor tool does (the default `opt_merge` skips the mapped Xilinx cells): the `INV` of a reset net become one, and every remaining `INV` counts as a LUT. The ASIC flow has no SRAM macro: the memories become flip-flops. The Yosys 0.33 `abc` cannot exclude cells, so it may use any cell of the library (`lpflow_*` included).
+
+Pads (tristate buffers, `'Z'` on an `out` or `inout` port): GHDL 6.0.0 does not connect an `inout` port to the `inout` port of a component instance (e.g. `iobuf` / `obuf` of asylum-target-techmap; `ghdl_synth` warns `no assignment for port`): the toplevel port stays `'Z'` and the tristate buffer of the instance drives an internal net. `synth_xilinx` (`tribuf -logic`) turns such a buffer into logic and removes it, with the logic that only drives the pad (e.g. TDO of a JTAG TAP, which is not read anywhere else). Both flows therefore run `YOSYS_PADS` right after the `begin` label of their synthesis script (`proc`, `flatten`, `tribuf`, then `rename -enumerate` and `expose` of the outputs of the tristate buffers that do not drive a toplevel port): each such buffer gets its own output port `pad_tbuf<n>`, as if it were connected to its pad. The logic that drives a pad (data and output enable) is then counted; the pad buffer itself is not logic: one `TBUF` per pad in `xc7` (a pad whose enable is always `'1'` is a plain output, without `TBUF`), no area in `asic` (an I/O cell, not a standard cell; `stat` prints `Area for cell type $_TBUF_ is unknown!`, the buffer is in the number of cells). A design without tristate buffer gets exactly the same cells (`proc` and `flatten` do nothing when the synthesis script runs them again).
 
 ## Registers
 
