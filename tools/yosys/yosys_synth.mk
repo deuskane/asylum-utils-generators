@@ -38,6 +38,8 @@
 # 2026-11-21  1.1      mrosiere xc7 : identical cells merged (INV of the resets)
 # 2026-11-23  1.2      mrosiere Pads reconnected : the logic that drives a
 #                               tristate pad is counted
+# 2026-11-27  1.3      mrosiere Memories written on two clocks (true dual-port
+#                               RAM) : PRIORITY_MASK of the write ports cleared
 #-----------------------------------------------------------------------------
 
 ifeq ($(ASIC_LIBERTY),)
@@ -49,6 +51,13 @@ YOSYS             ?= yosys -m ghdl
 # Yosys keeps the double quotes of the string generics (-gNAME="value"):
 # remove them (the values of the fusesoc parameters have no space)
 YOSYS_GHDL         = ghdl $(STD) $(ANALYZE_OPTIONS) $(TOPLEVEL_LIBS) $(subst ",,$(EXTRA_OPTIONS)) $(TOPLEVEL)
+
+# Memories with write ports on different clocks (true dual-port RAM, one
+# clock per port) : the GHDL plugin gives the second write port a priority
+# over the first one (PRIORITY_MASK), which Yosys only accepts between ports
+# of the same clock (assert in kernel/mem.cc). Cleared after the import : two
+# writes of the same word at the same time stay undefined, as on a block RAM.
+YOSYS_MEMWR        = setparam -set PRIORITY_MASK 2'"'"'b00 t:$$memwr_v2 r:PRIORITY_MASK=2'"'"'b01 %i
 
 # Pads. GHDL 6.0.0 does not connect an inout port to the inout port of a
 # component instance (iobuf of asylum:target:techmap) : the toplevel port is
@@ -98,6 +107,6 @@ yosys_synth : yosys_xc7 yosys_asic
 yosys_xc7 yosys_asic : yosys_% : $(TOPLEVEL)
 #--------------------------------------------------------
 	$(EDALIZE_LAUNCHER) $(YOSYS) -q $(YOSYS_NOWARN) -l $(TOPLEVEL)_$*.log \
-	  -p '$(YOSYS_GHDL); $(YOSYS_SYNTH_$*); stat $(YOSYS_STAT_$*); tee -q -o $(TOPLEVEL)_$*.json stat -json $(YOSYS_STAT_$*)'
+	  -p '$(YOSYS_GHDL); $(YOSYS_MEMWR); $(YOSYS_SYNTH_$*); stat $(YOSYS_STAT_$*); tee -q -o $(TOPLEVEL)_$*.json stat -json $(YOSYS_STAT_$*)'
 
 .PHONY : yosys_synth yosys_xc7 yosys_asic
