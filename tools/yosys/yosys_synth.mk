@@ -57,6 +57,11 @@ YOSYS_GHDL         = ghdl $(STD) $(ANALYZE_OPTIONS) $(TOPLEVEL_LIBS) $(subst ",,
 # over the first one (PRIORITY_MASK), which Yosys only accepts between ports
 # of the same clock (assert in kernel/mem.cc). Cleared after the import : two
 # writes of the same word at the same time stay undefined, as on a block RAM.
+# The selection matches every memory with exactly two write ports, also on
+# the same clock : such a memory loses the priority of its second write in
+# the figures (none in the Asylum IPs : the arrays written twice per cycle
+# have a reset, so they are flip-flops). Three or more write ports on
+# several clocks still hit the assert.
 YOSYS_MEMWR        = setparam -set PRIORITY_MASK 2'"'"'b00 t:$$memwr_v2 r:PRIORITY_MASK=2'"'"'b01 %i
 
 # Pads. GHDL 6.0.0 does not connect an inout port to the inout port of a

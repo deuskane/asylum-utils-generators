@@ -18,7 +18,11 @@
 #                       error
 #              - asic : area (um2), area in kGE (NAND2 equivalents, area of
 #                       the reference cell read in the liberty) and
-#                       number of cells
+#                       number of cells ; the cells of unknown area (not
+#                       in the liberty, e.g. a $mem_v2 that could not become
+#                       flip-flops) are listed : their area is missing from
+#                       the figure (the $_TBUF_ of the pads have no area by
+#                       design)
 #-----------------------------------------------------------------------------
 # Copyright (c) 2026
 #-----------------------------------------------------------------------------
@@ -27,6 +31,7 @@
 # 2026-11-20  1.0      mrosiere Created
 # 2026-11-21  1.1      mrosiere Comments : INV merged by yosys_synth.mk
 # 2026-11-23  1.2      mrosiere xc7 : TBUF (tristate buffers of the pads)
+# 2026-11-27  1.3      mrosiere asic : cells of unknown area listed
 #-----------------------------------------------------------------------------
 
 import argparse
@@ -56,6 +61,10 @@ XC7_RESOURCES = {
     # $_TBUF_ by synth_xilinx -noiopad) : one per pad, not in the LUTs
     "TBUF"   : {"$_TBUF_" : 1},
 }
+
+# asic cells without area by design : the tristate buffers of the pads (I/O
+# cells, not standard cells)
+ASIC_NO_AREA = {"$_TBUF_"}
 
 #--------------------------------------------
 #--------------------------------------------
@@ -121,13 +130,18 @@ def summary_asic(stat, nand2_area):
 
     :param stat: statistics of the design (read_stat, stat -liberty)
     :param nand2_area: area of the NAND2 reference cell (um2)
-    :return: dictionary with area_um2, kge (area in thousands of NAND2) and cells
+    :return: dictionary with area_um2, kge (area in thousands of NAND2), cells
+             and unknown_area (cell type : count of the cells not in the
+             liberty, missing from the area)
     """
-    area = stat.get("area", 0)
+    area    = stat.get("area", 0)
+    unknown = {cell : count for cell, count in stat["num_cells_by_type"].items()
+               if cell.startswith("$") and cell not in ASIC_NO_AREA}
 
-    return {"area_um2" : round(area, 2),
-            "kge"      : round(area / nand2_area / 1000, 3),
-            "cells"    : stat["num_cells"]}
+    return {"area_um2"     : round(area, 2),
+            "kge"          : round(area / nand2_area / 1000, 3),
+            "cells"        : stat["num_cells"],
+            "unknown_area" : unknown}
 
 #--------------------------------------------
 #--------------------------------------------
@@ -147,6 +161,9 @@ def main():
 
     print("yosys_synth : xc7  : " + ", ".join(f"{resource} {count:g}" for resource, count in summary["xc7"].items()))
     print(f"yosys_synth : asic : {summary['asic']['area_um2']:g} um2, {summary['asic']['kge']:.3f} kGE, {summary['asic']['cells']} cells")
+    if summary["asic"]["unknown_area"]:
+        cells = ", ".join(f"{cell} x{count}" for cell, count in sorted(summary["asic"]["unknown_area"].items()))
+        print(f"yosys_synth : asic : WARNING : cells of unknown area, not in the area above : {cells}")
     print(f"yosys_synth : PASS (reports {args.toplevel}_syn.json, {args.toplevel}_xc7.log, {args.toplevel}_asic.log)")
 
 #--------------------------------------------
